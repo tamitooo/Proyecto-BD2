@@ -78,5 +78,58 @@ class HeapFile:
                 return 0 if fcol.kind in ("INT", "FLOAT") else ""
         return ""
 
+    # ---------------------- operaciones CRUD ----------------------
+    def insert(self, values):
+        """Inserta un registro buscando el primer slot libre o creando una nueva pagina."""
+        with open(self.path, "r+b") as f:
+            n_paginas = self._num_paginas()
+            for page in range(n_paginas):
+                for slot in range(self.slots_per_page):
+                    flag, _ = self._leer_slot(f, page, slot)
+                    if flag is not None and flag != self.schema.FLAG_USED:
+                        self._escribir_slot(f, page, slot, values, self.schema.FLAG_USED)
+                        return RID(page, slot)
+
+            page = self._crear_pagina_nueva(f)
+            self._escribir_slot(f, page, 0, values, self.schema.FLAG_USED)
+            return RID(page, 0)
+
+    def read(self, rid):
+        """Lee un registro dado su RID. Retorna None si esta borrado o vacio."""
+        with open(self.path, "rb") as f:
+            flag, values = self._leer_slot(f, rid.page, rid.slot)
+        if flag != self.schema.FLAG_USED:
+            return None
+        return values
+
+    def delete(self, rid):
+        """Marca el slot como tombstone (eliminacion logica)."""
+        with open(self.path, "r+b") as f:
+            flag, values = self._leer_slot(f, rid.page, rid.slot)
+            if flag != self.schema.FLAG_USED:
+                return False
+            self._escribir_slot(f, rid.page, rid.slot, values, self.schema.FLAG_DELETED)
+        return True
+
+    def update(self, rid, values):
+        """Actualiza el contenido de un slot ocupado."""
+        with open(self.path, "r+b") as f:
+            flag, _ = self._leer_slot(f, rid.page, rid.slot)
+            if flag != self.schema.FLAG_USED:
+                return False
+            self._escribir_slot(f, rid.page, rid.slot, values, self.schema.FLAG_USED)
+        return True
+
+    def scan(self):
+        """Generador: recorre todos los registros vigentes (flag=USED)."""
+        n_paginas = self._num_paginas()
+        with open(self.path, "rb") as f:
+            for page in range(n_paginas):
+                for slot in range(self.slots_per_page):
+                    flag, values = self._leer_slot(f, page, slot)
+                    if flag == self.schema.FLAG_USED:
+                        yield RID(page, slot), values
+
+
     def espacio_utilizado_bytes(self):
         return os.path.getsize(self.path)

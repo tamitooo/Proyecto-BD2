@@ -2,17 +2,7 @@ from .bplus_tree import BPlusTree
 
 
 class UnclusteredBPlusIndex:
-    """
-    Indice B+ no agrupado (unclustered).
-
-    Los registros permanecen en el archivo de datos. Las hojas del B+ Tree
-    almacenan referencias (RIDs) hacia esos registros:
-
-        key -> [RID, RID, ...]
-
-    Esto desacopla el orden fisico de los registros del orden del indice.
-    """
-
+    
     def __init__(self, key_field, order=4, unique=False):
         if not key_field:
             raise ValueError("key_field is required")
@@ -57,10 +47,6 @@ class UnclusteredBPlusIndex:
         self.tree.insert(key, rid)
 
     def insert_key(self, key, rid):
-        """
-        Variante de bajo nivel para indexar directamente una clave y un RID.
-        Util para integracion con operadores del motor.
-        """
         if rid is None:
             raise ValueError("rid is required")
 
@@ -70,22 +56,10 @@ class UnclusteredBPlusIndex:
         self.tree.insert(key, rid)
 
     def bulk_load(self, entries):
-        """
-        Carga pares (record, rid).
-
-        Ejemplo:
-            index.bulk_load([
-                ({"id": 10, "name": "Ana"}, rid_1),
-                ({"id": 20, "name": "Luis"}, rid_2),
-            ])
-        """
         for record, rid in entries:
             self.insert(record, rid)
 
     def search(self, key):
-        """
-        Retorna los RIDs asociados a una clave exacta.
-        """
         return self.tree.search(key)
 
     def range_search(
@@ -96,12 +70,6 @@ class UnclusteredBPlusIndex:
         include_end=True,
         limit=None,
     ):
-        """
-        Retorna RIDs ordenados por la clave indexada.
-
-        El indice no lee los registros. La resolucion RID -> registro
-        corresponde al storage engine.
-        """
         pairs = self.tree.range_search(
             start=start,
             end=end,
@@ -119,10 +87,6 @@ class UnclusteredBPlusIndex:
         include_end=True,
         limit=None,
     ):
-        """
-        Retorna pares (key, RID). Es util para debugging, benchmarks y
-        operadores que necesitan conservar la clave junto con la referencia.
-        """
         return self.tree.range_search(
             start=start,
             end=end,
@@ -132,40 +96,19 @@ class UnclusteredBPlusIndex:
         )
 
     def scan(self, limit=None):
-        """
-        Recorre todos los RIDs en orden de la clave indexada.
-        """
         return self.range_search(limit=limit)
 
     def scan_entries(self, limit=None):
-        """
-        Recorre todas las entradas como pares (key, RID).
-        """
         return self.range_entries(limit=limit)
 
     def delete(self, key, rid=None):
-        """
-        Elimina entradas del indice.
-
-        - delete(key): elimina todos los RIDs asociados a la clave.
-        - delete(key, rid): elimina solo esa referencia.
-        """
         return self.tree.delete(key, rid)
 
     def delete_record(self, record, rid):
-        """
-        Elimina la referencia correspondiente a un registro concreto.
-        """
         key = self._get_key(record)
         return self.tree.delete(key, rid)
 
     def update(self, old_record, old_rid, new_record, new_rid=None):
-        """
-        Actualiza una entrada del indice cuando cambia el registro o su RID.
-
-        Si cambia el valor de la columna indexada, la referencia se mueve a
-        la nueva clave. Si cambia solamente el RID, se reemplaza la referencia.
-        """
         old_key = self._get_key(old_record)
         new_key = self._get_key(new_record)
         target_rid = old_rid if new_rid is None else new_rid
@@ -194,10 +137,6 @@ class UnclusteredBPlusIndex:
         return bool(self.tree.search(key))
 
     def validate(self):
-        """
-        Valida las invariantes estructurales del B+ Tree y, para indices
-        unicos, que cada clave tenga como maximo un RID.
-        """
         self.tree.validate()
 
         if self.unique:

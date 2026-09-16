@@ -1,0 +1,50 @@
+dataset_size,storage_type,metric,supported,operations,total_ms,avg_us,median_us,p95_us,result_items,size_bytes,notes
+1000,heap_file,insert,True,1000,15392.5615,15392.5615,14764.55,18642.3,,44935,Insercion una a una con reutilizacion de espacio libre.
+1000,heap_file,bulk_load,True,1,36.5358,36535.8,36535.8,36535.8,1000,44935,Construccion directa pagina a pagina (mismo layout binario).
+1000,heap_file,search_hit,True,100,343.8324,3438.324,3290.4,4603.5,100,,Full scan con corte temprano (no existe indice de clave primaria).
+1000,heap_file,search_miss,True,100,407.5852,4075.852,3518.15,4908.9,0,,Full scan completo: recorre todas las paginas.
+1000,heap_file,disk_space,True,0,0.0,0.0,0.0,0.0,,44935,Util=43000 bytes.
+1000,heap_file,wasted_space,True,0,0.0,0.0,0.0,0.0,,1935,Slots libres de la ultima pagina (el archivo crece en paginas de 4096 bytes).
+1000,heap_file,delete,True,300,584.9859,1949.953,1603.65,2258.1,300,,Eliminacion logica (tombstone) + alta de la pagina al free-list.
+1000,heap_file,reuse_insert,True,300,4096.2169,13654.056333333334,13288.95,17296.5,300,,Inserciones posteriores al borrado; 300/300 reutilizaron un slot liberado.
+1000,heap_file,reorganize,False,0,,,,,,,"No aplica: el Heap File no reorganiza, reutiliza espacio libre en linea mediante el free-list."
+1000,archivo_secuencial,insert,True,1000,15231.6099,15231.6099,14232.2,20116.5,,43000,Insercion en .aux + reorganizacion automatica al superar el 30% (reorganizaciones durante la carga: 17).
+1000,archivo_secuencial,bulk_load,True,1,6.1249,6124.9,6124.9,6124.9,1000,43000,Equivale al estado post-reorganizacion: .main ordenado y .aux vacio.
+1000,archivo_secuencial,search_hit,True,100,32.1994,321.994,251.3,536.6,100,,Busqueda binaria en .main + barrido lineal en .aux (aux vacio).
+1000,archivo_secuencial,search_miss,True,100,57.7317,577.317,568.0,943.8,0,,Busqueda binaria sin exito + barrido de .aux para descartar duplicados en overflow.
+1000,archivo_secuencial,disk_space,True,0,0.0,0.0,0.0,0.0,,43000,Util=43000 bytes; sin desperdicio tras reorganizar (0 bytes).
+1000,archivo_secuencial,delete,True,301,4707.733,15640.308970099668,15091.0,19725.4,301,,Eliminacion lazy (tombstone en .main); reorganizaciones automaticas disparadas durante el borrado: 1.
+1000,archivo_secuencial,wasted_space,True,0,0.0,0.0,0.0,0.0,,1548,Espacio en tombstones justo antes de reorganizar (36 slots borrados).
+1000,archivo_secuencial,reorganize,True,1,5.9363,5936.3,5936.3,5936.3,351,28552,Reorganizacion cronometrada (compacta tombstones y vacia .aux).
+10000,heap_file,insert,True,10000,148258.1702,14825.81702,14224.1,18721.0,,433010,Insercion una a una con reutilizacion de espacio libre.
+10000,heap_file,bulk_load,True,1,25.4087,25408.7,25408.7,25408.7,10000,433010,Construccion directa pagina a pagina (mismo layout binario).
+10000,heap_file,search_hit,True,100,3659.7176,36597.176,36040.5,45232.1,100,,Full scan con corte temprano (no existe indice de clave primaria).
+10000,heap_file,search_miss,True,100,3859.7278,38597.278,38430.3,47431.0,0,,Full scan completo: recorre todas las paginas.
+10000,heap_file,disk_space,True,0,0.0,0.0,0.0,0.0,,433010,Util=430000 bytes.
+10000,heap_file,wasted_space,True,0,0.0,0.0,0.0,0.0,,3010,Slots libres de la ultima pagina (el archivo crece en paginas de 4096 bytes).
+10000,heap_file,delete,True,3000,6280.5262,2093.5087333333336,1719.85,2453.3,3000,,Eliminacion logica (tombstone) + alta de la pagina al free-list.
+10000,heap_file,reuse_insert,True,3000,44411.4417,14803.813900000001,14327.7,18756.9,3000,,Inserciones posteriores al borrado; 3000/3000 reutilizaron un slot liberado.
+10000,heap_file,reorganize,False,0,,,,,,,"No aplica: el Heap File no reorganiza, reutiliza espacio libre en linea mediante el free-list."
+10000,archivo_secuencial,insert,True,10000,163745.4734,16374.54734,15089.7,22832.0,,430000,Insercion en .aux + reorganizacion automatica al superar el 30% (reorganizaciones durante la carga: 26).
+10000,archivo_secuencial,bulk_load,True,1,26.8801,26880.1,26880.1,26880.1,10000,430000,Equivale al estado post-reorganizacion: .main ordenado y .aux vacio.
+10000,archivo_secuencial,search_hit,True,100,24.5957,245.957,237.15,280.3,100,,Busqueda binaria en .main + barrido lineal en .aux (aux vacio).
+10000,archivo_secuencial,search_miss,True,100,36.4581,364.581,349.65,431.8,0,,Busqueda binaria sin exito + barrido de .aux para descartar duplicados en overflow.
+10000,archivo_secuencial,disk_space,True,0,0.0,0.0,0.0,0.0,,430000,Util=430000 bytes; sin desperdicio tras reorganizar (0 bytes).
+10000,archivo_secuencial,delete,True,3001,37902.6412,12630.003732089304,12051.8,15676.9,3001,,Eliminacion lazy (tombstone en .main); reorganizaciones automaticas disparadas durante el borrado: 1.
+10000,archivo_secuencial,wasted_space,True,0,0.0,0.0,0.0,0.0,,16082,Espacio en tombstones justo antes de reorganizar (374 slots borrados).
+10000,archivo_secuencial,reorganize,True,1,36.4783,36478.3,36478.3,36478.3,3501,284918,Reorganizacion cronometrada (compacta tombstones y vacia .aux).
+100000,heap_file,insert,False,100000,0.0,0.0,0.0,0.0,,,No medido: la insercion uno a uno a esta escala excede el presupuesto del benchmark en este host (ver --mutation-limit).
+100000,heap_file,bulk_load,True,1,258.2673,258267.3,258267.3,258267.3,100000,4301505,Construccion directa pagina a pagina (mismo layout binario).
+100000,heap_file,search_hit,True,100,31750.7053,317507.053,308625.2,407824.8,100,,Full scan con corte temprano (no existe indice de clave primaria).
+100000,heap_file,search_miss,True,100,32689.1624,326891.624,318316.5,382664.9,0,,Full scan completo: recorre todas las paginas.
+100000,heap_file,disk_space,True,0,0.0,0.0,0.0,0.0,,4301505,Util=4300000 bytes.
+100000,heap_file,wasted_space,True,0,0.0,0.0,0.0,0.0,,1505,Slots libres de la ultima pagina (el archivo crece en paginas de 4096 bytes).
+100000,heap_file,delete,False,0,,,,,,,No medido a esta escala (ver --mutation-limit).
+100000,heap_file,reorganize,False,0,,,,,,,No aplica: el Heap File no reorganiza.
+100000,archivo_secuencial,insert,False,100000,0.0,0.0,0.0,0.0,,,No medido: la insercion uno a uno a esta escala excede el presupuesto del benchmark en este host (ver --mutation-limit).
+100000,archivo_secuencial,bulk_load,True,1,316.356,316356.0,316356.0,316356.0,100000,4300000,Equivale al estado post-reorganizacion: .main ordenado y .aux vacio.
+100000,archivo_secuencial,search_hit,True,100,45.0817,450.817,370.05,789.5,100,,Busqueda binaria en .main + barrido lineal en .aux (aux vacio).
+100000,archivo_secuencial,search_miss,True,100,62.8767,628.767,512.6,1157.4,0,,Busqueda binaria sin exito + barrido de .aux para descartar duplicados en overflow.
+100000,archivo_secuencial,disk_space,True,0,0.0,0.0,0.0,0.0,,4300000,Util=4300000 bytes; sin desperdicio tras reorganizar (0 bytes).
+100000,archivo_secuencial,delete,False,0,,,,,,,No medido a esta escala (ver --mutation-limit).
+100000,archivo_secuencial,reorganize,False,0,,,,,,,No medido a esta escala (ver --mutation-limit).

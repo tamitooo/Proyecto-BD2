@@ -3,3 +3,12 @@ venv/
 **/__pycache__/
 *.pyc
 .pytest_cache/
+
+# Directorios temporales que crean los benchmarks y la demo
+.benchmark_work/
+demo_parte1_data/
+
+# Salidas de herramientas de cobertura / tipado
+.coverage
+htmlcov/
+.mypy_cache/

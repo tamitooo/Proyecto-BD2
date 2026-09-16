@@ -161,3 +161,115 @@ reorganización queda apuntando a posiciones inválidas. Después de
 Las pruebas `tests/test_storage_integration.py::TestSecuencialConIndices::test_los_rid_cambian_al_reorganizar`
 y `tests/test_end_to_end.py::...::test_reorganizacion_no_rompe_las_consultas`
 documentan y verifican este comportamiento.
+
+---
+
+## 6. Pasos exactos para subir esta rama y cerrar los issues
+
+La rama **`feat/parte1-experimentos-tests-e2e`** ya existe en el clon local
+con 7 commits (uno por bloque de trabajo). Falta subirla y abrir el PR.
+
+### Paso 1 — Instalar dependencias (una sola vez)
+
+```bash
+pip install -r requirements.txt
+```
+
+### Paso 2 — Comprobar que todo pasa antes de subir
+
+```bash
+python -m pytest -q
+python examples/demo_parte1.py
+```
+
+### Paso 3 — Subir la rama a GitHub
+
+```bash
+git push -u origin feat/parte1-experimentos-tests-e2e
+```
+
+La primera vez Git pide identificarse. Si aparece una ventana del navegador
+(*Git Credential Manager*), iniciar sesión con la cuenta de GitHub. Si pide
+usuario y contraseña en la terminal, **la contraseña no es la de GitHub**:
+hay que usar un *Personal Access Token*
+(GitHub → Settings → Developer settings → Personal access tokens →
+Tokens (classic) → Generate new token, con permiso `repo`).
+
+### Paso 4 — Abrir el Pull Request
+
+1. Entrar a <https://github.com/tamitooo/Proyecto-BD2>.
+2. GitHub muestra un aviso con el botón **"Compare & pull request"** de la
+   rama recién subida. Si no aparece: pestaña **Pull requests** →
+   **New pull request** → en `compare` elegir
+   `feat/parte1-experimentos-tests-e2e`.
+3. Título:
+
+   ```
+   Parte 1: benchmarks, gráficas, tests y ejecutor end-to-end
+   ```
+
+4. En la descripción, **una línea por issue** (así se cierran solos al
+   fusionar):
+
+   ```
+   Closes #29
+   Closes #31
+   Closes #32
+   Closes #33
+   Closes #34
+   Closes #37
+   ```
+
+5. Pulsar **Create pull request**.
+6. Pedir a un integrante que lo revise (**Reviewers → Add**). Cuando el PR se
+   fusione (**Merge pull request → Confirm merge**), GitHub cierra los 6
+   issues automáticamente.
+
+### Paso 5 — Volver a main y actualizar
+
+```bash
+git checkout main
+git pull origin main
+```
+
+### Si algo falla
+
+| Mensaje | Qué hacer |
+|---|---|
+| `Authentication failed` | Usar un Personal Access Token como contraseña (Paso 3) |
+| `Updates were rejected` | La rama remota ya existe con otros commits: `git pull --rebase origin feat/parte1-experimentos-tests-e2e` y volver a hacer `git push` |
+| `nothing to commit` | Correcto: los cambios ya están en los 7 commits de la rama |
+| El PR no cierra un issue | Revisar que diga `Closes #N` (no solo `#N`) |
+
+### Paso 6 — Comentar el avance en el issue (opcional, pero se ve bien)
+
+En cada issue se puede dejar un comentario corto con el entregable y el
+comando para reproducirlo, por ejemplo en #29:
+
+```
+Implementado en benchmarks/benchmark_heap_vs_sequential.py.
+Resultados en benchmark_results/storage_benchmark.{csv,json} y gráficas en
+benchmark_results/plots/.
+Reproducir con:
+python benchmarks/benchmark_heap_vs_sequential.py --sizes 1000 10000 100000
+```
+
+---
+
+## 7. Guion sugerido para la exposición del avance (3–4 minutos)
+
+1. **Qué hay implementado (30 s):** recorrer el árbol del repositorio:
+   `storage/` (Heap y Secuencial), `indexes/` (B+ agrupado, B+ no agrupado,
+   Hash), `operators/` (External Sort y External Hashing) y `query/`
+   (parser, planner, ejecutor).
+2. **Demo en vivo (90 s):** `python examples/demo_parte1.py` y detenerse en
+   dos momentos: cuando el planner elige `HASH_INDEX_LOOKUP` para una
+   igualdad, y cuando **evita** el External Sort porque el B+ agrupado ya
+   entrega el orden.
+3. **Experimentos (60 s):** abrir
+   `benchmark_results/plots/storage_dashboard.png` e
+   `index_dashboard.png`; mencionar los dos hallazgos fuertes: búsqueda por
+   clave ~700× más rápida en el Archivo Secuencial y el intercambio
+   espacio/velocidad del B+ agrupado.
+4. **Lo que falta (30 s):** transacciones/concurrencia (#18, #19) e interfaz
+   gráfica (#20–#22), a cargo de otros integrantes; acordar fecha.

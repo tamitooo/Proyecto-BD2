@@ -263,15 +263,77 @@ def _benchmark_build(
     ), last_index
 
 
+def _collect_index_nodes(index) -> List[object]:
+    """Recorre el arbol B+ por la jerarquia (no por la lista de hojas)."""
+    tree = getattr(index, "tree", None)
+
+    if tree is None:
+        return []
+
+    nodes = []
+    seen = set()
+    stack = [tree.root]
+
+    while stack:
+        node = stack.pop()
+
+        if id(node) in seen:
+            continue
+
+        seen.add(id(node))
+        nodes.append(node)
+        stack.extend(getattr(node, "children", ()))
+
+    return nodes
+
+
+def _serialized_size_bytes(index) -> Optional[int]:
+    """
+    Tamano del pickle del indice (aproximacion portable al espacio extra).
+
+    Los B+ Tree enlazan las hojas con `next`/`prev`. `pickle` recursiona a
+    lo largo de esa cadena, de modo que con datasets grandes (>= 10 000
+    claves) la serializacion directa revienta con `RecursionError`. Para
+    medir el espacio se desconectan temporalmente esos enlaces (el pickle
+    cambia solo en unos pocos bytes por hoja) y se restauran al final.
+    """
+    nodes = _collect_index_nodes(index)
+    saved = [(node, node.next, node.prev) for node in nodes]
+
+    for node in nodes:
+        node.next = None
+        node.prev = None
+
+    try:
+        payload = pickle.dumps(index, protocol=pickle.HIGHEST_PROTOCOL)
+        return len(payload)
+    except RecursionError:
+        return None
+    finally:
+        for node, next_node, previous_node in saved:
+            node.next = next_node
+            node.prev = previous_node
+
+
 def _benchmark_serialized_size(
     adapter: _Adapter,
     index,
     dataset_size: int,
 ):
-    payload = pickle.dumps(
-        index,
-        protocol=pickle.HIGHEST_PROTOCOL,
-    )
+    size_bytes = _serialized_size_bytes(index)
+
+    if size_bytes is None:
+        return BenchmarkResult(
+            dataset_size=dataset_size,
+            index_type=adapter.name,
+            metric="serialized_size",
+            supported=False,
+            operations=1,
+            notes=(
+                "No se pudo medir: la serializacion excede el limite de "
+                "recursion incluso desconectando la lista de hojas."
+            ),
+        )
 
     return BenchmarkResult(
         dataset_size=dataset_size,
@@ -279,7 +341,7 @@ def _benchmark_serialized_size(
         metric="serialized_size",
         supported=True,
         operations=1,
-        size_bytes=len(payload),
+        size_bytes=size_bytes,
         notes=(
             "Tamaño de pickle del índice; se usa como aproximación portable "
             "al espacio adicional de la estructura, no como tamaño físico "

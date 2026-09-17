@@ -1,0 +1,15 @@
+# Dependencias del proyecto (Parte 1: Base de Datos Relacional)
+#
+# El motor (storage, índices, operadores, parser, planner y ejecutor) usa
+# únicamente la librería estándar de Python: no requiere instalar nada para
+# ejecutarse.
+#
+# Solo se necesitan paquetes externos para las pruebas y las gráficas.
+
+# Pruebas (la suite existente del equipo usa pytest; las pruebas nuevas son
+# compatibles además con `python -m unittest`).
+pytest>=8.0
+
+# Generación de las gráficas comparativas de la Parte 1
+# (benchmarks/generate_charts.py).
+matplotlib>=3.8

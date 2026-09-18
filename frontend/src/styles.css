@@ -1,0 +1,106 @@
+:root {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --surface-2: #273449;
+  --border: #334155;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --accent: #38bdf8;
+  --ok: #34d399;
+  --error: #f87171;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.app__header { padding: 16px 24px; border-bottom: 1px solid var(--border); }
+.app__header h1 { margin: 0; font-size: 1.35rem; }
+.app__header p { margin: 4px 0 0; color: var(--muted); font-size: 0.9rem; }
+
+.app__body {
+  display: grid;
+  grid-template-columns: 340px 1fr 420px;
+  gap: 16px;
+  padding: 16px;
+  align-items: start;
+}
+
+.app__center { display: flex; flex-direction: column; gap: 16px; }
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.panel__title { margin: 0 0 4px; font-size: 1rem; }
+.panel__subtitle { margin: 14px 0 6px; font-size: 0.85rem; color: var(--accent); }
+.panel__hint { color: var(--muted); font-size: 0.78rem; margin: 4px 0; }
+
+.table-list { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+
+.table-list__item {
+  width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; cursor: pointer; font-size: 0.85rem;
+}
+.table-list__item.is-active { border-color: var(--accent); }
+
+.badge { font-size: 0.68rem; padding: 2px 6px; border-radius: 999px; background: #0b1220; color: var(--accent); }
+.badge--sequential { color: #fbbf24; }
+
+.kv { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
+.kv dt { color: var(--muted); font-size: 0.7rem; }
+.kv dd { margin: 0; font-size: 0.85rem; }
+
+.grid { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+.grid th, .grid td { border-bottom: 1px solid var(--border); padding: 5px 6px; text-align: left; vertical-align: top; }
+.grid th { color: var(--muted); font-weight: 600; }
+.mono { font-family: 'Cascadia Mono', Consolas, monospace; font-size: 0.74rem; }
+.scroll { max-height: 300px; overflow: auto; }
+
+.editor {
+  width: 100%; min-height: 96px; margin-top: 8px; padding: 10px;
+  background: #0b1220; color: var(--text); border: 1px solid var(--border);
+  border-radius: 8px; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 0.85rem; resize: vertical;
+}
+
+.select {
+  width: 100%; margin-top: 8px; padding: 7px; background: var(--surface-2);
+  color: var(--text); border: 1px solid var(--border); border-radius: 8px; font-size: 0.82rem;
+}
+
+.actions { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+
+.button {
+  background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+  border-radius: 8px; padding: 7px 12px; cursor: pointer; font-size: 0.82rem;
+}
+.button:disabled { opacity: 0.6; cursor: progress; }
+.button--primary { background: var(--accent); color: #0b1220; border-color: var(--accent); font-weight: 600; }
+
+.metrics { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.metric {
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
+  padding: 6px 10px; min-width: 110px;
+}
+.metric span { display: block; color: var(--muted); font-size: 0.68rem; }
+.metric strong { font-size: 0.92rem; }
+
+.chips { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; padding: 0; margin: 4px 0; }
+.chip { background: #0b1220; color: var(--ok); border: 1px solid var(--border); border-radius: 999px; padding: 2px 8px; font-size: 0.72rem; }
+
+.alert { border-radius: 8px; padding: 8px 10px; font-size: 0.8rem; margin-top: 8px; }
+.alert--error { background: #431a1a; color: var(--error); border: 1px solid #7f1d1d; }
+
+.code {
+  background: #0b1220; border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px; font-size: 0.75rem; max-height: 300px; overflow: auto;
+}

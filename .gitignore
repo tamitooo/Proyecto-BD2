@@ -12,3 +12,14 @@ demo_parte1_data/
 .coverage
 htmlcov/
 .mypy_cache/
+
+# Frontend React
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Datos de la demo creados por el API
+backend/data/
+
+# IDE
+.idea/

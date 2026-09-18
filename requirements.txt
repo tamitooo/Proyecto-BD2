@@ -13,3 +13,7 @@ pytest>=8.0
 # Generación de las gráficas comparativas de la Parte 1
 # (benchmarks/generate_charts.py).
 matplotlib>=3.8
+
+# Puente HTTP motor <-> frontend React (backend/api.py)
+fastapi>=0.110
+uvicorn[standard]>=0.29

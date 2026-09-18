@@ -1,0 +1,1 @@
+"""Capa de integración HTTP entre el motor BD2 y el frontend React."""

@@ -26,6 +26,31 @@ export interface TableInfo {
   files: StorageFile[];
   row_count: number;
   record_size: number;
+  source?: 'demo' | 'manual' | 'csv' | string;
+  original_filename?: string | null;
+}
+
+export interface CreateTableColumn {
+  name: string;
+  type: string;
+}
+
+export interface CreateTableRequest {
+  name: string;
+  storage_kind: 'heap' | 'sequential';
+  primary_key: string;
+  columns: CreateTableColumn[];
+}
+
+export interface CreateTableResponse {
+  table: TableInfo;
+}
+
+export interface CsvImportResult {
+  table: TableInfo;
+  imported_rows: number;
+  inferred_schema: SchemaInfo;
+  filename: string;
 }
 
 export interface PlanStep {

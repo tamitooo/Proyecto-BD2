@@ -37,7 +37,7 @@ class Catalog:
     """Runtime registry that bridges SQL names with physical DB modules.
 
     The storage/index implementations in this project are intentionally kept
-    independent.  The catalog is the small integration layer that lets the
+    independent. The catalog is the small integration layer that lets the
     executor resolve ``FROM users`` into a schema, a storage object and its
     available indexes.
     """
@@ -94,6 +94,19 @@ class Catalog:
         )
         self._tables[key] = table
         return table
+
+    def unregister_table(self, name: str) -> TableMetadata:
+        """Remove a table from the runtime catalog.
+
+        This method only removes the in-memory registration. Physical files
+        are deliberately managed by the backend/engine layer, which owns the
+        table lifecycle and can therefore perform an atomic rollback.
+        """
+        key = self._normalize_identifier(name)
+        try:
+            return self._tables.pop(key)
+        except KeyError as exc:
+            raise CatalogError(f"unknown table: {name}") from exc
 
     def get_table(self, name: str) -> TableMetadata:
         key = self._normalize_identifier(name)
@@ -206,7 +219,7 @@ class Catalog:
             for rid, row in table_meta.storage.scan():
                 new_index.insert(row[meta.column], rid)
 
-        else:  # guarded by IndexMetadata, but defensive for future extensions
+        else:
             raise CatalogError(f"unsupported index kind: {meta.kind}")
 
         registered.implementation = new_index

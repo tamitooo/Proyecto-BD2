@@ -39,6 +39,13 @@ class QuerySpec:
     order_by: Tuple[OrderBy, ...] = ()
     group_by: Tuple[str, ...] = ()
     joins: Tuple[JoinSpec, ...] = ()
+    #: Grupos de predicados unidos por OR (cada grupo interno es un AND).
+    #: Si está vacío, ``predicates`` se interpreta como una conjunción.
+    or_groups: Tuple[Tuple[Predicate, ...], ...] = ()
+
+    @property
+    def has_disjunction(self) -> bool:
+        return bool(self.or_groups)
 
 
 @dataclass(frozen=True)
@@ -121,6 +128,29 @@ class _AccessCandidate:
     operator: str
     preserves_order: bool
     reason: str
+    #: Predicados adicionales que el mismo índice resuelve (p. ej. el segundo
+    #: extremo de un rango ``>= 19 AND <= 23`` o los miembros de un OR).
+    extra_predicates: Tuple[Predicate, ...] = ()
+    #: True cuando el candidato viene de un OR (unión de búsquedas por índice).
+    from_disjunction: bool = False
+
+
+def replace_candidate(candidate: _AccessCandidate, **changes) -> _AccessCandidate:
+    """Copia un candidato cambiando solo los campos indicados."""
+    return _AccessCandidate(
+        index=changes.get("index", candidate.index),
+        predicate=changes.get("predicate", candidate.predicate),
+        score=changes.get("score", candidate.score),
+        operator=changes.get("operator", candidate.operator),
+        preserves_order=changes.get("preserves_order", candidate.preserves_order),
+        reason=changes.get("reason", candidate.reason),
+        extra_predicates=changes.get(
+            "extra_predicates", candidate.extra_predicates
+        ),
+        from_disjunction=changes.get(
+            "from_disjunction", candidate.from_disjunction
+        ),
+    )
 
 
 class QueryPlanner:
@@ -164,6 +194,8 @@ class QueryPlanner:
             access_path = access_step.operator
             preserves_order = False
             consumed_predicate = None
+            consumed_predicates = ()
+            from_disjunction = False
         else:
             access_step = PlanStep(
                 operator=candidate.operator,
@@ -175,20 +207,34 @@ class QueryPlanner:
             access_path = candidate.operator
             preserves_order = candidate.preserves_order
             consumed_predicate = candidate.predicate
+            consumed_predicates = (
+                (candidate.predicate,) + candidate.extra_predicates
+                if candidate.predicate is not None
+                else candidate.extra_predicates
+            )
+            from_disjunction = candidate.from_disjunction
             used_indexes.append(candidate.index.name)
 
         steps.append(access_step)
 
         residual = self._residual_predicates(
             query.predicates,
-            consumed_predicate,
+            consumed_predicates,
         )
+        # Con OR, el filtro final vuelve a evaluar los grupos completos (la
+        # unión de índices solo aporta candidatos).
+        if query.or_groups and not from_disjunction:
+            residual = list(query.predicates)
         if residual:
             steps.append(
                 PlanStep(
                     operator="FILTER",
                     table=query.table,
-                    reason="predicados no resueltos por el camino de acceso",
+                    reason=(
+                        "unión de índices: el filtro confirma los grupos del OR"
+                        if from_disjunction
+                        else "predicados no resueltos por el camino de acceso"
+                    ),
                     details={
                         "predicates": [
                             self._predicate_to_dict(p) for p in residual
@@ -270,18 +316,25 @@ class QueryPlanner:
         table_indexes = [i for i in self.indexes if i.table == query.table]
         candidates = []
 
-        for predicate in query.predicates:
-            op = predicate.normalized_operator()
+        # Con OR los predicados no son una conjunción: usar UNO solo como
+        # camino de acceso descartaría filas que cumplen los otros grupos. Por
+        # eso aquí solo se consideran la unión por índice o el escaneo.
+        if not query.has_disjunction:
             for index in table_indexes:
-                if index.column != predicate.column:
-                    continue
-                candidate = self._candidate_for_predicate(
-                    query, index, predicate, op
-                )
+                candidate = self._candidate_for_index(query, index)
                 if candidate:
                     candidates.append(candidate)
+        else:
+            # Un OR de grupos que son todos igualdad sobre la MISMA columna se
+            # puede resolver con una unión de búsquedas por índice.
+            union = self._candidate_for_disjunction(query, table_indexes)
+            if union:
+                candidates.append(union)
 
-        if query.order_by:
+        # El recorrido ordenado del B+ solo es un camino de acceso válido si no
+        # hay WHERE: si hay predicados, usar el índice para ordenar dejaría el
+        # filtrado a un escaneo completo del índice (y con OR descartaría filas).
+        if query.order_by and not query.predicates and not query.has_disjunction:
             first_order = query.order_by[0]
 
             # Los B+ actuales exponen recorrido ascendente; DESC requiere
@@ -323,6 +376,188 @@ class QueryPlanner:
             candidates,
             key=lambda c: (c.score, kind_priority[c.index.kind]),
         )
+
+    def _candidate_for_index(self, query, index):
+        """Elige el mejor candidato de UN índice agrupando sus predicados.
+
+        Agrupar importa para los rangos: ``WHERE age >= 19 AND age <= 23`` usa
+        los dos extremos en un solo ``range_search`` en lugar de indexar solo
+        uno y filtrar el resto.
+        """
+        matching = [
+            predicate
+            for predicate in query.predicates
+            if predicate.column == index.column
+        ]
+        if not matching:
+            return None
+
+        equality = [
+            p for p in matching
+            if p.normalized_operator() in EQUALITY_OPERATORS
+        ]
+        if equality:
+            return self._candidate_for_predicate(
+                query, index, equality[0], equality[0].normalized_operator()
+            )
+
+        ranges = [
+            p for p in matching
+            if p.normalized_operator() in RANGE_OPERATORS
+        ]
+        if not ranges:
+            return None
+
+        if len(ranges) == 1:
+            return self._candidate_for_predicate(
+                query, index, ranges[0], ranges[0].normalized_operator()
+            )
+
+        bounds = self._combined_range(ranges)
+        if bounds is None:
+            # Rangos contradictorios o no combinables: se indexa el primero y
+            # el resto queda como predicado residual (FILTER).
+            return self._candidate_for_predicate(
+                query, index, ranges[0], ranges[0].normalized_operator()
+            )
+
+        low, high, include_low, include_high = bounds
+        if low is None:
+            anchor = next(p for p in ranges if self._is_upper_bound(p))
+        elif high is None:
+            anchor = next(p for p in ranges if self._is_lower_bound(p))
+        else:
+            anchor = next(
+                (p for p in ranges if self._is_lower_bound(p)), ranges[0]
+            )
+
+        combined = Predicate(index.column, "between", (low, high))
+        consumed = tuple(
+            p for p in ranges if p is not anchor
+        )
+        candidate = self._candidate_for_predicate(
+            query, index, combined, "between"
+        )
+        if candidate is None:
+            return None
+        return replace_candidate(
+            candidate,
+            predicate=anchor,
+            extra_predicates=consumed,
+            reason=(
+                f"B+ {index.kind.split('_')[-1]} combina los dos extremos del "
+                f"rango ({self._render_bound(low, include_low)} .. "
+                f"{self._render_bound(high, include_high)})"
+            ),
+        )
+
+    @staticmethod
+    def _is_lower_bound(predicate) -> bool:
+        return predicate.normalized_operator() in {">", ">="} or (
+            predicate.normalized_operator() == "between"
+        )
+
+    @staticmethod
+    def _is_upper_bound(predicate) -> bool:
+        return predicate.normalized_operator() in {"<", "<="} or (
+            predicate.normalized_operator() == "between"
+        )
+
+    @classmethod
+    def _combined_range(cls, predicates):
+        """Fusiona varios predicados de rango en (low, high, inc_low, inc_high)."""
+        low = high = None
+        include_low = include_high = True
+
+        for predicate in predicates:
+            op = predicate.normalized_operator()
+            value = predicate.value
+
+            if op == "between":
+                candidate_low, candidate_high = value
+                if low is None or candidate_low > low:
+                    low, include_low = candidate_low, True
+                if high is None or candidate_high < high:
+                    high, include_high = candidate_high, True
+                continue
+
+            if op in {">", ">="}:
+                if low is None or value > low:
+                    low = value
+                    include_low = op == ">="
+                elif value == low and op == ">":
+                    include_low = False
+                continue
+
+            if op in {"<", "<="}:
+                if high is None or value < high:
+                    high = value
+                    include_high = op == "<="
+                elif value == high and op == "<":
+                    include_high = False
+                continue
+
+            return None
+
+        return low, high, include_low, include_high
+
+    @staticmethod
+    def _render_bound(value, inclusive: bool) -> str:
+        if value is None:
+            return "sin límite"
+        return f"{value!r}" if inclusive else f"{value!r} (exclusivo)"
+
+    def _candidate_for_disjunction(self, query, table_indexes):
+        """Unión de búsquedas por índice para un WHERE con OR.
+
+        Solo se aplica cuando **todos** los grupos son de igualdad (o rango)
+        sobre la **misma columna indexada**; así la unión se resuelve con un
+        único índice y el resultado sigue siendo correcto.
+        """
+        groups = query.or_groups
+        if not groups or not all(groups):
+            return None
+
+        for index in table_indexes:
+            if not all(
+                all(p.column == index.column for p in group)
+                for group in groups
+            ):
+                continue
+            if not all(
+                all(
+                    p.normalized_operator() in EQUALITY_OPERATORS
+                    for p in group
+                )
+                for group in groups
+            ):
+                continue
+            if index.kind == "hash" and not all(
+                len(group) == 1 for group in groups
+            ):
+                continue
+
+            members = tuple(p for group in groups for p in group)
+            operator = (
+                "HASH_INDEX_UNION"
+                if index.kind == "hash"
+                else "BPLUS_INDEX_UNION"
+            )
+            return _AccessCandidate(
+                index=index,
+                predicate=members[0],
+                score=100,
+                operator=operator,
+                preserves_order=False,
+                reason=(
+                    f"WHERE con OR: unión de {len(members)} búsquedas por "
+                    f"'{index.column}' usando {index.name}"
+                ),
+                extra_predicates=members[1:],
+                from_disjunction=True,
+            )
+
+        return None
 
     def _candidate_for_predicate(self, query, index, predicate, operator):
         bonus = self._order_bonus(query, index)
@@ -423,14 +658,21 @@ class QueryPlanner:
 
     @staticmethod
     def _residual_predicates(predicates, consumed_predicate):
-        if consumed_predicate is None:
+        consumed = (
+            consumed_predicate
+            if isinstance(consumed_predicate, tuple)
+            else (() if consumed_predicate is None else (consumed_predicate,))
+        )
+        if not consumed:
             return list(predicates)
 
-        removed = False
+        remaining = list(consumed)
         residual = []
         for predicate in predicates:
-            if not removed and predicate == consumed_predicate:
-                removed = True
+            for index, candidate in enumerate(remaining):
+                if predicate == candidate:
+                    remaining.pop(index)
+                    break
             else:
                 residual.append(predicate)
         return residual
@@ -446,6 +688,14 @@ class QueryPlanner:
             details["predicate"] = QueryPlanner._predicate_to_dict(
                 candidate.predicate
             )
+        if candidate.extra_predicates:
+            details["predicates_extra"] = [
+                QueryPlanner._predicate_to_dict(p)
+                for p in candidate.extra_predicates
+            ]
+        if candidate.from_disjunction:
+            details["disjunction"] = True
+            details["searches"] = 1 + len(candidate.extra_predicates)
         return details
 
     @staticmethod

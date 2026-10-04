@@ -100,7 +100,12 @@ la sección [14](#14-roadmap-partes-2-a-5).
                                    │  HTTP + JSON  (proxy /api → :8000)
 ┌──────────────────────────────────▼────────────────────────────────────────┐
 │                     API REST — FastAPI   (backend/api.py)                 │
-│      GET /api/health   GET /api/tables   GET /api/tables/{name}           │
+│      GET  /api/health   GET /api/tables   GET /api/tables/{name}          │
+│      GET  /api/catalog  POST /api/query                                   │
+│      POST /api/tables                  (crear tabla desde el panel)       │
+│      POST /api/tables/{name}/import    (CSV en una tabla existente)       │
+│      POST /api/tables/import-csv       (CSV que crea la tabla)            │
+│      GET  /api/spatial/points/{name}   POST /api/spatial/query   (Parte 2)│
 │      POST /api/query   (documentación interactiva en /docs)               │
 │                     backend/engine.py → Catalog + QueryExecutor           │
 └──────────────────────────────────┬────────────────────────────────────────┘
@@ -528,6 +533,26 @@ EXPLAIN [ANALYZE] <sentencia>
 | `BEGIN` / `END TRANSACTION` / `COMMIT` / `ROLLBACK` | ✅ dentro del motor | `BEGIN TRANSACTION` … `ROLLBACK` |
 | `EXPLAIN` / `EXPLAIN ANALYZE` | ✅ | `EXPLAIN ANALYZE SELECT * FROM employees WHERE salary >= 4000` |
 | Carga de CSV | ✅ (endpoint + botón + CLI) | ver [§9.1](#91-carga-de-datos-desde-csv) |
+
+**Crear tablas: dos puertas, una sola implementación.** El motor crea tablas
+dinámicas por dos caminos, y los dos terminan en el mismo `CREATE TABLE`:
+
+| Puerta | Uso | Función interna |
+|---|---|---|
+| `CREATE TABLE t (...)` en el panel de consultas | Escribir SQL a mano | `Catalog.create_table` |
+| Formulario del panel de archivos → `POST /api/tables` | Usuario final, sin SQL | `engine.create_table` → construye el SQL y lo ejecuta |
+
+Como el formulario reutiliza el parser y el ejecutor, el índice Hash de la clave
+primaria, el registro en el catálogo y la persistencia se comportan **igual** por
+las dos puertas: corregir el DDL una vez lo corrige en ambas. La lógica vive en
+[`query/table_manager.py`](query/table_manager.py).
+
+**Subir CSV: también dos casos distintos** (el profesor pidió los dos):
+
+| Caso | Endpoint | Qué hace |
+|---|---|---|
+| Cargar en una tabla **que ya existe** | `POST /api/tables/{name}/import` | Valida el encabezado y respeta PK e índices; reporta fila a fila |
+| **Crear la tabla desde el CSV** | `POST /api/tables/import-csv` | Deduce el esquema (`INT`/`FLOAT`/`VARCHAR(n)` por longitud observada) y es atómico: si el CSV es inválido no deja tabla a medias |
 
 **Índices utilizables por el planner:** Hash Extendible (igualdad), B+ no agrupado
 (igualdad y rango), B+ agrupado (igualdad, rango y `ORDER BY` sin `External Sort`).

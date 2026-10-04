@@ -1,11 +1,14 @@
+import os
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, List, Optional
+from pathlib import Path
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from indexes.clustered_bplus import ClusteredBPlusIndex
 from indexes.extendible_hash import ExtendibleHash
 from indexes.unclustered_bplus import UnclusteredBPlusIndex
 from query.query_planner import IndexMetadata
 from storage.heap_file import HeapFile
+from storage.record import Schema
 from storage.sequential_file import SequentialFile
 
 
@@ -42,8 +45,18 @@ class Catalog:
     available indexes.
     """
 
-    def __init__(self):
+    def __init__(
+        self,
+        data_dir: Optional[Any] = None,
+        on_change: Optional[Callable[[], None]] = None,
+    ):
         self._tables: Dict[str, TableMetadata] = {}
+        #: Directorio donde CREATE TABLE crea los archivos físicos. Sin él, la
+        #: creación dinámica de tablas está deshabilitada (solo register_table).
+        self.data_dir = Path(data_dir) if data_dir is not None else None
+        #: Se invoca tras CREATE/DROP para que la capa que persiste el catálogo
+        #: (backend/engine.py) guarde el manifiesto.
+        self.on_change = on_change
 
     @staticmethod
     def _normalize_identifier(name: str) -> str:
@@ -94,6 +107,342 @@ class Catalog:
         )
         self._tables[key] = table
         return table
+
+    # ------------------------------------------------------------------
+    # DDL: CREATE TABLE / DROP TABLE
+    # ------------------------------------------------------------------
+
+    def create_table(
+        self,
+        name: str,
+        columns: Sequence[Tuple[str, str]],
+        primary_key: Optional[str] = None,
+        *,
+        storage_kind: str = "heap",
+        if_not_exists: bool = False,
+        data_dir: Optional[Any] = None,
+        primary_key_index: bool = True,
+    ) -> TableMetadata:
+        """Crea la tabla físicamente en disco y la registra en el catálogo."""
+        key = self._normalize_identifier(name)
+
+        if key in self._tables:
+            if if_not_exists:
+                return self._tables[key]
+            raise CatalogError(f"la tabla ya existe: {name}")
+
+        if not columns:
+            raise CatalogError("CREATE TABLE requiere al menos una columna")
+
+        kind = (storage_kind or "heap").strip().lower()
+        if kind not in {"heap", "sequential"}:
+            raise CatalogError("storage_kind must be 'heap' or 'sequential'")
+
+        schema = Schema(list(columns), primary_key or columns[0][0])
+
+        directory = Path(data_dir) if data_dir is not None else self.data_dir
+        if directory is None:
+            raise CatalogError(
+                "el catálogo no tiene directorio de datos: crea el catálogo "
+                "con Catalog(data_dir=...) para poder crear tablas por SQL"
+            )
+        directory.mkdir(parents=True, exist_ok=True)
+
+        if kind == "heap":
+            storage = HeapFile(str(directory / f"{key}.dat"), schema)
+        else:
+            storage = SequentialFile(str(directory / key), schema)
+
+        table = self.register_table(
+            key,
+            storage,
+            schema=schema,
+            storage_kind=kind,
+        )
+
+        if primary_key_index:
+            self.register_index(
+                name=f"idx_{key}_{schema.primary_key}_hash",
+                table=key,
+                column=schema.primary_key,
+                kind="hash",
+                implementation=ExtendibleHash(
+                    bucket_capacity=4,
+                    unique=True,
+                ),
+                unique=True,
+                rebuild=False,
+            )
+
+        self._notify()
+        return table
+
+    def drop_table(
+        self,
+        name: str,
+        *,
+        if_exists: bool = False,
+        delete_files: bool = True,
+    ) -> bool:
+        """Quita la tabla del catálogo y (por defecto) borra sus archivos."""
+        key = self._normalize_identifier(name)
+        table = self._tables.get(key)
+
+        if table is None:
+            if if_exists:
+                return False
+            raise CatalogError(f"unknown table: {name}")
+
+        paths = self._storage_paths(table)
+        del self._tables[key]
+
+        if delete_files:
+            for path in paths:
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
+
+        self._notify()
+        return True
+
+    @staticmethod
+    def _storage_paths(table: TableMetadata) -> List[str]:
+        if table.storage_kind == "heap":
+            return [table.storage.path, table.storage.path + ".free"]
+        return [table.storage.main_path, table.storage.aux_path]
+
+    # ------------------------------------------------------------------
+    # DDL: CREATE INDEX / DROP INDEX
+    # ------------------------------------------------------------------
+
+    #: Sufijo del nombre automático de cada técnica, para que el nombre generado
+    #: sea estable y legible: idx_<tabla>_<columna>_<sufijo>.
+    _INDEX_NAME_SUFFIX = {
+        "hash": "hash",
+        "bplus_clustered": "bpc",
+        "bplus_unclustered": "bpu",
+    }
+
+    def index_names(self, table: str) -> List[str]:
+        return sorted(self.get_table(table).indexes)
+
+    def find_indexes_on_column(self, table: str, column: str) -> List[str]:
+        return sorted(
+            name
+            for name, registered in self.get_table(table).indexes.items()
+            if registered.metadata.column == column
+        )
+
+    def create_index(
+        self,
+        table: str,
+        column: str,
+        *,
+        kind: str = "bplus_unclustered",
+        unique: bool = False,
+        name: Optional[str] = None,
+        if_not_exists: bool = False,
+    ) -> RegisteredIndex:
+        """Crea y puebla un índice sobre una columna de una tabla existente.
+
+        El índice se construye recorriendo el almacenamiento de la tabla, así
+        que también funciona sobre datos que ya estaban cargados (el caso de
+        la demo: cargar el CSV y después indexar).
+        """
+        table_meta = self.get_table(table)
+        normalized_kind = (kind or "").strip().lower()
+        if normalized_kind not in self._INDEX_NAME_SUFFIX:
+            raise CatalogError(
+                "técnica de índice no soportada: "
+                f"'{kind}' (usa hash, bplus_clustered o bplus_unclustered)"
+            )
+
+        resolved_column = (column or "").strip().lower()
+        if resolved_column not in table_meta.schema.col_names():
+            raise CatalogError(
+                f"la columna '{column}' no existe en la tabla '{table_meta.name}'"
+            )
+
+        index_name = (
+            self._normalize_identifier(name)
+            if name
+            else f"idx_{table_meta.name}_{resolved_column}_"
+            f"{self._INDEX_NAME_SUFFIX[normalized_kind]}"
+        )
+
+        if index_name in table_meta.indexes:
+            if if_not_exists:
+                return table_meta.indexes[index_name]
+            raise CatalogError(
+                f"el índice '{index_name}' ya existe en la tabla "
+                f"'{table_meta.name}'"
+            )
+
+        already = self.find_indexes_on_column(table_meta.name, resolved_column)
+        if already:
+            raise CatalogError(
+                f"la columna '{resolved_column}' de '{table_meta.name}' ya tiene "
+                f"el índice {', '.join(already)}; usa DROP INDEX antes de crear otro"
+            )
+
+        if unique and normalized_kind != "hash":
+            raise CatalogError(
+                "solo el índice Hash Extendible soporta UNIQUE en este motor"
+            )
+
+        implementation = self._make_index(resolved_column, normalized_kind, unique)
+        registered = self.register_index(
+            name=index_name,
+            table=table_meta.name,
+            column=resolved_column,
+            kind=normalized_kind,
+            implementation=implementation,
+            unique=unique,
+            rebuild=True,
+        )
+        self._notify()
+        return registered
+
+    def drop_index(
+        self,
+        name: str,
+        *,
+        table: Optional[str] = None,
+        if_exists: bool = False,
+    ) -> bool:
+        """Quita un índice del catálogo (solo metadatos: no hay archivos propios)."""
+        index_key = self._normalize_identifier(name)
+
+        if table is not None:
+            candidates = [(self.get_table(table), index_key)]
+        else:
+            candidates = [
+                (table_meta, index_key)
+                for table_meta in self._tables.values()
+                if index_key in table_meta.indexes
+            ]
+
+        if not candidates:
+            if if_exists:
+                return False
+            raise CatalogError(f"no existe el índice '{name}'")
+
+        table_meta, _ = candidates[0]
+        if index_key not in table_meta.indexes:
+            if if_exists:
+                return False
+            raise CatalogError(
+                f"el índice '{name}' no existe en la tabla '{table_meta.name}'"
+            )
+
+        # El índice de la clave primaria es el que hace cumplir la unicidad:
+        # sin él la tabla podría tener PK duplicadas, así que no se elimina.
+        registered = table_meta.indexes[index_key]
+        if registered.metadata.column == table_meta.schema.primary_key:
+            raise CatalogError(
+                f"no se puede eliminar '{index_key}': es el índice de la "
+                f"PRIMARY KEY '{table_meta.schema.primary_key}' de "
+                f"'{table_meta.name}' y es lo que garantiza que no haya "
+                "claves primarias duplicadas"
+            )
+
+        del table_meta.indexes[index_key]
+        self._notify()
+        return True
+
+    def _notify(self) -> None:
+        if self.on_change is not None:
+            self.on_change()
+
+    # ------------------------------------------------------------------
+    # Manifiesto (persistencia del catálogo entre reinicios)
+    # ------------------------------------------------------------------
+
+    def describe_tables(self) -> List[Dict[str, Any]]:
+        """Definiciones serializables de todas las tablas registradas."""
+        description = []
+        for table in self._tables.values():
+            description.append(
+                {
+                    "name": table.name,
+                    "columns": [tuple(col) for col in table.schema.to_dict()["columnas"]],
+                    "primary_key": table.schema.primary_key,
+                    "storage_kind": table.storage_kind,
+                    "indexes": [
+                        {
+                            "name": registered.metadata.name,
+                            "column": registered.metadata.column,
+                            "kind": registered.metadata.kind,
+                            "unique": registered.metadata.unique,
+                        }
+                        for registered in table.indexes.values()
+                    ],
+                }
+            )
+        return description
+
+    def restore_table(
+        self,
+        definition: Dict[str, Any],
+        *,
+        data_dir: Optional[Any] = None,
+    ) -> TableMetadata:
+        """Recrea una tabla descrita por ``describe_tables`` (sin tocar los datos)."""
+        directory = Path(data_dir) if data_dir is not None else self.data_dir
+        if directory is None:
+            raise CatalogError("restore_table requiere data_dir")
+
+        name = self._normalize_identifier(definition["name"])
+        columns = tuple(tuple(col) for col in definition["columns"])
+        storage_kind = definition.get("storage_kind", "heap")
+
+        path = (
+            directory / f"{name}.dat"
+            if storage_kind == "heap"
+            else directory / name
+        )
+        schema = Schema(list(columns), definition["primary_key"])
+        storage = (
+            HeapFile(str(path), schema)
+            if storage_kind == "heap"
+            else SequentialFile(str(path), schema)
+        )
+
+        table = self.register_table(
+            name,
+            storage,
+            schema=schema,
+            storage_kind=storage_kind,
+        )
+
+        for index in definition.get("indexes", []):
+            implementation = self._make_index(
+                index["column"],
+                index["kind"],
+                bool(index.get("unique", False)),
+            )
+            self.register_index(
+                name=index["name"],
+                table=name,
+                column=index["column"],
+                kind=index["kind"],
+                implementation=implementation,
+                unique=bool(index.get("unique", False)),
+                rebuild=True,
+            )
+
+        return table
+
+    @staticmethod
+    def _make_index(column: str, kind: str, unique: bool):
+        if kind == "bplus_clustered":
+            return ClusteredBPlusIndex(column, order=4, unique=unique)
+        if kind == "bplus_unclustered":
+            return UnclusteredBPlusIndex(column, order=4, unique=unique)
+        if kind == "hash":
+            return ExtendibleHash(bucket_capacity=4, unique=unique)
+        raise CatalogError(f"unsupported index kind: {kind}")
 
     def get_table(self, name: str) -> TableMetadata:
         key = self._normalize_identifier(name)

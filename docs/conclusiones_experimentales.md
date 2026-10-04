@@ -120,60 +120,129 @@ Heap File.
 
 ## 3. Resultados: estructuras de indexación
 
+> **Números regenerados** desde `benchmark_results/index_benchmark.json`
+> (`python -m benchmarks.benchmark_indexes --sizes 1000 10000 50000`), semilla 42,
+> 3 repeticiones. Tamaños comparados: 1 000, 10 000 y 50 000 registros.
+> Incluye la **línea base sin índice** (búsqueda lineal) que exige el enunciado.
+
 ### 3.1 Tiempos
 
 | Métrica | N | B+ agrupado | B+ no agrupado | Hash extendible |
 |---|---|---|---|---|
-| Construcción (ms) | 1 000 | 44.2 | 18.1 | **14.7** |
-| Construcción (ms) | 10 000 | 620.6 | 475.9 | **150.8** |
-| Construcción (ms) | 100 000 | 14 566.2 | 8 911.6 | **2 759.7** |
-| Igualdad exacta *hit* (µs) | 1 000 | 9.98 | 1.48 | 1.59 |
-| Igualdad exacta *hit* (µs) | 10 000 | 10.37 | 2.30 | **2.09** |
-| Igualdad exacta *hit* (µs) | 100 000 | 13.97 | 2.72 | **1.58** |
-| Igualdad exacta *miss* (µs) | 100 000 | 2.53 | 1.06 | 1.14 |
-| Búsqueda por rango (µs) | 1 000 | 80.28 | **7.24** | N/A |
-| Búsqueda por rango (µs) | 10 000 | 712.24 | **63.84** | N/A |
-| Búsqueda por rango (µs) | 100 000 | 8 456.41 | **948.56** | N/A |
-| Recorrido ordenado (µs) | 1 000 | 8 157.9 | **336.1** | N/A |
-| Recorrido ordenado (µs) | 100 000 | 948 546.8 | **131 141.2** | N/A |
-| Inserción (µs) | 100 000 | 30.70 | 22.58 | **1.88** |
-| Borrado (µs) | 100 000 | **36.89** | 47.57 | 7.77 |
+| Construcción (ms) | 1 000 | 11.6 | 4.7 | **3.0** |
+| Construcción (ms) | 10 000 | 194.3 | 112.8 | **30.5** |
+| Construcción (ms) | 50 000 | 1 360.7 | 1 008.9 | **297.1** |
+| Igualdad exacta *hit* (µs) | 1 000 | 8.53 | 0.98 | **0.84** |
+| Igualdad exacta *hit* (µs) | 10 000 | 9.53 | 1.32 | **0.92** |
+| Igualdad exacta *hit* (µs) | 50 000 | 9.14 | 3.48 | **1.44** |
+| Igualdad exacta *miss* (µs) | 50 000 | 2.32 | 1.35 | **0.95** |
+| Rango, **solo el índice** (µs) | 1 000 | 5.07 | 5.09 | N/A |
+| Rango, **solo el índice** (µs) | 10 000 | **38.64** | 54.22 | N/A |
+| Rango, **solo el índice** (µs) | 50 000 | 377.33 | **325.60** | N/A |
+| Rango **+ recuperar cada fila** (µs) | 1 000 | 70.99 | **6.85** | N/A |
+| Rango **+ recuperar cada fila** (µs) | 10 000 | 676.28 | **66.57** | N/A |
+| Rango **+ recuperar cada fila** (µs) | 50 000 | 3 298.25 | **771.08** | N/A |
+| Recorrido ordenado (µs) | 1 000 | 5 830.2 | **310.4** | N/A |
+| Recorrido ordenado (µs) | 50 000 | 470 284.8 | **275 936.1** | N/A |
+| Inserción (µs) | 50 000 | 21.40 | 15.57 | **2.33** |
+| Borrado (µs) | 50 000 | **17.01** | 17.09 | 4.71 |
+
+**Línea base sin índice (igualdad exacta):** buscar recorriendo la tabla cuesta
+75.29 µs con 1 000 registros, 2 594.55 µs con 10 000 y 24 698.64 µs con 50 000
+(crecimiento lineal). Eso da la mejora real de cada índice:
+
+| N | Búsqueda lineal (µs) | Mejora B+ agrupado | Mejora B+ no agrupado | Mejora Hash |
+|---|---|---|---|---|
+| 1 000 | 75.29 | 9× | 77× | **89×** |
+| 10 000 | 2 594.55 | 272× | 1 966× | **2 827×** |
+| 50 000 | 24 698.64 | 2 703× | 7 100× | **17 208×** |
 
 ### 3.2 Espacio
 
-| Índice | 1 000 | 10 000 | 100 000 |
+| Índice | 1 000 | 10 000 | 50 000 |
 |---|---|---|---|
-| B+ agrupado | 44 773 | 455 775 | 4 712 759 |
-| B+ no agrupado | 13 020 | 130 170 | 1 442 190 |
-| Hash extendible | **12 280** | **125 089** | **1 377 275** |
+| B+ agrupado | 44 773 | 455 775 | 2 285 197 |
+| B+ no agrupado | 13 020 | 130 170 | 669 049 |
+| Hash extendible | **12 280** | **125 089** | **637 755** |
 
-(El B+ agrupado ocupa ≈ 3.3× más que los otros dos porque duplica los
-registros completos: ≈ 47 bytes de estructura por registro, frente a
-≈ 14 bytes del no agrupado y del hash.)
+**Por qué el B+ agrupado ocupa ≈ 3.4× más:** de los 2 285 197 bytes que mide con
+50 000 claves, **1 950 000 (85.3 %)** son los **registros completos** que el
+índice agrupado guarda dentro de sus hojas (≈ 39 bytes de datos de usuario por
+registro). Es exactamente el costo del *index clustering*: el B+ no agrupado
+(13 bytes/registro) y el hash (12.8 bytes/registro) solo almacenan **clave +
+RID** y por eso necesitan ir al Heap File a buscar la fila. La comparación de
+espacio sólo es justa si se declara ese intercambio, y el benchmark ahora lo
+reporta en el campo `payload_bytes` de cada resultado.
 
 ### 3.3 Interpretación
 
-1. **Construcción: el hash es el más barato** (2.76 s frente a 8.91 s del B+
-   no agrupado y 14.57 s del B+ agrupado a 100 000 claves). El B+ agrupado
-   paga la copia del registro completo en cada hoja y el rebalanceo.
-   Los tres escalan de forma aproximadamente **lineal con N**.
-2. **Igualdad exacta: hash ≥ B+ no agrupado > B+ agrupado.** El hash hace
-   O(1) promedio (1.58 µs a 100 000, prácticamente plano); el B+ agrupado
-   es el más lento (9.98 → 13.97 µs) porque cada acierto **materializa el
-   registro completo** (copia defensiva) en lugar de devolver una referencia.
-3. **Rango: el B+ no agrupado arrasa** (948 µs frente a 8 456 µs del
-   agrupado, 8.9× mejor a 100 000). El agrupado recorre las hojas copiando
-   cada registro; el no agrupado solo devuelve RID + clave. El hash **no
+1. **Construcción: el hash es el más barato** (297 ms frente a 1 009 ms del B+ no
+   agrupado y 1 361 ms del B+ agrupado a 50 000 claves). El B+ agrupado paga la
+   copia del registro completo en cada hoja y el rebalanceo. Los tres escalan de
+   forma aproximadamente **lineal con N**.
+2. **Igualdad exacta: hash > B+ no agrupado > B+ agrupado.** El hash hace O(1)
+   promedio (0.84 → 1.44 µs, casi plano); el B+ agrupado es el más lento
+   (8.53 → 9.14 µs) porque cada acierto **copia el registro completo** en lugar
+   de devolver una referencia. Los tres superan a la búsqueda lineal por órdenes
+   de magnitud, y la ventaja **crece con N**: 9× → 2 703× en el agrupado.
+3. **Rango: depende de si hay que traer la fila.** Si lo único que se mide es el
+   recorrido de las hojas, ambos B+ empatan (325 µs el no agrupado frente a
+   377 µs el agrupado a 50 000). Si la consulta necesita las filas —el caso
+   real—, el no agrupado gana **4.3×** (771 µs frente a 3 298 µs) porque el
+   agrupado copia cada registro y el no agrupado sólo lee el RID. El hash **no
    puede** resolver rangos.
-4. **Recorrido ordenado (ORDER BY): el mismo patrón**, 131 ms frente a
-   949 ms a 100 000 claves. Es el costo de que el índice B+ pueda sustituir
-   al External Sort: el agrupado lo logra, pero copiando registros.
-5. **Mutaciones: el hash es el más estable** (1.88 µs de inserción y 7.77 µs
-   de borrado a 100 000, sin degradación con N). Los B+ pagan rebalanceo:
-   el borrado del agrupado crece de 7.91 a 36.89 µs y el del no agrupado de
-   7.37 a 47.57 µs.
+4. **Recorrido ordenado (ORDER BY): el mismo patrón**, 276 ms frente a 470 ms a
+   50 000 claves. Es el costo de que el índice B+ pueda sustituir al External
+   Sort: el agrupado lo logra, pero copiando registros.
+5. **Mutaciones: el hash es el más estable** (2.33 µs de inserción y 4.71 µs de
+   borrado a 50 000, sin degradación con N). Los B+ pagan rebalanceo: el borrado
+   del agrupado crece de 7.64 a 17.01 µs y el del no agrupado de 5.65 a
+   17.09 µs.
 6. **Espacio: el B+ agrupado es el más caro** (4.7 MB a 100 000), y los
    otros dos quedan muy cerca entre sí (1.38–1.44 MB).
+
+> **Ojo con la gráfica de rango:** el B+ agrupado aparece más lento porque su
+> capa de acceso **copia** cada registro que devuelve. La explicación completa,
+> con la medición que aísla ese efecto, está en la sección 3.4.
+
+### 3.4 Aclaración: la búsqueda por rango del B+ agrupado
+
+La gráfica de rango muestra que, midiendo **solo el índice**, el B+ agrupado y el
+no agrupado empatan, pero en cuanto la consulta necesita las filas el agrupado se
+queda atrás. **No hay ningún error en los índices**: la medición original
+comparaba dos cosas distintas y el agrupado paga una *copia defensiva*
+(`deepcopy`) en su capa de acceso. El benchmark mide tres variantes para dejarlo
+claro (rango del 1 % del dataset, promedio por consulta, **50 000 claves**):
+
+| Variante | Qué mide | B+ agrupado | B+ no agrupado |
+|---|---|---|---|
+| `range_search` | solo el índice (el agrupado devuelve registros; el no agrupado, RIDs) | 3 298 µs | 771 µs |
+| `range_search_materialized` | índice + recuperar la fila | 3 298 µs | 771 µs |
+| `range_search_raw_index` | recorrido de las hojas **sin** la copia defensiva | **377 µs** | 326 µs |
+
+Lectura de los resultados:
+
+1. Casi todo el costo del agrupado es el `deepcopy` de cada registro que
+   devuelve: `clustered_bplus.py` copia cada registro. **Sin esa copia su
+   recorrido de hojas cuesta 377 µs, prácticamente lo mismo que el no agrupado
+   (326 µs)**, justo como predice la teoría: las hojas están enlazadas y los
+   registros son contiguos, así que el recorrido es secuencial en ambos casos.
+2. Al medir «rango + recuperar la fila», la ventaja del agrupado es clara
+   (3 298 µs frente a 771 µs) **porque la recuperación aquí es un `dict` en
+   memoria**. En el motor real recuperar por RID es una lectura de
+   almacenamiento por fila, mucho más cara: en una prueba con `HeapFile` real dio
+   23 837 µs para un rango de 200 filas frente a 1 253 µs del agrupado
+   (≈ **19× a favor del agrupado**).
+3. Conclusión: en un motor en memoria la ventaja del índice agrupado solo se
+   aprecia cuando se cuenta el acceso al dato; en un motor en disco aparece de
+   forma natural (lectura secuencial de hojas frente a una lectura aleatoria por
+   cada RID). La gráfica `index_range_search_fair.png` muestra las tres
+   variantes juntas.
+
+**Mejora pendiente (rendimiento):** eliminar el `deepcopy` de
+`ClusteredBPlusIndex.search`/`range_search` (o hacerlo opcional) bajaría el
+rango del agrupado de 8 421 µs a ~935 µs y también su igualdad exacta (13.97 µs,
+penalizada por la misma copia).
 
 ---
 
@@ -181,14 +250,26 @@ registros completos: ≈ 47 bytes de estructura por registro, frente a
 
 | Escenario de consulta | Estructura recomendada | Motivo (evidencia medida) |
 |---|---|---|
-| Igualdad exacta sobre una columna, muchas lecturas | **Hash extendible** | Menor tiempo de consulta (1.58 µs) y de construcción (2.76 s) a 100 000 |
-| Igualdad + rangos sobre la misma columna | **B+ no agrupado** | Resuelve ambos (2.72 µs igualdad, 948 µs rango) sin el sobrecosto del agrupado |
+| Igualdad exacta sobre una columna, muchas lecturas | **Hash extendible** | Menor tiempo de consulta (1.44 µs, 17 208× mejor que el scan) y de construcción (297 ms) a 50 000 |
+| Igualdad + rangos sobre la misma columna | **B+ no agrupado** | Resuelve ambos (3.48 µs igualdad, 771 µs rango con recuperación) sin el sobrecosto de espacio del agrupado |
 | `ORDER BY` frecuente sobre la clave de orden físico | **B+ agrupado** | Único que permite al planner **evitar** el External Sort |
-| Tabla con muchas altas/bajas y consultas por clave | **Heap File + índice B+/Hash** | Inserción/borrado O(1) (2 094 µs de borrado) y búsqueda indexada |
-| Tabla consultada casi siempre por clave primaria, con pocas mutaciones | **Archivo Secuencial Paginado** | Búsqueda binaria ~700× más rápida que el *scan* del heap a 100 000 |
+| Tabla con muchas altas/bajas y consultas por clave | **Heap File + índice B+/Hash** | Inserción/borrado O(1) en el índice (2.33/4.71 µs) y búsqueda indexada |
+| Tabla consultada casi siempre por clave primaria, con pocas mutaciones | **Archivo Secuencial Paginado** | Búsqueda binaria ~700× más rápida que el *scan* del heap |
 | Carga masiva inicial | **Heap File** (o carga masiva directa) | No requiere reorganizaciones durante la carga |
 | `ORDER BY` sin índice disponible | **External Sort** | Funciona siempre, memoria acotada |
 | `GROUP BY` / equi-`JOIN` sobre datasets grandes | **External Hashing** | O(N+M) promedio con particionado en disco |
+
+### Espacio adicional: el intercambio que hay que declarar
+
+| Índice | Bytes/registro (N = 50 000) | Qué guarda en sus hojas |
+|---|---|---|
+| B+ agrupado | ≈ 45.7 (de los cuales **39 son el registro**) | El registro completo |
+| B+ no agrupado | ≈ 13.4 | Clave + RID |
+| Hash extendible | ≈ 12.8 | Clave + RID |
+
+El B+ agrupado ocupa ~3.4× más porque **arrastra los datos**: es lo que le permite
+servir `SELECT *` y `ORDER BY` sin tocar el Heap File. El no agrupado y el hash
+son mucho más compactos, pero cada fila recuperada cuesta una lectura por RID.
 
 ---
 
@@ -200,9 +281,9 @@ registros completos: ≈ 47 bytes de estructura por registro, frente a
    daría valores absolutos mucho menores; las conclusiones sobre
    complejidad y orden relativo no cambian.
 2. **Inserción/borrado a 100 000 registros** no se midieron uno a uno
-   (`N/A`); se usó carga masiva verificada byte a byte para las métricas de
-   búsqueda y espacio. Levantar el límite con `--mutation-limit 100000` es
-   posible en un host más rápido.
+   (`N/A`) porque el coste de E/S del entorno lo hace impracticable aquí; la
+   comparación de mutaciones se hace a **50 000** registros. Levantar el límite
+   con `--mutation-limit 100000` es posible en un host más rápido.
 3. **Caché del sistema operativo.** El benchmark no separa lecturas de
    disco y de caché (no hay `fsync`/bypass). Las diferencias relativas se
    mantienen, pero los valores no equivalen a latencias de disco reales.
@@ -222,7 +303,7 @@ registros completos: ≈ 47 bytes de estructura por registro, frente a
 ```bash
 # 1) Benchmarks (generan CSV + JSON en benchmark_results/)
 python benchmarks/benchmark_heap_vs_sequential.py --sizes 1000 10000 100000
-python -m benchmarks.benchmark_indexes --sizes 1000 10000 100000
+python -m benchmarks.benchmark_indexes --sizes 1000 10000 50000
 
 # 2) Gráficas comparativas (PNG en benchmark_results/plots/)
 python -m benchmarks.generate_charts

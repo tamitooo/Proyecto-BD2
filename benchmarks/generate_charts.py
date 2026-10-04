@@ -316,12 +316,44 @@ def charts_for_indexes(payload: dict, output_dir: Path) -> None:
         sizes,
         ranged,
         labels,
-        "Busqueda por rango (promedio por consulta)",
+        "Busqueda por rango (solo indice)",
         "Tiempo promedio (us)",
         output_dir / "index_range_search.png",
         log_scale=True,
         value_fmt="{:,.1f}",
     )
+
+    _, ranged_materialized = series(
+        payload, "range_search_materialized", "avg_us"
+    )
+    _, ranged_raw = series(payload, "range_search_raw_index", "avg_us")
+    if ranged_materialized or ranged_raw:
+        fairness = {
+            f"{tech} (solo indice)": values
+            for tech, values in ranged.items()
+        }
+        fairness.update(
+            {
+                f"{tech} (+ recuperar fila)": values
+                for tech, values in ranged_materialized.items()
+            }
+        )
+        fairness.update(
+            {
+                f"{tech} (sin copia defensiva)": values
+                for tech, values in ranged_raw.items()
+            }
+        )
+        single_chart(
+            sizes,
+            fairness,
+            labels,
+            "Busqueda por rango: indice, recuperacion y copia defensiva",
+            "Tiempo promedio (us)",
+            output_dir / "index_range_search_fair.png",
+            log_scale=True,
+            value_fmt="{:,.1f}",
+        )
 
     _, ordered = series(payload, "ordered_scan", "avg_us")
     single_chart(

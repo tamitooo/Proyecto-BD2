@@ -5,8 +5,10 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tupl
 
 from indexes.clustered_bplus import ClusteredBPlusIndex
 from indexes.extendible_hash import ExtendibleHash
+from indexes.rtree import RTree
 from indexes.unclustered_bplus import UnclusteredBPlusIndex
 from query.query_planner import IndexMetadata
+from spatial.index import SpatialIndex
 from storage.heap_file import HeapFile
 from storage.record import Schema
 from storage.sequential_file import SequentialFile
@@ -49,6 +51,8 @@ class Catalog:
         self,
         data_dir: Optional[Any] = None,
         on_change: Optional[Callable[[], None]] = None,
+        *,
+        rtree_max_entries: int = 16,
     ):
         self._tables: Dict[str, TableMetadata] = {}
         #: Directorio donde CREATE TABLE crea los archivos físicos. Sin él, la
@@ -57,6 +61,9 @@ class Catalog:
         #: Se invoca tras CREATE/DROP para que la capa que persiste el catálogo
         #: (backend/engine.py) guarde el manifiesto.
         self.on_change = on_change
+        #: Capacidad M de los nodos del R-Tree (los índices espaciales tienen
+        #: datasets grandes: 16 entradas por nodo es un valor razonable).
+        self.rtree_max_entries = rtree_max_entries
 
     @staticmethod
     def _normalize_identifier(name: str) -> str:
@@ -222,6 +229,7 @@ class Catalog:
         "hash": "hash",
         "bplus_clustered": "bpc",
         "bplus_unclustered": "bpu",
+        "rtree": "rtree",
     }
 
     def index_names(self, table: str) -> List[str]:
@@ -243,19 +251,24 @@ class Catalog:
         unique: bool = False,
         name: Optional[str] = None,
         if_not_exists: bool = False,
+        lon_column: Optional[str] = None,
     ) -> RegisteredIndex:
         """Crea y puebla un índice sobre una columna de una tabla existente.
 
         El índice se construye recorriendo el almacenamiento de la tabla, así
         que también funciona sobre datos que ya estaban cargados (el caso de
         la demo: cargar el CSV y después indexar).
+
+        Para ``kind="rtree"`` la columna es la de **latitud** y hace falta
+        indicar ``lon_column``; el índice se construye con carga masiva porque
+        los datasets espaciales son grandes.
         """
         table_meta = self.get_table(table)
         normalized_kind = (kind or "").strip().lower()
         if normalized_kind not in self._INDEX_NAME_SUFFIX:
             raise CatalogError(
                 "técnica de índice no soportada: "
-                f"'{kind}' (usa hash, bplus_clustered o bplus_unclustered)"
+                f"'{kind}' (usa hash, bplus_clustered, bplus_unclustered o rtree)"
             )
 
         resolved_column = (column or "").strip().lower()
@@ -291,7 +304,32 @@ class Catalog:
                 "solo el índice Hash Extendible soporta UNIQUE en este motor"
             )
 
-        implementation = self._make_index(resolved_column, normalized_kind, unique)
+        if normalized_kind == "rtree":
+            if not lon_column:
+                raise CatalogError(
+                    "CREATE INDEX ... USING RTREE necesita la columna de "
+                    "longitud: CREATE INDEX nombre ON tabla (lat, lon) USING RTREE"
+                )
+            resolved_lon = self._normalize_identifier(lon_column)
+            if resolved_lon not in table_meta.schema.col_names():
+                raise CatalogError(
+                    f"la columna de longitud '{lon_column}' no existe en la "
+                    f"tabla '{table_meta.name}'"
+                )
+            if resolved_lon == resolved_column:
+                raise CatalogError(
+                    "la latitud y la longitud no pueden ser la misma columna"
+                )
+            implementation = SpatialIndex(
+                resolved_column,
+                resolved_lon,
+                max_entries=self.rtree_max_entries,
+            )
+        else:
+            implementation = self._make_index(
+                resolved_column, normalized_kind, unique
+            )
+
         registered = self.register_index(
             name=index_name,
             table=table_meta.name,
@@ -555,13 +593,103 @@ class Catalog:
             for rid, row in table_meta.storage.scan():
                 new_index.insert(row[meta.column], rid)
 
+        elif meta.kind == "rtree":
+            # El R-Tree necesita latitud Y longitud. La envoltura recuerda su
+            # columna de longitud; si se perdió (índice recién registrado), se
+            # busca una columna cuyo nombre lo sugiera.
+            lon_column = getattr(old, "lon_column", None) or self._guess_lon_column(
+                table_meta, meta.column
+            )
+            new_index = SpatialIndex(
+                meta.column,
+                lon_column,
+                max_entries=getattr(old, "max_entries", self.rtree_max_entries),
+                metric=getattr(old, "metric", "haversine"),
+            )
+            # Carga masiva: los datasets espaciales son grandes (100 000 puntos)
+            # y construir el árbol insertando uno a uno es ~38x más lento.
+            new_index.bulk_load(
+                (row, rid) for rid, row in table_meta.storage.scan()
+            )
+
         else:  # guarded by IndexMetadata, but defensive for future extensions
             raise CatalogError(f"unsupported index kind: {meta.kind}")
 
         registered.implementation = new_index
         return registered
 
+    @staticmethod
+    def _guess_lon_column(table: TableMetadata, lat_column: str) -> str:
+        """Deduce la columna de longitud emparejada con la de latitud."""
+        candidates = table.schema.col_names()
+        pares = {
+            "lat": ("lon", "lng", "long", "longitud"),
+            "latitud": ("longitud", "lon", "lng", "long"),
+            "latitude": ("longitude", "lon", "lng", "long"),
+            "y": ("x", "lon", "lng"),
+        }
+        buscados = pares.get(lat_column.lower())
+        if buscados:
+            for candidato in buscados:
+                if candidato in candidates:
+                    return candidato
+            # Coincidencia por prefijo (p. ej. lat_centro -> lon_centro).
+            sufijo = lat_column[3:] if lat_column.lower().startswith("lat") else ""
+            for candidato in candidates:
+                if candidato.lower() in {f"lon{sufijo}", f"lng{sufijo}", f"long{sufijo}"}:
+                    return candidato
+
+        raise CatalogError(
+            "no se pudo deducir la columna de longitud para el índice espacial "
+            f"de '{lat_column}'; vuelve a crearlo con USING RTREE"
+        )
+
     def rebuild_indexes(self, table: str) -> None:
         table_meta = self.get_table(table)
         for name in list(table_meta.indexes):
             self.rebuild_index(table_meta.name, name)
+
+    # ------------------------------------------------------------------
+    # Espacial (Parte 2)
+    # ------------------------------------------------------------------
+
+    def spatial_indexes(self, table: Optional[str] = None) -> List[RegisteredIndex]:
+        """Índices espaciales registrados (de una tabla o de todo el catálogo)."""
+        tablas = (
+            [self.get_table(table)] if table is not None
+            else list(self._tables.values())
+        )
+        result: List[RegisteredIndex] = []
+        for table_meta in tablas:
+            for registered in table_meta.indexes.values():
+                if registered.metadata.kind == "rtree":
+                    result.append(registered)
+        return result
+
+    def spatial_index_for(
+        self,
+        table: str,
+        column: str,
+    ) -> Optional[RegisteredIndex]:
+        """Índice espacial cuyo **RID cubre** la columna indicada.
+
+        ``distancia(ubicacion, POINT(...))`` se resuelve tanto si ``ubicacion``
+        es la columna de latitud del índice como si es la de longitud. Con
+        ``column=""`` devuelve el primer índice espacial de la tabla.
+        """
+        table_meta = self.get_table(table)
+        objetivo = (column or "").strip().lower()
+
+        for registered in table_meta.indexes.values():
+            if registered.metadata.kind != "rtree":
+                continue
+            if not objetivo:
+                return registered
+            implementation = registered.implementation
+            if objetivo in {
+                registered.metadata.column.lower(),
+                str(getattr(implementation, "lon_column", "")).lower(),
+                str(getattr(implementation, "lat_column", "")).lower(),
+            }:
+                return registered
+        return None

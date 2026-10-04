@@ -9,6 +9,7 @@ este módulo, vía backend/api.py.
 from __future__ import annotations
 
 import json
+import math
 import os
 import threading
 from pathlib import Path
@@ -17,7 +18,7 @@ from typing import Any, Dict, List, Tuple
 from indexes.clustered_bplus import ClusteredBPlusIndex
 from indexes.extendible_hash import ExtendibleHash
 from indexes.unclustered_bplus import UnclusteredBPlusIndex
-from query.catalog import Catalog, TableMetadata
+from query.catalog import Catalog, CatalogError, TableMetadata
 from query.csv_loader import CsvImportReport, import_csv as import_csv_into
 from query.query_executor import QueryExecutor
 from query.query_result import QueryResult
@@ -149,11 +150,213 @@ class DemoEngine:
             "active": True,
         }
 
+    # ------------------------------------------------------------ espacial
+
+    def spatial_query(
+        self,
+        table_name: str,
+        *,
+        kind: str = "range",
+        lat: float = -12.0464,
+        lon: float = -77.0428,
+        radius_m: float = 5000.0,
+        k: int = 10,
+        metric: str = "haversine",
+        polygon: Optional[List[List[float]]] = None,
+    ) -> Dict[str, Any]:
+        """Ejecuta una consulta espacial y la devuelve lista para el mapa.
+
+        Es el camino que usa el panel de mapa: construye la consulta SQL
+        equivalente y la ejecuta con el motor, así el R-Tree se usa igual que en
+        el panel de consultas (una sola ruta de código, no dos).
+        """
+        lat_column, lon_column = self._spatial_columns(
+            self.catalog.get_table(table_name), table_name
+        )
+        point = f"POINT({lat!r}, {lon!r})"
+
+        if kind == "knn":
+            sql = (
+                f"SELECT * FROM {table_name} "
+                f"ORDER BY distancia({lat_column}, {point}, {metric}) "
+                f"LIMIT {int(k)}"
+            )
+        elif kind == "polygon":
+            if not polygon or len(polygon) < 3:
+                raise CatalogError(
+                    "la consulta por polígono necesita al menos 3 vértices "
+                    "[[lat, lon], ...]"
+                )
+            vertices = ", ".join(
+                f"{float(par[0])!r} {float(par[1])!r}" for par in polygon
+            )
+            sql = (
+                f"SELECT * FROM {table_name} "
+                f"WHERE dentro_de({lat_column}, POLYGON(({vertices})))"
+            )
+        else:
+            sql = (
+                f"SELECT * FROM {table_name} "
+                f"WHERE distancia({lat_column}, {point}, {metric}) <= {float(radius_m)!r}"
+            )
+
+        resultado = self.run(sql)
+        plan = resultado.execution_plan or {}
+
+        points = []
+        for row in resultado.rows:
+            entry = {
+                "lat": row.get("_lat"),
+                "lon": row.get("_lon"),
+                "distance_m": row.get("_distance"),
+                "label": self._label_of(row),
+                "row": {
+                    clave: valor
+                    for clave, valor in row.items()
+                    if not clave.startswith("_")
+                },
+            }
+            points.append(entry)
+
+        return {
+            "success": resultado.success,
+            "kind": kind,
+            "metric": metric,
+            "table": table_name,
+            "sql": sql,
+            "access_path": plan.get("access_path"),
+            "used_indexes": plan.get("used_indexes", []),
+            "execution_time_ms": resultado.execution_time_ms,
+            "distance_unit": "m" if metric == "haversine" else "grados",
+            "count": len(points),
+            "candidates_visited": self._candidates_visited(plan),
+            "points": points,
+            "error": resultado.error,
+        }
+
+    @staticmethod
+    def _candidates_visited(plan: Dict[str, Any]) -> Optional[int]:
+        """Cuántos candidatos visitó el R-Tree, si el plan lo reporta."""
+        for paso in plan.get("steps", []):
+            detalles = paso.get("details") or {}
+            if "candidates" in detalles:
+                return detalles["candidates"]
+        return None
+
+    def spatial_points(
+        self,
+        table_name: str,
+        *,
+        limit: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """Puntos de una tabla espacial, para el panel de mapa (Parte 2).
+
+        Devuelve las coordenadas y el ``bounds`` para que el frontend pueda
+        dibujar el mapa sin recorrer la tabla. Se apoya en el índice R-Tree si
+        existe, y si no, en un escaneo del almacenamiento.
+        """
+        table = self.catalog.get_table(table_name)
+        registered = self.catalog.spatial_index_for(table_name, "")
+        lat_column, lon_column = self._spatial_columns(table, table_name)
+
+        points: List[Dict[str, Any]] = []
+        bounds = [math.inf, -math.inf, math.inf, -math.inf]
+
+        for rid, row in table.storage.scan():
+            try:
+                lat = float(row[lat_column])
+                lon = float(row[lon_column])
+            except (KeyError, TypeError, ValueError):
+                continue
+            points.append(
+                {
+                    "rid": repr(rid),
+                    "lat": lat,
+                    "lon": lon,
+                    "label": self._label_of(row),
+                    "row": dict(row),
+                }
+            )
+            bounds[0] = min(bounds[0], lat)
+            bounds[1] = max(bounds[1], lat)
+            bounds[2] = min(bounds[2], lon)
+            bounds[3] = max(bounds[3], lon)
+
+        if limit is not None and limit > 0:
+            points = points[:limit]
+
+        return {
+            "table": table.name,
+            "lat_column": lat_column,
+            "lon_column": lon_column,
+            "label_column": self._label_column(table),
+            "count": len(points),
+            "bounds": (
+                {
+                    "min_lat": bounds[0],
+                    "max_lat": bounds[1],
+                    "min_lon": bounds[2],
+                    "max_lon": bounds[3],
+                }
+                if points
+                else None
+            ),
+            "index": registered.metadata.name if registered else None,
+            "points": points,
+        }
+
+    @staticmethod
+    def _label_column(table: TableMetadata) -> Optional[str]:
+        """Columna que sirve de etiqueta legible (nombre/name/label)."""
+        columnas = [c.lower() for c in table.schema.col_names()]
+        for candidato in ("nombre", "name", "titulo", "label", "descripcion"):
+            if candidato in columnas:
+                return candidato
+        return None
+
+    @classmethod
+    def _label_of(cls, row: Dict[str, Any]) -> str:
+        columna = cls._label_column_from_row(row)
+        if columna:
+            return str(row[columna])
+        return ""
+
+    @staticmethod
+    def _label_column_from_row(row: Dict[str, Any]) -> Optional[str]:
+        for candidato in ("nombre", "name", "titulo", "label", "descripcion"):
+            for clave in row:
+                if str(clave).lower() == candidato:
+                    return clave
+        return None
+
+    def _spatial_columns(self, table: TableMetadata, table_name: str):
+        """(lat_column, lon_column) de la tabla espacial."""
+        registered = self.catalog.spatial_index_for(table_name, "")
+        if registered is not None:
+            implementation = registered.implementation
+            return implementation.lat_column, implementation.lon_column
+
+        # Sin índice: se deducen por el nombre de las columnas.
+        columnas = {c.lower(): c for c in table.schema.col_names()}
+        for lat_name, lon_names in (
+            ("lat", ("lon", "lng", "long", "longitud")),
+            ("latitud", ("longitud", "lon", "lng")),
+            ("latitude", ("longitude", "lon", "lng")),
+        ):
+            if lat_name in columnas:
+                for lon_name in lon_names:
+                    if lon_name in columnas:
+                        return columnas[lat_name], columnas[lon_name]
+        raise CatalogError(
+            f"'{table_name}' no tiene columnas espaciales reconocibles; "
+            "usa nombres lat/lon o crea el índice con "
+            "CREATE INDEX ... ON tabla (lat, lon) USING RTREE"
+        )
+
     def table_info(self, name: str) -> Dict[str, Any]:
         return self._table_info(self.catalog.get_table(name))
 
     def catalog_manifest(self) -> Dict[str, Any]:
-        """Tablas creadas por el usuario (las que sobreviven al reinicio)."""
         return {
             "path": str(self.catalog_path),
             "tables": [

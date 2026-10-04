@@ -7,6 +7,8 @@ Documentación interactiva: http://127.0.0.1:8000/docs
 
 from __future__ import annotations
 
+from typing import List, Optional
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -43,6 +45,25 @@ class CsvImportRequest(BaseModel):
     csv_text: str = Field(..., min_length=1, description="Contenido del CSV")
     has_header: bool = Field(True, description="La primera fila es el encabezado")
     delimiter: str = Field(",", min_length=1, max_length=1)
+
+
+# ----------------------------------------------------------------------
+# Espacial (Parte 2)
+# ----------------------------------------------------------------------
+
+class SpatialQueryRequest(BaseModel):
+    """Consulta espacial para el panel de mapa."""
+
+    table: str = Field(..., min_length=1)
+    kind: str = Field("range", description="range | knn | polygon")
+    lat: float = Field(-12.0464, description="Latitud del punto de consulta")
+    lon: float = Field(-77.0428, description="Longitud del punto de consulta")
+    radius_m: float = Field(5000.0, ge=0, description="Radio en metros")
+    k: int = Field(10, ge=1, le=10_000)
+    metric: str = Field("haversine", description="euclidean | haversine")
+    polygon: Optional[List[List[float]]] = Field(
+        None, description="Vértices [[lat, lon], ...] para kind='polygon'"
+    )
 
 
 @app.get("/api/health")
@@ -93,3 +114,37 @@ def import_csv(name: str, request: CsvImportRequest) -> dict:
 def run_query(request: QueryRequest) -> dict:
     """Nunca lanza: el motor devuelve success=false + error legible."""
     return engine.run(request.sql).to_dict()
+
+@app.get("/api/spatial/points/{name}")
+def spatial_points(name: str, limit: int = 0) -> dict:
+    """Puntos de una tabla espacial, para el panel de mapa (Parte 2)."""
+    try:
+        return engine.spatial_points(name, limit=limit or None)
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/api/spatial/query")
+def spatial_query(request: SpatialQueryRequest) -> dict:
+    """Consulta espacial (rango, k-NN o poligono) resuelta con el R-Tree."""
+    try:
+        return engine.spatial_query(
+            request.table,
+            kind=request.kind,
+            lat=request.lat,
+            lon=request.lon,
+            radius_m=request.radius_m,
+            k=request.k,
+            metric=request.metric,
+            polygon=request.polygon,
+        )
+    except Exception as exc:
+        # El frontend siempre lee el mismo contrato, con success=false.
+        return {
+            "success": False,
+            "kind": request.kind,
+            "metric": request.metric,
+            "table": request.table,
+            "points": [],
+            "error": str(exc),
+        }

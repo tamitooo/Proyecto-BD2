@@ -2,7 +2,14 @@ import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from query.query_planner import JoinSpec, OrderBy, Predicate, QuerySpec
+from query.query_planner import (
+    DistanceExpression,
+    JoinSpec,
+    OrderBy,
+    PolygonPredicate,
+    Predicate,
+    QuerySpec,
+)
 
 
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -64,7 +71,11 @@ class DropTableStatement:
 
 @dataclass(frozen=True)
 class CreateIndexStatement:
-    """CREATE [UNIQUE] INDEX [nombre] ON tabla (columna) [USING tecnica]."""
+    """CREATE [UNIQUE] INDEX [nombre] ON tabla (columna[, columna2]) [USING tecnica].
+
+    ``column2`` sólo se usa en los índices espaciales
+    (``USING RTREE``), donde se declaran ``(latitud, longitud)``.
+    """
 
     table: str
     column: str
@@ -72,6 +83,7 @@ class CreateIndexStatement:
     unique: bool = False
     kind: str = "bplus_unclustered"
     if_not_exists: bool = False
+    column2: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -473,6 +485,19 @@ class SQLParser:
 
         result = []
         for item in self._split_top_level(raw, ","):
+            # ORDER BY distancia(col, POINT(...)) [ASC|DESC] -> k-NN
+            espacial = self._try_parse_order_by_distance(item)
+            if espacial is not None:
+                distance, descending = espacial
+                result.append(
+                    OrderBy(
+                        column=distance.column,
+                        descending=descending,
+                        distance=distance,
+                    )
+                )
+                continue
+
             match = re.fullmatch(
                 r"([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)"
                 r"(?:\s+(ASC|DESC))?",
@@ -716,6 +741,11 @@ class SQLParser:
         "CLUSTERED": "bplus_clustered",
         "BPLUS_UNCLUSTERED": "bplus_unclustered",
         "UNCLUSTERED": "bplus_unclustered",
+        # Espacial (Parte 2): se declara con (latitud, longitud).
+        "RTREE": "rtree",
+        "R_TREE": "rtree",
+        "RTREE_INDEX": "rtree",
+        "GIST": "rtree",
     }
 
     _CREATE_INDEX_HEAD_RE = re.compile(
@@ -750,11 +780,25 @@ class SQLParser:
         if close_index == -1:
             raise SQLParseError("CREATE INDEX: falta el paréntesis de cierre")
 
-        column = rest[1:close_index].strip()
-        if not _IDENTIFIER_RE.fullmatch(column):
+        raw_columns = [
+            item.strip() for item in self._split_top_level(rest[1:close_index], ",")
+            if item.strip()
+        ]
+        if not raw_columns:
+            raise SQLParseError("CREATE INDEX: falta la columna entre paréntesis")
+        for item in raw_columns:
+            if not _IDENTIFIER_RE.fullmatch(item):
+                raise SQLParseError(
+                    f"CREATE INDEX: columna inválida '{item}'"
+                )
+        if len(raw_columns) > 2:
             raise SQLParseError(
-                f"CREATE INDEX: columna inválida '{column}' (una sola columna)"
+                "CREATE INDEX admite a lo sumo dos columnas "
+                "(latitud, longitud) para los índices espaciales"
             )
+
+        column = raw_columns[0]
+        column2 = raw_columns[1] if len(raw_columns) == 2 else None
 
         tail = rest[close_index + 1:].strip()
         kind = "bplus_unclustered"
@@ -767,16 +811,27 @@ class SQLParser:
             if not using:
                 raise SQLParseError(
                     f"CREATE INDEX: sufijo no soportado '{tail}' "
-                    "(usa USING HASH, USING BPLUS_CLUSTERED o "
-                    "USING BPLUS_UNCLUSTERED)"
+                    "(usa USING HASH, USING BPLUS_CLUSTERED, "
+                    "USING BPLUS_UNCLUSTERED o USING RTREE)"
                 )
             requested = using.group(1).upper()
             if requested not in self._INDEX_KINDS:
                 raise SQLParseError(
                     f"CREATE INDEX: técnica desconocida '{requested}' "
-                    "(usa HASH, BPLUS_CLUSTERED o BPLUS_UNCLUSTERED)"
+                    "(usa HASH, BPLUS_CLUSTERED, BPLUS_UNCLUSTERED o RTREE)"
                 )
             kind = self._INDEX_KINDS[requested]
+
+        if kind == "rtree" and column2 is None:
+            raise SQLParseError(
+                "un índice espacial necesita las dos columnas: "
+                "CREATE INDEX nombre ON tabla (latitud, longitud) USING RTREE"
+            )
+        if kind != "rtree" and column2 is not None:
+            raise SQLParseError(
+                f"la técnica '{kind}' indexa una sola columna; "
+                "para dos columnas usa USING RTREE"
+            )
 
         return CreateIndexStatement(
             table=table,
@@ -785,6 +840,7 @@ class SQLParser:
             unique=unique,
             kind=kind,
             if_not_exists=if_not_exists,
+            column2=column2,
         )
 
     def _parse_drop_index(self, sql: str) -> DropIndexStatement:
@@ -965,6 +1021,26 @@ class SQLParser:
 
         while position < len(clause):
             position = self._skip_ws(clause, position)
+
+            # ¿El lado izquierdo es una función espacial?
+            poligono = self._try_parse_polygon(clause, position)
+            if poligono is not None:
+                predicates.append(poligono)
+                position = len(clause)
+                continue
+
+            distancia = self._try_parse_distance(clause, position)
+            if distancia is not None:
+                expression, position = distancia
+                predicates.append(
+                    self._parse_distance_comparison(clause, expression, position)
+                )
+                # Saltar el AND de nivel superior que separa del siguiente
+                # predicado (si lo hay).
+                siguiente = self._find_top_level_keyword(clause, "AND", position)
+                position = siguiente[1] if siguiente else len(clause)
+                continue
+
             column_match = re.match(
                 r"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?",
                 clause[position:],
@@ -1048,6 +1124,216 @@ class SQLParser:
             )
 
         return predicates
+
+    # ------------------------------------------------------------------
+    # Funciones espaciales (Parte 2)
+    # ------------------------------------------------------------------
+
+    _DISTANCE_HEAD_RE = re.compile(
+        r"DISTANCIA\s*\(|DISTANCE\s*\(",
+        re.IGNORECASE,
+    )
+    _POLYGON_HEAD_RE = re.compile(
+        r"DENTRO_DE\s*\(|WITHIN\s*\(|DENTRO\s*\(",
+        re.IGNORECASE,
+    )
+    _POLYGON_RE = re.compile(
+        r"POLYGON\s*\(\s*\((.*?)\)\s*\)",
+        re.IGNORECASE | re.DOTALL,
+    )
+    _POINT_RE = re.compile(
+        r"POINT\s*\(\s*([^,()]+?)\s*,\s*([^,()]+?)\s*\)",
+        re.IGNORECASE,
+    )
+
+    def _try_parse_distance(
+        self,
+        text: str,
+        position: int,
+    ) -> Optional[Tuple[DistanceExpression, int]]:
+        """Intenta leer ``distancia(col, POINT(lat, lon)[, METRIC])``.
+
+        Devuelve ``(expresión, posición_siguiente)`` o ``None`` si en esa
+        posición no hay una llamada a ``distancia(...)``.
+        """
+        match = self._DISTANCE_HEAD_RE.match(text, position)
+        if not match:
+            return None
+
+        open_index = text.index("(", position)
+        close_index = self._find_matching_paren(text, open_index)
+        if close_index is None:
+            raise SQLParseError("distancia(...): falta el paréntesis de cierre")
+
+        body = text[open_index + 1:close_index]
+        parts = self._split_top_level(body, ",")
+        if len(parts) < 2:
+            raise SQLParseError(
+                "distancia(...) necesita (columna, POINT(lat, lon))"
+            )
+
+        column_ref = parts[0].strip()
+        if not _QUALIFIED_IDENTIFIER_RE.fullmatch(column_ref):
+            raise SQLParseError(
+                f"distancia(...): columna inválida '{column_ref}'"
+            )
+        column = column_ref.split(".")[-1]
+
+        point_match = self._POINT_RE.search(parts[1].strip())
+        if not point_match:
+            raise SQLParseError(
+                "distancia(...) espera POINT(latitud, longitud) como segundo "
+                f"argumento, no '{parts[1].strip()}'"
+            )
+
+        lat = self._coerce_literal(point_match.group(1))
+        lon = self._coerce_literal(point_match.group(2))
+        if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
+            raise SQLParseError(
+                "POINT(lat, lon): las coordenadas deben ser numéricas"
+            )
+
+        metric = "haversine"
+        if len(parts) >= 3:
+            raw_metric = parts[2].strip().strip("'\"").lower()
+            if raw_metric in {"euclidean", "euclidiana"}:
+                metric = "euclidean"
+            elif raw_metric in {"haversine", "geodesic", "geodesica", "geodésica"}:
+                metric = "haversine"
+            else:
+                raise SQLParseError(
+                    f"métrica desconocida '{parts[2].strip()}'; usa "
+                    "EUCLIDEAN o HAVERSINE"
+                )
+
+        return DistanceExpression(column, (float(lat), float(lon)), metric), close_index + 1
+
+    def _parse_distance_comparison(
+        self,
+        clause: str,
+        expression: DistanceExpression,
+        position: int,
+    ) -> Predicate:
+        """Completa un predicado espacial: ``distancia(...) < 5000``."""
+        position = self._skip_ws(clause, position)
+        op_match = re.match(r"(<=|>=|!=|<>|=|<|>)", clause[position:])
+        if not op_match:
+            raise SQLParseError(
+                "distancia(...) debe compararse con un valor "
+                "(por ejemplo < 5000)"
+            )
+
+        operator = op_match.group(1)
+        position += op_match.end()
+
+        next_and = self._find_top_level_keyword(clause, "AND", position)
+        if next_and is None:
+            raw_value = clause[position:].strip()
+        else:
+            next_start, _ = next_and
+            raw_value = clause[position:next_start].strip()
+
+        if not raw_value:
+            raise SQLParseError(
+                f"distancia(...) {operator} necesita un valor"
+            )
+
+        value = self._coerce_literal(raw_value)
+        if not isinstance(value, (int, float)):
+            raise SQLParseError(
+                f"distancia(...) {operator} espera un número, no '{raw_value}'"
+            )
+
+        if operator not in {"<", "<="}:
+            raise SQLParseError(
+                "por ahora sólo se admite distancia(...) < radio o <= radio"
+            )
+
+        return Predicate(
+            column=expression.column,
+            operator=operator,
+            value=float(value),
+            distance=expression,
+        )
+
+    def _try_parse_polygon(
+        self,
+        clause: str,
+        position: int,
+    ) -> Optional[Predicate]:
+        """Reconoce ``dentro_de(col, POLYGON((lat lon, lat lon, ...)))``."""
+        head = self._POLYGON_HEAD_RE.match(clause, position)
+        if not head:
+            return None
+
+        open_index = clause.index("(", position)
+        close_index = self._find_matching_paren(clause, open_index)
+        if close_index is None:
+            raise SQLParseError("dentro_de(...): falta el paréntesis de cierre")
+
+        body = clause[open_index + 1:close_index]
+        parts = self._split_top_level(body, ",")
+        if len(parts) < 2:
+            raise SQLParseError(
+                "dentro_de(...) necesita (columna, POLYGON((lat lon, ...)))"
+            )
+
+        column_ref = parts[0].strip()
+        if not _QUALIFIED_IDENTIFIER_RE.fullmatch(column_ref):
+            raise SQLParseError(f"dentro_de(...): columna inválida '{column_ref}'")
+
+        polygon_match = self._POLYGON_RE.search(",".join(parts[1:]))
+        if not polygon_match:
+            raise SQLParseError(
+                "dentro_de(...) espera POLYGON((lat lon, lat lon, ...)) "
+                "como segundo argumento"
+            )
+
+        vertices: List[Tuple[float, float]] = []
+        for par in polygon_match.group(1).split(","):
+            coordenadas = par.split()
+            if len(coordenadas) != 2:
+                raise SQLParseError(
+                    f"vértice inválido '{par.strip()}'; se espera 'lat lon'"
+                )
+            lat = self._coerce_literal(coordenadas[0])
+            lon = self._coerce_literal(coordenadas[1])
+            if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
+                raise SQLParseError(
+                    f"vértice no numérico: '{par.strip()}'"
+                )
+            vertices.append((float(lat), float(lon)))
+
+        if len(vertices) < 3:
+            raise SQLParseError(
+                "un polígono necesita al menos 3 vértices"
+            )
+
+        return PolygonPredicate(
+            column=column_ref.split(".")[-1],
+            ring=tuple(vertices),
+        )
+
+    def _try_parse_order_by_distance(
+        self,
+        raw: str,
+    ) -> Optional[Tuple[DistanceExpression, bool]]:
+        """Reconoce ``ORDER BY distancia(col, POINT(...)) [ASC|DESC]``."""
+        text = raw.strip()
+        expression = self._try_parse_distance(text, 0)
+        if expression is None:
+            return None
+
+        distance, position = expression
+        tail = text[position:].strip().upper()
+        if tail in {"", "ASC"}:
+            return distance, False
+        if tail == "DESC":
+            return distance, True
+        raise SQLParseError(
+            f"ORDER BY distancia(...): sufijo no soportado '{tail}'"
+        )
+
 
     # ------------------------------------------------------------------
     # Validation / lexical helpers

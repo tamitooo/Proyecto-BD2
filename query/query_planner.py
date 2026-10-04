@@ -8,19 +8,91 @@ SUPPORTED_PREDICATE_OPERATORS = EQUALITY_OPERATORS | RANGE_OPERATORS | {"!=", "<
 
 
 @dataclass(frozen=True)
+class DistanceExpression:
+    """``distancia(columna_espacial, POINT(lat, lon))`` dentro de un predicado.
+
+    El planner lo reconoce para ofrecer el camino de acceso del R-Tree en lugar
+    de un escaneo con filtro: ``distancia(ubicacion, POINT(...)) < 5000`` es una
+    búsqueda por rango y ``ORDER BY distancia(...) LIMIT k`` es una búsqueda de
+    los k vecinos más cercanos.
+    """
+
+    column: str
+    point: Tuple[float, float]
+    metric: str = "haversine"
+
+    @property
+    def lat(self) -> float:
+        return self.point[0]
+
+    @property
+    def lon(self) -> float:
+        return self.point[1]
+
+    def __repr__(self) -> str:  # pragma: no cover - ayuda al depurar
+        return (
+            f"distancia({self.column}, POINT({self.lat}, {self.lon}), "
+            f"{self.metric})"
+        )
+
+
+@dataclass(frozen=True)
 class Predicate:
     column: str
     operator: str
     value: Any
+    #: Presente cuando el lado izquierdo del WHERE es una función espacial
+    #: ``distancia(col, POINT(...))`` en lugar de una columna. El planner lo usa
+    #: para ofrecer el camino de acceso del R-Tree.
+    distance: Optional["DistanceExpression"] = None
+
+    @property
+    def is_spatial(self) -> bool:
+        return self.distance is not None
 
     def normalized_operator(self) -> str:
         return self.operator.strip().lower()
 
 
 @dataclass(frozen=True)
+class PolygonPredicate:
+    """``dentro_de(col, POLYGON((lat lon, lat lon, ...)))``.
+
+    Es la consulta de **intersección con un polígono**: se poda con el MBR del
+    polígono y se confirma con punto-en-polígono (ray casting).
+    """
+
+    column: str
+    ring: Tuple[Tuple[float, float], ...]
+
+    @property
+    def is_spatial(self) -> bool:
+        return True
+
+    @property
+    def operator(self) -> str:
+        return "dentro_de"
+
+    @property
+    def value(self):
+        return self.ring
+
+    @property
+    def distance(self):
+        return None
+
+
+@dataclass(frozen=True)
 class OrderBy:
     column: str
     descending: bool = False
+    #: Presente cuando el ORDER BY es ``distancia(col, POINT(...))``: es una
+    #: búsqueda de los k vecinos más cercanos (k-NN), no un ordenamiento.
+    distance: Optional["DistanceExpression"] = None
+
+    @property
+    def is_spatial(self) -> bool:
+        return self.distance is not None
 
 
 @dataclass(frozen=True)
@@ -57,7 +129,7 @@ class IndexMetadata:
     unique: bool = False
 
     def __post_init__(self):
-        allowed = {"hash", "bplus_clustered", "bplus_unclustered"}
+        allowed = {"hash", "bplus_clustered", "bplus_unclustered", "rtree"}
         if self.kind not in allowed:
             raise ValueError(f"unsupported index kind: {self.kind}")
 

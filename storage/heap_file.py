@@ -40,6 +40,9 @@ class HeapFile:
         self.path = path
         self.schema = schema
         self.slots_per_page = max(1, PAGE_SIZE // schema.record_size)
+        #: Bytes reales de una pagina: el mayor multiplo del tamaño de registro
+        #: que cabe en PAGE_SIZE. Los bytes sobrantes no se usan.
+        self.page_bytes = self.slots_per_page * schema.record_size
         self.free_path = path + ".free"
 
         if not os.path.exists(path):
@@ -53,12 +56,15 @@ class HeapFile:
     # ---------------------- utilidades de paginacion ----------------------
     def _num_paginas(self):
         size = os.path.getsize(self.path)
-        page_bytes = self.slots_per_page * self.schema.record_size
-        return size // page_bytes if page_bytes else 0
+        if not self.page_bytes:
+            return 0
+        # Se redondea hacia arriba: el archivo siempre mide un numero entero de
+        # paginas (replace_all rellena la ultima), pero una pagina parcial nunca
+        # debe quedar invisible para el escaneo.
+        return -(-size // self.page_bytes)
 
     def _offset(self, page, slot):
-        page_bytes = self.slots_per_page * self.schema.record_size
-        return page * page_bytes + slot * self.schema.record_size
+        return page * self.page_bytes + slot * self.schema.record_size
 
     def _guardar_free_list(self):
         with open(self.free_path, "wb") as f:
@@ -168,6 +174,43 @@ class HeapFile:
                     flag, values = self._leer_slot(f, page, slot)
                     if flag == self.schema.FLAG_USED:
                         yield RID(page, slot), values
+
+    def replace_all(self, rows):
+        """Reescribe el archivo completo con ``rows`` (rollback de transaccion).
+
+        La ultima pagina se rellena con slots vacios para que el archivo mida un
+        numero entero de paginas y el escaneo vuelva a ver todas las filas. La
+        lista de paginas con espacio libre se recalcula desde cero porque al
+        truncar el archivo los numeros de pagina anteriores dejan de existir.
+        """
+        rows = list(rows)
+        with open(self.path, "wb") as f:
+            page = -1
+            for position, row in enumerate(rows):
+                slot = position % self.slots_per_page
+                if slot == 0:
+                    page += 1
+                self._escribir_slot(f, page, slot, row, self.schema.FLAG_USED)
+
+            if rows:
+                restantes = len(rows) % self.slots_per_page
+                if restantes:
+                    vacio = self.schema.pack(
+                        {
+                            column: self._valor_por_defecto(column)
+                            for column in self.schema.col_names()
+                        },
+                        flag=self.schema.FLAG_EMPTY,
+                    )
+                    for _ in range(self.slots_per_page - restantes):
+                        f.write(vacio)
+
+        self.free_pages = set()
+        if rows:
+            if len(rows) % self.slots_per_page:
+                self.free_pages.add(page)
+        self._guardar_free_list()
+        return len(rows)
 
 
     def espacio_utilizado_bytes(self):

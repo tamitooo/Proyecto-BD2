@@ -63,6 +63,7 @@ HTTP hacia la interfaz (`fastapi`, `uvicorn`).
 | 2.1.4 Transacciones y concurrencia | ✅ Completo | `transactions/` |
 | 2.1.5 Interfaz de usuario (frontend) | ✅ Completo | `backend/`, `frontend/` |
 | 2.1.6 Comparación experimental | ✅ Completo | `benchmarks/`, `benchmark_results/`, `docs/` |
+| **2.2 Parte 2 · Base de datos espacial** | ✅ **Completo** | `indexes/rtree.py`, `spatial/`, `benchmarks/benchmark_spatial.py` |
 | Documentación técnica (README) | ✅ Este documento | `README.md` |
 | Informe incremental | 🚧 **Pendiente** (el archivo `docs/informe_incremental.md` está vacío) | material base en `docs/revision/` |
 
@@ -174,11 +175,16 @@ Proyecto-BD2/
 │   ├── heap_file.py             #   Heap File paginado + free-list (.free) para reutilizar espacio
 │   └── sequential_file.py       #   Archivo Secuencial Paginado (.main/.aux), borrado lazy y reorganización
 │
-├── indexes/                     # 2.1.2 Estructuras de indexación
+├── indexes/                     # 2.1.2 / 2.2.1 Estructuras de indexación
 │   ├── bplus_tree.py            #   B+ Tree base (split, merge, recorrido ordenado)
 │   ├── clustered_bplus.py       #   B+ agrupado (hojas con el registro completo)
 │   ├── unclustered_bplus.py     #   B+ no agrupado (hojas con clave + RID)
-│   └── extendible_hash.py       #   Hash Extendible (directorio, split de buckets, profundidad)
+│   ├── extendible_hash.py       #   Hash Extendible (directorio, split de buckets, profundidad)
+│   └── rtree.py                 #   R-Tree espacial: MBR, MINDIST, split cuadrático, k-NN best-first
+│
+├── spatial/                     # 2.2 Parte 2 · datos espaciales
+│   ├── geo.py                   #   Haversine, Euclidiana, polígonos (ray casting), datasets
+│   └── index.py                 #   SpatialIndex: R-Tree con lat/lon y las dos métricas
 │
 ├── operators/                   # 2.1.2 Algoritmos externos
 │   ├── external_sort.py         #   ORDER BY por k-way merge con runs en disco
@@ -191,6 +197,7 @@ Proyecto-BD2/
 │   ├── query_executor.py        #   Ejecutor SQL sobre storage + índices + operadores + transacciones  ← ruta vigente
 │   ├── query_result.py          #   Contrato de respuesta serializable a JSON
 │   ├── csv_loader.py            #   Importación de CSV por el mismo camino que INSERT
+│   ├── spatial_queries.py       #   Ejecución de rango / k-NN / polígono sobre el R-Tree
 │   ├── executor.py              #   Ejecutor end-to-end anterior (legado, usado por examples/ y tests e2e)
 │   └── test_query_executor.py   #   Pruebas del ejecutor y del contrato del frontend
 │
@@ -332,10 +339,11 @@ Los 4 paneles exigidos por el enunciado (2.1.5):
 
 | Panel | Issue | Qué muestra |
 |---|---|---|
-| **Archivos** | #20 | Tablas registradas, tipo de almacenamiento (Heap/Secuencial), archivos `.dat`/`.free` y `.main`/`.aux` con su tamaño, esquema con PK, índices con su técnica y cantidad de registros |
-| **Consultas** | #21 | Editor SQL con ejemplos por caso de uso, ejecución con botón o `Ctrl+Enter` y mensajes de error del parser |
-| **Resultados** | #22 | Tabla dinámica con las columnas devueltas, filas, filas afectadas (INSERT/DELETE), tiempo de ejecución y vista JSON cruda |
+| **Archivos** | #20 | Tablas registradas, tipo de almacenamiento (Heap/Secuencial), archivos `.dat`/`.free` y `.main`/`.aux` con su tamaño, esquema con PK, índices con su técnica (incluido el R-Tree espacial) y cantidad de registros; formulario para **crear y eliminar índices** y para **cargar CSV** eligiendo separador |
+| **Consultas** | #21 | Editor SQL con ejemplos por caso de uso (incluidos los espaciales), ejecución con botón o `Ctrl+Enter` y mensajes de error del parser |
+| **Resultados** | #22 | Tabla dinámica con las columnas devueltas, filas, filas afectadas, tiempo de ejecución y vista JSON cruda |
 | **Plan de ejecución** | #23 | Ruta de acceso elegida, índices utilizados, optimizador, plan lógico con justificación y traza real de operadores con tiempos y filas |
+| **Mapa** (Parte 2) | 2.2.2 | Mapa SVG sin dependencias: dibuja los puntos de la tabla, resalta los resultados de la búsqueda (rango, k-NN o polígono), muestra el círculo del radio, las líneas y el orden del k-NN, y reporta `access_path`, índice usado y tiempo |
 
 ---
 
@@ -487,7 +495,14 @@ DROP TABLE [IF EXISTS] tabla
 
 CREATE [UNIQUE] INDEX [nombre] ON tabla (columna)
     [USING HASH|BPLUS_CLUSTERED|BPLUS_UNCLUSTERED]
+-- Índice espacial: se declaran las dos columnas
+CREATE INDEX [nombre] ON tabla (latitud, longitud) USING RTREE
 DROP INDEX [IF EXISTS] nombre [ON tabla]
+
+-- Parte 2 · consultas espaciales
+SELECT * FROM tabla WHERE distancia(col, POINT(lat, lon) [, METRIC]) < radio
+SELECT * FROM tabla ORDER BY distancia(col, POINT(lat, lon)) LIMIT k
+SELECT * FROM tabla WHERE dentro_de(col, POLYGON((lat lon, lat lon, ...)))
 
 BEGIN TRANSACTION | END TRANSACTION | COMMIT | ROLLBACK
 
@@ -623,8 +638,8 @@ curl.exe -X POST http://127.0.0.1:8000/api/query \
 
 ## 11. Pruebas
 
-La suite contiene **326 funciones de prueba** distribuidas en `tests/` (19 archivos,
-incluido `test_dinamica_parte1.py`) y `query/test_query_executor.py`:
+La suite contiene **391 funciones de prueba** distribuidas en `tests/` (21 archivos) y
+`query/test_query_executor.py`:
 
 | Archivo | Qué verifica |
 |---|---|
@@ -641,6 +656,8 @@ incluido `test_dinamica_parte1.py`) y `query/test_query_executor.py`:
 | `tests/test_transactions.py` | Transacciones y locks (módulo con hilos) |
 | `tests/test_profesor_script.py` | El script SQL de la cátedra sobre el CSV de prueba, de punta a punta |
 | `tests/test_dinamica_parte1.py` | `CREATE INDEX`/`DROP INDEX`, transacciones dentro del motor, unión de índices en `OR`, rango con dos extremos y línea base del benchmark |
+| `tests/test_rtree.py` | **Parte 2**: MINDIST (con el ejemplo de la diapositiva), invariantes del R-Tree, rango y k-NN contra fuerza bruta, carga masiva, polígonos y las dos métricas |
+| `tests/test_spatial_sql.py` | **Parte 2**: parser de `distancia(...)`, `POINT(...)`, k-NN con `ORDER BY ... LIMIT` y `dentro_de(...)`; que el motor use el R-Tree y que el resultado coincida con el escaneo |
 | `tests/test_benchmark_*.py` | Validez metodológica de los benchmarks (carga masiva idéntica a la API pública) |
 
 ```bash
@@ -648,7 +665,7 @@ python -m pytest -q                                   # suite completa
 python -m unittest discover -s tests -t . -v          # alternativa sin pytest
 ```
 
-El resultado esperado es **326 pruebas sin fallos** (una se marca como *skip* cuando el
+El resultado esperado es **391 pruebas sin fallos** (una se marca como *skip* cuando el
 entorno no permite crear temporales; algunas pruebas que usan `tmp_path` de pytest
 requieren permiso de escritura en `%TEMP%`, ver §13).
 
@@ -718,7 +735,35 @@ benchmark lo reporta en el campo `payload_bytes`.
 - **External Sort** → `ORDER BY` sin índice disponible; **External Hashing** →
   `GROUP BY` y equi-`JOIN` sobre datasets grandes (`O(N+M)` promedio).
 
-### 12.3 Gráficas
+### 12.3 Parte 2 · Secuencial vs R-Tree propio vs GiST de PostgreSQL
+
+Promedio de 100 consultas por medición, semilla fija 42, datasets con focos de densidad.
+Detalle completo, decisiones de diseño y limitaciones en
+[`docs/parte2_espacial.md`](docs/parte2_espacial.md).
+
+| Consulta | N | Secuencial | R-Tree propio | GiST PostgreSQL |
+|---|---|---|---|---|
+| Rango 1 km | 1 000 | 1.756 ms | **0.098 ms** (17.9×) | 1.083 ms |
+| Rango 1 km | 10 000 | 17.068 ms | **0.777 ms** (22.0×) | 1.699 ms |
+| Rango 1 km | 100 000 | 202.174 ms | 4.202 ms (48.1×) | **2.675 ms** (75.6×) |
+| k-NN k=10 | 100 000 | 236.632 ms | 17.427 ms (13.6×) | **0.932 ms** (253.9×) |
+| k-NN k=100 | 100 000 | 214.881 ms | 20.466 ms (10.5×) | **2.253 ms** (95.4×) |
+| Polígono 4 vértices | 100 000 | — | 19.265 ms | — |
+
+**Cuándo usar cada técnica:** el **R-Tree propio** es mejor en rangos pequeños
+(poda agresiva por el MBR del círculo) y no depende de un motor externo; **GiST de
+PostgreSQL** es mejor en k-NN (índice en C, estructura 3D sobre la esfera) y si los
+datos ya viven en PostgreSQL; en **datasets pequeños (< 1 000 puntos)** el índice no
+compensa el coste de construcción.
+
+> **Nota metodológica:** el enunciado pide comparar contra GiST de PostgreSQL con
+> **PostGIS**, que no está instalado en el entorno y no se pudo instalar (sin red).
+> Se usó el **GiST nativo de PostgreSQL 17** con las extensiones `cube` y
+> `earthdistance` (``ll_to_earth``, ``earth_box``, operador `<->`), que es un GiST
+> real y produce un *Index Scan* ordenado por distancia. Si algún día hay PostGIS,
+> basta con poner `USE_POSTGIS = True` en el benchmark.
+
+### 12.4 Gráficas
 
 `benchmark_results/plots/`: `storage_dashboard.png`, `storage_insert.png`,
 `storage_search.png`, `storage_space.png`, `storage_mutation.png`,
@@ -753,7 +798,7 @@ Detalle ampliado en
 
 | Parte | Contenido | Estructuras previstas |
 |---|---|---|
-| **2. Base de datos espacial** | Puntos 2D (latitud, longitud), consultas por rango, k-NN, intersección con polígonos, Euclidiana y Haversine, panel de mapa | `indexes/rtree.py`, extensión del parser para `distancia(...)` y `POINT(...)` |
+| **2. Base de datos espacial** | ✅ **Completa** | ✅ `indexes/rtree.py`, `spatial/`, panel de mapa y comparativa vs GiST |
 | **3. Búsqueda de texto** | Índice invertido con SPIMI, ranking TF-IDF + coseno y BM25, extensión `MATCH(...) USING` | `text/spimi.py`, `text/ranking.py` |
 | **4. Multimedia / vectorial** | SIFT/MFCC, Bag of Visual Words con K-Means, índices IVF y HNSW, métricas Euclidiana, producto punto y coseno | `vector/features.py`, `indexes/ivf.py`, `indexes/hnsw.py` |
 | **5. Aplicación con IA** | Aplicación que consume el API REST del motor e integra al menos dos tipos de datos | Reutiliza `backend/api.py` como base |
@@ -764,6 +809,7 @@ Detalle ampliado en
 
 | Documento | Contenido |
 |---|---|
+| [`docs/parte2_espacial.md`](docs/parte2_espacial.md) | **Parte 2**: R-Tree, métricas, sintaxis SQL espacial, panel de mapa, resultados experimentales y decisiones de diseño |
 | [`docs/revision_parte1.md`](docs/revision_parte1.md) | **Revisión a fondo de la Parte 1**: qué se corrigió, verificación en vivo del flujo de la demo, hallazgos abiertos con su defensa, alineación con la clase y guion de demo de 5 minutos |
 | [`docs/revision/indices.md`](docs/revision/indices.md) | Corrección de las estructuras de indexación, uso de índices en el planner y metodología de los experimentos |
 | [`docs/revision/sql_dinamico.md`](docs/revision/sql_dinamico.md) | Superficie SQL, importación de CSV, transacciones y los dos ejecutores |

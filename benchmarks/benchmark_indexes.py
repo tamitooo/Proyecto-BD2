@@ -7,12 +7,17 @@ Benchmark reproducible para comparar:
 
 Métricas:
 - build time
-- exact hit / exact miss
-- range search
+- exact hit / exact miss, también con recuperación de la fila
+- range search (sólo el índice / + recuperar la fila / en memoria)
 - ordered scan
 - insertion workload
 - deletion workload
 - serialized index size (aproximación portable al espacio adicional)
+
+La recuperación de la fila se mide contra un **Heap File real en disco**, no
+contra un diccionario en memoria: es la única forma de que la comparación
+B+ agrupado vs B+ no agrupado sea coherente con la teoría (el agrupado tiene
+el registro en su hoja; el no agrupado paga una lectura por RID).
 
 Los resultados se exportan en CSV y JSON para alimentar las gráficas del
 proyecto sin depender de librerías externas.
@@ -33,6 +38,57 @@ from typing import Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 from indexes.clustered_bplus import ClusteredBPlusIndex
 from indexes.extendible_hash import ExtendibleHash
 from indexes.unclustered_bplus import UnclusteredBPlusIndex
+from storage.heap_file import PAGE_SIZE, HeapFile, RID
+from storage.record import Schema
+
+# Permite ejecutarlo como módulo o como script directo.
+if __package__ in (None, ""):
+    import os
+    import sys
+
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from benchmarks.benchmark_heap_vs_sequential import bulk_build_heap
+
+
+def _rid_positions(position: int, slots_per_page: int) -> Tuple[int, int]:
+    return position // slots_per_page, position % slots_per_page
+
+
+class HeapBacking:
+    """Heap File real en disco, para medir la recuperación de filas de verdad.
+
+    Es la pieza que faltaba para que el benchmark sea coherente con la teoría:
+    un índice no agrupado devuelve RIDs y **cada RID es una lectura**; uno
+    agrupado ya trae el registro en su hoja. Si la "recuperación" se mide con un
+    `dict` en memoria, el no agrupado parece ganar siempre, porque mover un RID
+    de 8 bytes es más barato que copiar el registro completo.
+
+    El archivo se construye con carga masiva (bulk build) para que sea viable en
+    100 000 registros: insertar uno a uno tarda minutos u horas.
+    """
+
+    def __init__(self, records: Sequence[dict], schema: Schema, path: str):
+        self.schema = schema
+        self.slots_per_page = max(1, PAGE_SIZE // schema.record_size)
+        bulk_build_heap(path, records, schema)
+        self.heap = HeapFile(path, schema)
+        #: RID -> registro, sólo para la variante "en memoria", que se conserva
+        #: como contraste metodológico (no es la comparación real).
+        self.lookup = {
+            RID(*_rid_positions(position, self.slots_per_page)): record
+            for position, record in enumerate(records)
+        }
+
+    def rid_of(self, position: int) -> RID:
+        return RID(*_rid_positions(position, self.slots_per_page))
+
+    def read(self, rid) -> Optional[dict]:
+        """Lectura real: abre el archivo, hace seek y desempaca la página."""
+        return self.heap.read(rid)
+
+    def scan(self) -> List[dict]:
+        return [values for _, values in self.heap.scan()]
 
 
 @dataclass
@@ -66,6 +122,8 @@ class BenchmarkConfig:
     bplus_order: int = 64
     hash_bucket_capacity: int = 64
     range_fraction: float = 0.01
+    #: Directorio donde se materializan los Heap Files del respaldo en disco.
+    heap_dir: str = ".benchmark_heap"
 
 
 class _Adapter:
@@ -79,6 +137,7 @@ class _Adapter:
         range_search: Optional[Callable[[object, int, int], list]] = None,
         ordered_scan: Optional[Callable[[object], list]] = None,
         materialize: Optional[Callable[[object, list], list]] = None,
+        materialize_in_memory: Optional[Callable[[object, list], list]] = None,
         raw_range_search: Optional[Callable[[object, int, int], list]] = None,
         notes: str = "",
     ):
@@ -97,6 +156,7 @@ class _Adapter:
         #: aísla el costo del algoritmo (recorrer hojas) del costo de copiar
         #: registros, que es una decisión de implementación.
         self.raw_range_search = raw_range_search
+        self.materialize_in_memory = materialize_in_memory
         self.notes = notes
 
     @property
@@ -172,23 +232,48 @@ def _make_dataset(size: int, seed: int) -> List[dict]:
     return records
 
 
-def _rid_for(record: dict) -> Tuple[int, int]:
-    # RID sintético, estable y liviano.
-    return (record["id"] // 128, record["id"] % 128)
+#: Mapa id -> RID del Heap File real que se está usando en la corrida. Lo fija
+#: `run_benchmarks` para que los índices guarden RIDs que existan de verdad en
+#: el almacenamiento y la recuperación por RID sea una lectura real.
+_ACTIVE_RIDS: Dict[int, RID] = {}
+
+
+def _rid_for(record: dict) -> RID:
+    """RID del registro en el Heap File real de la corrida actual."""
+    try:
+        return _ACTIVE_RIDS[record["id"]]
+    except KeyError:
+        # Fuera de `run_benchmarks` (llamadas directas en pruebas) se usa un
+        # RID sintético: las métricas que no recuperan filas no lo necesitan.
+        return RID(*_rid_positions(record["id"], 128))
 
 
 def _make_adapters(
     config: BenchmarkConfig,
     rid_to_record: Optional[dict] = None,
+    heap: Optional["HeapBacking"] = None,
 ) -> List[_Adapter]:
     """Adaptadores de cada índice.
 
-    ``rid_to_record`` permite que el B+ no agrupado "recupere la fila" tras el
-    range scan. Sin ese paso, comparar su rango con el del B+ agrupado es
-    injusto: el agrupado devuelve registros y el no agrupado solo RIDs.
+    ``heap`` es el Heap File real donde vive la fila: es lo que permite medir
+    la recuperación por RID como una lectura de disco y no como un lookup en
+    memoria. ``rid_to_record`` se conserva para la variante "en memoria", que
+    sirve de contraste metodológico.
     """
 
     def materialize_from_rids(_index, rids):
+        """Recuperar cada fila desde el Heap File real (una lectura por RID)."""
+        if heap is None:
+            return list(rids)
+        rows = []
+        for rid in rids:
+            row = heap.read(rid)
+            if row is not None:
+                rows.append(row)
+        return rows
+
+    def materialize_in_memory(_index, rids):
+        """Recuperar cada fila desde un diccionario en memoria (contraste)."""
         if rid_to_record is None:
             return list(rids)
         return [rid_to_record[rid] for rid in rids]
@@ -212,6 +297,7 @@ def _make_adapters(
             # El índice agrupado ya devuelve registros completos (con su
             # copia defensiva), así que materializar no añade trabajo.
             materialize=lambda index, rows: list(rows),
+            materialize_in_memory=lambda index, rows: list(rows),
             # Recorrido crudo de las hojas: sin el deepcopy de la capa agrupada.
             raw_range_search=lambda index, low, high: [
                 record for _key, record in index.tree.range_search(low, high)
@@ -237,6 +323,7 @@ def _make_adapters(
             ),
             ordered_scan=lambda index: index.scan(),
             materialize=materialize_from_rids,
+            materialize_in_memory=materialize_in_memory,
             # El no agrupado ya devuelve solo RIDs: su recorrido crudo es el mismo.
             raw_range_search=lambda index, low, high: index.range_search(
                 low,
@@ -263,6 +350,8 @@ def _make_adapters(
             delete=lambda index, key, rid: index.delete(key, rid),
             range_search=None,
             ordered_scan=None,
+            materialize=materialize_from_rids,
+            materialize_in_memory=materialize_in_memory,
             notes=(
                 "Optimizado para igualdad exacta. Range search y ordered "
                 "scan no son capacidades nativas del hash."
@@ -472,20 +561,52 @@ def _benchmark_exact(
             durations.append(time.perf_counter_ns() - start)
             result_items += len(result)
 
-    stats = _timing_summary(
-        durations,
-        result_items=result_items,
+    results = [
+        BenchmarkResult(
+            dataset_size=len(index),
+            index_type=adapter.name,
+            metric=metric,
+            supported=True,
+            operations=len(durations),
+            **_timing_summary(durations, result_items=result_items),
+            notes=adapter.notes,
+        )
+    ]
+
+    # 2) La misma búsqueda + traer la fila. En el índice agrupado no hay paso
+    #    extra (el registro ya está en la hoja); en el no agrupado y el hash es
+    #    una lectura por RID en el Heap File. Ésta es la comparación real.
+    if adapter.materialize is None:
+        return results
+
+    durations = []
+    result_items = 0
+
+    for _ in range(config.query_repeats):
+        for key in keys:
+            start = time.perf_counter_ns()
+            rids = adapter.search(index, key)
+            rows = adapter.materialize(index, rids)
+            durations.append(time.perf_counter_ns() - start)
+            result_items += len(rows)
+
+    results.append(
+        BenchmarkResult(
+            dataset_size=len(index),
+            index_type=adapter.name,
+            metric=f"{metric}_materialized",
+            supported=True,
+            operations=len(durations),
+            **_timing_summary(durations, result_items=result_items),
+            notes=(
+                "Búsqueda por igualdad + traer la fila. El índice agrupado ya "
+                "tiene el registro en su hoja; el no agrupado y el hash pagan "
+                "una lectura por RID en el Heap File."
+            ),
+        )
     )
 
-    return BenchmarkResult(
-        dataset_size=len(index),
-        index_type=adapter.name,
-        metric=metric,
-        supported=True,
-        operations=len(durations),
-        **stats,
-        notes=adapter.notes,
-    )
+    return results
 
 
 def _benchmark_range(
@@ -508,6 +629,7 @@ def _benchmark_range(
             for metric in (
                 "range_search",
                 "range_search_materialized",
+                "range_search_inmemory",
                 "range_search_raw_index",
             )
         ]
@@ -540,7 +662,8 @@ def _benchmark_range(
         )
     )
 
-    # 2) Costo real de la consulta: índice + recuperar cada fila.
+    # 2) Costo real de la consulta: índice + recuperar cada fila DEL DISCO.
+    #    Ésta es la comparación coherente con la teoría.
     durations = []
     result_items = 0
 
@@ -561,14 +684,48 @@ def _benchmark_range(
             operations=len(durations),
             **_timing_summary(durations, result_items=result_items),
             notes=(
-                "Range scan + materializar cada fila: es la comparación justa "
-                "entre un índice agrupado (ya trae el registro) y uno no "
-                "agrupado (paga una recuperación por RID)."
+                "Range scan + recuperar cada fila desde el Heap File: es la "
+                "comparación real. El B+ agrupado tiene el registro en su hoja "
+                "(no lee nada extra); el no agrupado paga una lectura por RID."
             ),
         )
     )
 
-    # 3) Recorrido crudo de las hojas, sin la copia defensiva del agrupado.
+    # 3) La misma recuperación pero desde un diccionario en memoria. Se conserva
+    #    sólo como contraste metodológico: explica por qué medir en memoria hacía
+    #    parecer que el índice agrupado perdía.
+    if adapter.materialize_in_memory is None:
+        return results
+
+    durations = []
+    result_items = 0
+
+    for _ in range(config.query_repeats):
+        for low, high in ranges:
+            start = time.perf_counter_ns()
+            rids = adapter.range_search(index, low, high)
+            rows = adapter.materialize_in_memory(index, rids)
+            durations.append(time.perf_counter_ns() - start)
+            result_items += len(rows)
+
+    results.append(
+        BenchmarkResult(
+            dataset_size=dataset_size,
+            index_type=adapter.name,
+            metric="range_search_inmemory",
+            supported=True,
+            operations=len(durations),
+            **_timing_summary(durations, result_items=result_items),
+            notes=(
+                "CONTRASTE METODOLÓGICO: recupera la fila desde un dict en "
+                "memoria en lugar del Heap File. Con esta medición el B+ "
+                "agrupado parece perder, porque mover un RID es más barato que "
+                "copiar el registro. No es la comparación real."
+            ),
+        )
+    )
+
+    # 4) Recorrido crudo de las hojas, sin la copia defensiva del agrupado.
     if not adapter.supports_raw_range:
         return results
 
@@ -757,6 +914,27 @@ def _benchmark_linear_scan(
     )
 
 
+def _heap_schema() -> Schema:
+    """Esquema del Heap File de respaldo: las mismas columnas del dataset."""
+    return Schema(
+        [
+            ("id", "INT"),
+            ("group", "INT"),
+            ("value", "INT"),
+            ("payload", "VARCHAR(16)"),
+        ],
+        primary_key="id",
+    )
+
+
+def _heap_dir(config: BenchmarkConfig) -> Path:
+    """Directorio temporal donde se materializan los Heap Files del benchmark."""
+    base = getattr(config, "heap_dir", None)
+    directory = Path(base) if base else Path(".benchmark_heap")
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory
+
+
 def run_benchmarks(config: BenchmarkConfig) -> List[BenchmarkResult]:
     rng = random.Random(config.seed)
     results = []
@@ -766,12 +944,23 @@ def run_benchmarks(config: BenchmarkConfig) -> List[BenchmarkResult]:
             raise ValueError("dataset sizes must be >= 1")
 
         records = _make_dataset(size, config.seed)
-        #: RID -> registro, para que el B+ no agrupado pueda materializar filas
-        #: (aproximación en memoria: en el motor real sería una lectura).
-        rid_to_record = {
-            _rid_for(record): record for record in records
-        }
-        adapters = _make_adapters(config, rid_to_record)
+
+        #: Heap File REAL en disco donde viven las filas. Es lo que hace que
+        #: "recuperar la fila" cueste una lectura y no un lookup en memoria.
+        heap_dir = _heap_dir(config)
+        heap_path = heap_dir / f"heap_{size}.dat"
+        schema = _heap_schema()
+        heap = HeapBacking(records, schema, str(heap_path))
+
+        # Los índices deben guardar los RID que existen en ese Heap File.
+        _ACTIVE_RIDS.clear()
+        for position, record in enumerate(records):
+            _ACTIVE_RIDS[record["id"]] = heap.rid_of(position)
+
+        #: RID -> registro, sólo para la variante "en memoria" (contraste).
+        rid_to_record = heap.lookup
+
+        adapters = _make_adapters(config, rid_to_record, heap)
 
         query_count = min(config.exact_queries, size)
         range_count = min(config.range_queries, size)
@@ -854,7 +1043,7 @@ def run_benchmarks(config: BenchmarkConfig) -> List[BenchmarkResult]:
                 )
             )
 
-            results.append(
+            results.extend(
                 _benchmark_exact(
                     adapter,
                     built_index,
@@ -864,7 +1053,7 @@ def run_benchmarks(config: BenchmarkConfig) -> List[BenchmarkResult]:
                 )
             )
 
-            results.append(
+            results.extend(
                 _benchmark_exact(
                     adapter,
                     built_index,

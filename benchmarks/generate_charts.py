@@ -294,11 +294,18 @@ def charts_for_indexes(payload: dict, output_dir: Path) -> None:
 
     _, exact_hit = series(payload, "exact_hit", "avg_us")
     _, exact_miss = series(payload, "exact_miss", "avg_us")
+    _, exact_hit_mat = series(payload, "exact_hit_materialized", "avg_us")
     exact = {
         f"{tech} (hit)": values for tech, values in exact_hit.items()
     }
     exact.update(
         {f"{tech} (miss)": values for tech, values in exact_miss.items()}
+    )
+    exact.update(
+        {
+            f"{tech} (hit + recuperar fila)": values
+            for tech, values in exact_hit_mat.items()
+        }
     )
     single_chart(
         sizes,
@@ -327,30 +334,54 @@ def charts_for_indexes(payload: dict, output_dir: Path) -> None:
         payload, "range_search_materialized", "avg_us"
     )
     _, ranged_raw = series(payload, "range_search_raw_index", "avg_us")
-    if ranged_materialized or ranged_raw:
-        fairness = {
+    _, ranged_inmemory = series(payload, "range_search_inmemory", "avg_us")
+
+    # Grafica A: la consulta REAL (indice + traer la fila del almacenamiento).
+    # Es la que confirma la teoria: el B+ agrupado tiene el registro en su hoja
+    # y no paga lecturas por RID, asi que gana el rango.
+    if ranged_materialized:
+        real = {
+            f"{tech}": values
+            for tech, values in ranged_materialized.items()
+        }
+        single_chart(
+            sizes,
+            real,
+            labels,
+            "Busqueda por rango REAL (indice + traer la fila del almacenamiento)",
+            "Tiempo promedio (us)",
+            output_dir / "index_range_search_fair.png",
+            log_scale=True,
+            value_fmt="{:,.1f}",
+        )
+
+    # Grafica B: el desglose que explica por que la medicion ingenua parecia
+    # contradecir la teoria. Sin recuperacion (o recuperando de un dict) el
+    # agrupado paga la copia del registro y el no agrupado solo mueve un RID.
+    if ranged_inmemory or ranged_raw:
+        desglose = {
             f"{tech} (solo indice)": values
             for tech, values in ranged.items()
         }
-        fairness.update(
-            {
-                f"{tech} (+ recuperar fila)": values
-                for tech, values in ranged_materialized.items()
-            }
-        )
-        fairness.update(
+        desglose.update(
             {
                 f"{tech} (sin copia defensiva)": values
                 for tech, values in ranged_raw.items()
             }
         )
+        desglose.update(
+            {
+                f"{tech} (+ recuperar de un dict)": values
+                for tech, values in ranged_inmemory.items()
+            }
+        )
         single_chart(
             sizes,
-            fairness,
+            desglose,
             labels,
-            "Busqueda por rango: indice, recuperacion y copia defensiva",
+            "Por que la medicion en memoria enganaba (indice sin recuperar el dato)",
             "Tiempo promedio (us)",
-            output_dir / "index_range_search_fair.png",
+            output_dir / "index_range_search_breakdown.png",
             log_scale=True,
             value_fmt="{:,.1f}",
         )

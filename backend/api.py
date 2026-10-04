@@ -9,11 +9,11 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from backend.engine import engine
+from backend.engine import TableManagementError, engine
 
 app = FastAPI(
     title="BD2 Engine API",
@@ -45,6 +45,24 @@ class CsvImportRequest(BaseModel):
     csv_text: str = Field(..., min_length=1, description="Contenido del CSV")
     has_header: bool = Field(True, description="La primera fila es el encabezado")
     delimiter: str = Field(",", min_length=1, max_length=1)
+
+
+# ----------------------------------------------------------------------
+# Gestión de tablas dinámicas (crear tabla y subir CSV)
+# ----------------------------------------------------------------------
+
+class CreateTableColumn(BaseModel):
+    name: str = Field(..., min_length=1, description="Nombre de la columna")
+    type: str = Field(..., min_length=1, description="INT | FLOAT | VARCHAR(n)")
+
+
+class CreateTableRequest(BaseModel):
+    """Cuerpo de ``POST /api/tables`` (formulario del panel de archivos)."""
+
+    name: str = Field(..., min_length=1)
+    columns: List[CreateTableColumn] = Field(..., min_length=1)
+    primary_key: str = Field(..., min_length=1)
+    storage_kind: str = Field("heap", description="heap | sequential")
 
 
 # ----------------------------------------------------------------------
@@ -148,3 +166,53 @@ def spatial_query(request: SpatialQueryRequest) -> dict:
             "points": [],
             "error": str(exc),
         }
+
+
+# ----------------------------------------------------------------------
+# Gestión de tablas dinámicas
+# ----------------------------------------------------------------------
+
+@app.post("/api/tables", status_code=201)
+def create_table(request: CreateTableRequest) -> dict:
+    """Crea una tabla dinámica desde el panel de archivos.
+
+    Reutiliza el mismo ``CREATE TABLE`` que el panel de consultas, así que el
+    índice Hash de la clave primaria y la persistencia del catálogo se comportan
+    igual por las dos puertas.
+    """
+    try:
+        tabla = engine.create_table(
+            name=request.name,
+            columns=[columna.model_dump() for columna in request.columns],
+            primary_key=request.primary_key,
+            storage_kind=request.storage_kind,
+        )
+    except TableManagementError as exc:
+        # 400: el problema es de la petición, no del servidor.
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"table": tabla}
+
+
+@app.post("/api/tables/import-csv", status_code=201)
+def import_csv_as_table(
+    file: UploadFile = File(..., description="Archivo CSV"),
+    name: str = Form(..., description="Nombre de la tabla a crear"),
+    primary_key: str = Form(..., description="Columna que será la clave primaria"),
+    storage_kind: str = Form("heap", description="heap | sequential"),
+) -> dict:
+    """Crea una tabla **deduciendo el esquema** del CSV y carga sus filas.
+
+    Es atómico: si el CSV es inválido (esquema, ancho de fila o clave primaria
+    duplicada) no queda ninguna tabla a medio crear.
+    """
+    contenido = file.file.read()
+    try:
+        return engine.import_csv(
+            name=name,
+            filename=file.filename,
+            content=contenido,
+            primary_key=primary_key,
+            storage_kind=storage_kind,
+        )
+    except TableManagementError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc

@@ -1,25 +1,15 @@
-// Issue #20
-import { useRef, useState } from 'react';
+import { useState } from 'react';
+import { runQuery } from '../api';
 import type { TableInfo } from '../types';
-import { importCsv, runQuery } from '../api';
+import TableManager from './TableManager';
 
 interface Props {
   tables: TableInfo[];
   selectedTable: string | null;
   onSelectTable: (name: string) => void;
-  onImported?: () => void | Promise<void>;
+  /** Recarga el catálogo (tras crear/cargar una tabla o tocar un índice). */
+  onTablesChanged: (preferredTable?: string) => Promise<void>;
 }
-
-const KIND_LABEL: Record<string, string> = {
-  heap: 'Heap File',
-  sequential: 'Archivo Secuencial Paginado',
-};
-
-const INDEX_LABEL: Record<string, string> = {
-  hash: 'Extendible Hashing',
-  bplus_clustered: 'B+ Tree agrupado',
-  bplus_unclustered: 'B+ Tree no agrupado',
-};
 
 /** Técnicas que acepta el parser: USING HASH | BPLUS_CLUSTERED | BPLUS_UNCLUSTERED. */
 const INDEX_TECHNIQUES = [
@@ -37,19 +27,34 @@ const TECHNIQUE_SUFFIX: Record<Technique, string> = {
   BPLUS_UNCLUSTERED: 'bpu',
 };
 
-export function formatBytes(bytes: number): string {
+const INDEX_LABEL: Record<string, string> = {
+  hash: 'Hash Extendible',
+  bplus_clustered: 'B+ agrupado',
+  bplus_unclustered: 'B+ no agrupado',
+  rtree: 'R-Tree espacial',
+};
+
+const KIND_LABEL: Record<string, string> = {
+  heap: 'Heap File',
+  sequential: 'Archivo Secuencial',
+};
+
+/** Origen de la tabla, para distinguir las de formulario de las de CSV. */
+const SOURCE_LABEL: Record<string, string> = {
+  demo: 'Demo',
+  manual: 'Creada desde UI',
+  csv: 'Importada desde CSV',
+};
+
+function cleanPath(fullPath: string): string {
+  const parts = fullPath.split(/[\\/]/);
+  return parts.length <= 2 ? fullPath : parts.slice(-2).join('/');
+}
+
+function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-}
-
-function cleanPath(fullPath: string): string {
-  const normalized = fullPath.replace(/\\/g, '/');
-  const idx = normalized.lastIndexOf('backend/data');
-  if (idx !== -1) {
-    return normalized.substring(idx);
-  }
-  return normalized.split('/').pop() ?? fullPath;
 }
 
 function buildCreateIndexSql(
@@ -71,60 +76,31 @@ export default function FilesPanel({
   tables,
   selectedTable,
   onSelectTable,
-  onImported,
+  onTablesChanged,
 }: Props) {
   const table = tables.find((item) => item.name === selectedTable) ?? null;
-  const fileInput = useRef<HTMLInputElement>(null);
-  const [importing, setImporting] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [importError, setImportError] = useState<string | null>(null);
+
   const [indexBusy, setIndexBusy] = useState(false);
   const [technique, setTechnique] = useState<Technique>('HASH');
   const [uniqueChecked, setUniqueChecked] = useState(false);
   // La columna elegida se recuerda junto al nombre de su tabla: al cambiar de
   // tabla la selección deja de aplicar sin necesidad de un useEffect.
-  const [columnChoice, setColumnChoice] = useState<{ table: string; column: string } | null>(null);
+  const [columnChoice, setColumnChoice] = useState<{ table: string; column: string } | null>(
+    null,
+  );
   const [indexFeedback, setIndexFeedback] = useState<
     { table: string; kind: 'ok' | 'error'; text: string } | null
   >(null);
-  // Un CSV exportado desde Excel en español usa ';' y puede no traer cabecera.
-  const [delimiter, setDelimiter] = useState<',' | ';' | '\t'>(',');
-  const [hasHeader, setHasHeader] = useState(true);
 
-  const chosenColumn = table && columnChoice?.table === table.name ? columnChoice.column : '';
+  const chosenColumn =
+    table && columnChoice?.table === table.name ? columnChoice.column : '';
   const feedback = table && indexFeedback?.table === table.name ? indexFeedback : null;
   const unique = uniqueChecked && technique === 'HASH';
   const isIndexedColumn = (name: string) =>
     table !== null && table.indexes.some((index) => index.column === name);
-  const freeColumns = table ? table.schema.columnas.filter(([name]) => !isIndexedColumn(name)) : [];
-
-  const refresh = async () => {
-    await onImported?.();
-  };
-
-  const handleFile = async (file: File | undefined) => {
-    if (!file || !selectedTable) return;
-    setImporting(true);
-    setMessage(null);
-    setImportError(null);
-    try {
-      const text = await file.text();
-      const report = await importCsv(selectedTable, text, hasHeader, delimiter);
-      setMessage(
-        `"${file.name}": ${report.inserted} filas insertadas en ${report.table}` +
-          (report.failed ? `, ${report.failed} rechazadas` : ''),
-      );
-      if (report.errors.length > 0) {
-        setImportError(report.errors.slice(0, 3).join(' · '));
-      }
-      await onImported?.();
-    } catch (error) {
-      setImportError(error instanceof Error ? error.message : String(error));
-    } finally {
-      setImporting(false);
-      if (fileInput.current) fileInput.current.value = '';
-    }
-  };
+  const freeColumns = table
+    ? table.schema.columnas.filter(([name]) => !isIndexedColumn(name))
+    : [];
 
   const handleCreateIndex = async () => {
     if (!table || !chosenColumn) return;
@@ -133,7 +109,6 @@ export default function FilesPanel({
     setIndexFeedback(null);
     try {
       const result = await runQuery(sql);
-      const created = result.rows[0]?.indice;
       if (!result.success) {
         setIndexFeedback({
           table: table.name,
@@ -142,6 +117,7 @@ export default function FilesPanel({
         });
         return;
       }
+      const created = result.rows[0]?.indice;
       setIndexFeedback({
         table: table.name,
         kind: 'ok',
@@ -151,7 +127,7 @@ export default function FilesPanel({
           (unique ? ' · único' : ''),
       });
       setColumnChoice(null);
-      await refresh();
+      await onTablesChanged(table.name);
     } catch (error) {
       setIndexFeedback({
         table: table.name,
@@ -182,7 +158,7 @@ export default function FilesPanel({
         kind: 'ok',
         text: `Índice ${name} eliminado de ${table.name}.`,
       });
-      await refresh();
+      await onTablesChanged(table.name);
     } catch (error) {
       setIndexFeedback({
         table: table.name,
@@ -197,90 +173,82 @@ export default function FilesPanel({
   return (
     <div className="panel">
       <h2 className="panel__title">Panel de archivos</h2>
-      <p className="panel__hint">Tablas cargadas, esquema físico e índices.</p>
+      <p className="panel__hint">
+        Tablas cargadas, esquema físico, índices y carga de CSV.
+      </p>
+
+      <TableManager onChanged={onTablesChanged} />
+
+      <h3 className="panel__subtitle">Tablas registradas</h3>
 
       <ul className="table-list">
         {tables.map((item) => (
           <li key={item.name}>
             <button
               type="button"
-              className={item.name === selectedTable ? 'table-list__item is-active' : 'table-list__item'}
+              className={
+                item.name === selectedTable ? 'table-list__item is-active' : 'table-list__item'
+              }
               onClick={() => onSelectTable(item.name)}
             >
-              <span className="table-list__name">{item.name}</span>
+              <span>
+                <span className="table-list__name">{item.name}</span>
+                {item.source && (
+                  <small className="table-list__source">
+                    {SOURCE_LABEL[item.source] ?? item.source}
+                  </small>
+                )}
+              </span>
+
               <span className={`badge badge--${item.storage_kind}`}>
                 {KIND_LABEL[item.storage_kind] ?? item.storage_kind}
               </span>
             </button>
           </li>
         ))}
+
         {tables.length === 0 && <li className="panel__hint">Sin tablas registradas.</li>}
       </ul>
-
-      <div className="import">
-        <label className="panel__subtitle" htmlFor="csv-input">
-          Cargar CSV en la tabla seleccionada
-        </label>
-        <div className="index-form index-form--inline">
-          <label>
-            Separador
-            <select
-              className="select"
-              value={delimiter}
-              onChange={(event) => setDelimiter(event.target.value as ',' | ';' | '\t')}
-            >
-              <option value=",">Coma ( , )</option>
-              <option value=";">Punto y coma ( ; ) — Excel en español</option>
-              <option value="\t">Tabulador</option>
-            </select>
-          </label>
-          <label className="index-form__check">
-            <input
-              type="checkbox"
-              checked={hasHeader}
-              onChange={(event) => setHasHeader(event.target.checked)}
-            />
-            La primera fila es el encabezado
-          </label>
-        </div>
-        <input
-          id="csv-input"
-          ref={fileInput}
-          type="file"
-          accept=".csv,text/csv"
-          disabled={!table || importing}
-          onChange={(event) => void handleFile(event.target.files?.[0])}
-        />
-        <p className="panel__hint">
-          {importing
-            ? 'Importando…'
-            : 'Usa el mismo camino que INSERT: respeta la clave primaria y actualiza los índices. ' +
-              (hasHeader
-                ? 'El encabezado debe nombrar las columnas de la tabla (en cualquier orden).'
-                : 'Sin encabezado se importa por posición.')}
-        </p>
-        {message && <p className="panel__hint">{message}</p>}
-        {importError && <p className="import__error">{importError}</p>}
-      </div>
 
       {table && (
         <>
           <dl className="kv">
-            <div><dt>Registros</dt><dd>{table.row_count}</dd></div>
-            <div><dt>Tamaño de registro</dt><dd>{table.record_size} bytes</dd></div>
-            <div><dt>Clave primaria</dt><dd>{table.schema.primary_key}</dd></div>
+            <div>
+              <dt>Registros</dt>
+              <dd>{table.row_count}</dd>
+            </div>
+            <div>
+              <dt>Tamaño de registro</dt>
+              <dd>{table.record_size} bytes</dd>
+            </div>
+            <div>
+              <dt>Clave primaria</dt>
+              <dd>{table.schema.primary_key}</dd>
+            </div>
           </dl>
+
+          {table.original_filename && (
+            <p className="panel__hint">
+              CSV origen: <span className="mono">{table.original_filename}</span>
+            </p>
+          )}
 
           <h3 className="panel__subtitle">Archivos en disco</h3>
           <table className="grid">
             <thead>
-              <tr><th>Archivo</th><th>Ruta</th><th>Tamaño</th></tr>
+              <tr>
+                <th>Archivo</th>
+                <th>Ruta</th>
+                <th>Tamaño</th>
+              </tr>
             </thead>
             <tbody>
               {table.files.map((file) => (
                 <tr key={file.path}>
                   <td>{file.label}</td>
-                  <td className="mono" title={file.path}>{cleanPath(file.path)}</td>
+                  <td className="mono" title={file.path}>
+                    {cleanPath(file.path)}
+                  </td>
                   <td>{formatBytes(file.size_bytes)}</td>
                 </tr>
               ))}
@@ -290,7 +258,11 @@ export default function FilesPanel({
           <h3 className="panel__subtitle">Esquema</h3>
           <table className="grid">
             <thead>
-              <tr><th>Columna</th><th>Tipo</th><th>Clave</th></tr>
+              <tr>
+                <th>Columna</th>
+                <th>Tipo</th>
+                <th>Clave</th>
+              </tr>
             </thead>
             <tbody>
               {table.schema.columnas.map(([name, tipo]) => (
@@ -304,71 +276,108 @@ export default function FilesPanel({
           </table>
 
           <h3 className="panel__subtitle">Índices secundarios</h3>
+          {table.indexes.length === 0 ? (
+            <p className="panel__hint">Sin índices registrados.</p>
+          ) : (
+            <table className="grid">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Columna</th>
+                  <th>Técnica</th>
+                  <th>Único</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {table.indexes.map((index) => (
+                  <tr key={index.name}>
+                    <td className="mono">{index.name}</td>
+                    <td>{index.column}</td>
+                    <td>{INDEX_LABEL[index.kind] ?? index.kind}</td>
+                    <td>{index.unique ? 'Sí' : 'No'}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="button button--small button--danger"
+                        disabled={indexBusy}
+                        onClick={() => void handleDropIndex(index.name)}
+                      >
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
 
-          <div className="index-form">
-            <label htmlFor="index-column">
-              Columna
+          {/* Crear índice: es lo que pidió el profesor ("nos falta mejorar
+              índices") y no existía forma de hacerlo desde la interfaz. */}
+          <h3 className="panel__subtitle">Crear índice</h3>
+          <div className="form-grid">
+            <label className="field">
+              <span>Columna</span>
               <select
-                id="index-column"
-                className="select"
+                className="select select--compact"
                 value={chosenColumn}
                 disabled={indexBusy || freeColumns.length === 0}
                 onChange={(event) =>
                   setColumnChoice({ table: table.name, column: event.target.value })
                 }
               >
-                <option value="">Elegir columna…</option>
-                {table.schema.columnas.map(([name]) => (
-                  <option key={name} value={name} disabled={isIndexedColumn(name)}>
-                    {name}{isIndexedColumn(name) ? ' (ya indexada)' : ''}
+                <option value="">— elige una columna —</option>
+                {freeColumns.map(([name, tipo]) => (
+                  <option key={name} value={name}>
+                    {name} ({tipo})
                   </option>
                 ))}
               </select>
             </label>
 
-            <label htmlFor="index-technique">
-              Técnica
+            <label className="field">
+              <span>Técnica</span>
               <select
-                id="index-technique"
-                className="select"
+                className="select select--compact"
                 value={technique}
                 disabled={indexBusy}
                 onChange={(event) => setTechnique(event.target.value as Technique)}
               >
                 {INDEX_TECHNIQUES.map((item) => (
-                  <option key={item.value} value={item.value}>{item.label}</option>
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
                 ))}
               </select>
             </label>
 
-            <label className="index-form__check" htmlFor="index-unique">
+            <label className="field field--check">
               <input
-                id="index-unique"
                 type="checkbox"
-                checked={unique}
+                checked={uniqueChecked}
                 disabled={indexBusy || technique !== 'HASH'}
                 onChange={(event) => setUniqueChecked(event.target.checked)}
               />
-              Único (solo Hash)
+              <span>Único (solo Hash)</span>
             </label>
-
-            <div className="index-form__actions">
-              <button
-                type="button"
-                className="button button--primary"
-                disabled={indexBusy || !chosenColumn}
-                onClick={() => void handleCreateIndex()}
-              >
-                {indexBusy ? 'Aplicando…' : 'Crear índice'}
-              </button>
-            </div>
           </div>
 
-          <p className="panel__hint">
-            {freeColumns.length === 0
-              ? 'Todas las columnas ya tienen índice: elimina uno para poder crear otro.'
-              : 'El índice se construye recorriendo la tabla, así que también indexa filas ya cargadas.'}
-          </p>
+          <div className="button-row">
+            <button
+              type="button"
+              className="button button--primary"
+              disabled={indexBusy || !chosenColumn}
+              onClick={() => void handleCreateIndex()}
+            >
+              {indexBusy ? 'Trabajando…' : 'Crear índice'}
+            </button>
+          </div>
+
+          {freeColumns.length === 0 && (
+            <p className="panel__hint">
+              Todas las columnas de {table.name} ya tienen índice.
+            </p>
+          )}
 
           {feedback && (
             <p className={feedback.kind === 'ok' ? 'alert alert--ok' : 'alert alert--error'}>
@@ -376,53 +385,10 @@ export default function FilesPanel({
             </p>
           )}
 
-          {table.indexes.length === 0 ? (
-            <p className="panel__hint">Sin índices registrados.</p>
-          ) : (
-            <>
-              <table className="grid">
-                <thead>
-                  <tr><th>Nombre</th><th>Columna</th><th>Técnica</th><th>Único</th><th>Acciones</th></tr>
-                </thead>
-                <tbody>
-                  {table.indexes.map((index) => {
-                    // El índice de la PK es el que aplica la unicidad de la clave;
-                    // eliminarlo desde aquí desactivaría la restricción.
-                    const isPrimaryIndex = index.column === table.schema.primary_key;
-                    return (
-                      <tr key={index.name}>
-                        <td className="mono">{index.name}</td>
-                        <td>{index.column}</td>
-                        <td>{INDEX_LABEL[index.kind] ?? index.kind}</td>
-                        <td>{index.unique ? 'Sí' : 'No'}</td>
-                        <td>
-                          <button
-                            type="button"
-                            className="button button--small"
-                            disabled={isPrimaryIndex || indexBusy}
-                            title={
-                              isPrimaryIndex
-                                ? 'Es el índice que aplica la PRIMARY KEY: no se puede eliminar. Usa DROP TABLE para borrar la tabla completa.'
-                                : `DROP INDEX ${index.name} ON ${table.name}`
-                            }
-                            onClick={() => void handleDropIndex(index.name)}
-                          >
-                            Eliminar
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              {table.indexes.some((index) => index.column === table.schema.primary_key) && (
-                <p className="panel__hint">
-                  El índice de la PRIMARY KEY ({table.schema.primary_key}) está deshabilitado porque
-                  es el que hace cumplir la clave: para quitarlo hay que eliminar la tabla.
-                </p>
-              )}
-            </>
-          )}
+          <p className="panel__hint">
+            El R-Tree espacial se crea por SQL con{' '}
+            <span className="mono">CREATE INDEX … ON {table.name} (lat, lon) USING RTREE</span>.
+          </p>
         </>
       )}
     </div>

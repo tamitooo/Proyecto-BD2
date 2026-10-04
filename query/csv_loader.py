@@ -14,7 +14,7 @@ import csv
 import io
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 from query.sql_parser import InsertStatement
 
@@ -48,6 +48,129 @@ class CsvImportReport:
 
 class CsvImportError(Exception):
     """Error de importación que debe verse como fallo, no como 0 filas."""
+
+
+def infer_schema_from_csv(
+    text: str,
+    *,
+    primary_key: Optional[str] = None,
+    delimiter: str = ",",
+    has_header: bool = True,
+) -> List[Tuple[str, str]]:
+    """Deduce ``[(columna, tipo)]`` a partir del contenido de un CSV.
+
+    Reglas (deterministas, pensadas para el caso del enunciado: INT, FLOAT y
+    VARCHAR):
+
+    * Todas las celdas de una columna enteras -> ``INT``;
+    * todas numéricas (y alguna decimal) -> ``FLOAT``;
+    * en cualquier otro caso -> ``VARCHAR(n)`` con ``n`` = **longitud máxima
+      observada** en esa columna (mínimo 1).
+
+    Las columnas vacías no cuentan para decidir el tipo, así que una columna con
+    huecos sigue siendo INT o FLOAT. Los tipos nativos del proyecto son sólo INT,
+    FLOAT y VARCHAR(n), así que la deducción se limita a esos tres.
+    """
+    reader = csv.reader(io.StringIO(text), delimiter=delimiter)
+    rows = [row for row in reader if row and any(cell.strip() for cell in row)]
+    if not rows:
+        raise CsvImportError("el CSV está vacío: no se puede deducir el esquema")
+
+    header = [cell.strip() for cell in rows[0]] if has_header else []
+    data_rows = rows[1:] if has_header else rows
+    if not data_rows:
+        raise CsvImportError("el CSV no tiene filas de datos")
+
+    width = len(header) if has_header else max(len(row) for row in data_rows)
+    if width == 0:
+        raise CsvImportError("el CSV no tiene columnas")
+
+    if not has_header:
+        header = [f"columna_{i + 1}" for i in range(width)]
+
+    columns: List[Tuple[str, str]] = []
+    for position in range(width):
+        celdas = [
+            row[position].strip()
+            for row in data_rows
+            if position < len(row) and row[position].strip()
+        ]
+
+        if not celdas:
+            # Columna entera vacía: se asume texto de longitud 1.
+            columns.append((header[position], "VARCHAR(1)"))
+            continue
+
+        todos_enteros = True
+        todos_numericos = True
+        for celda in celdas:
+            try:
+                float(celda)
+            except ValueError:
+                todos_numericos = False
+                todos_enteros = False
+                break
+            if not _is_integer_literal(celda):
+                todos_enteros = False
+
+        if todos_enteros:
+            tipo = "INT"
+        elif todos_numericos:
+            tipo = "FLOAT"
+        else:
+            # Longitud máxima **observada**: es lo que hace el motor de la
+            # referencia y evita truncar datos reales.
+            largo = max(len(celda) for celda in celdas)
+            tipo = f"VARCHAR({max(1, largo)})"
+
+        columns.append((header[position], tipo))
+
+    if primary_key:
+        buscada = primary_key.strip().lower()
+        if not any(name.lower() == buscada for name, _ in columns):
+            raise CsvImportError(
+                f"primary key '{primary_key}' is not present in the CSV "
+                "(" + ", ".join(name for name, _ in columns) + ")"
+            )
+
+    return columns
+
+
+def _is_integer_literal(texto: str) -> bool:
+    """¿El texto representa un entero (sin parte decimal)?"""
+    limpio = texto.strip().lstrip("+-")
+    return bool(limpio) and limpio.isdigit()
+
+
+def parse_csv_rows(
+    text: str,
+    columns: Sequence[str],
+    *,
+    delimiter: str = ",",
+    has_header: bool = True,
+) -> List[List[str]]:
+    """Filas de datos del CSV como listas de texto sin procesar.
+
+    Valida que **todas** las filas tengan el ancho esperado: un CSV con una fila
+    corta o larga es un error del archivo, no una fila a medias, así que falla
+    con el número de fila en el mensaje.
+    """
+    reader = csv.reader(io.StringIO(text), delimiter=delimiter)
+    rows = [row for row in reader if row and any(cell.strip() for cell in row)]
+    if not rows:
+        raise CsvImportError("el CSV está vacío")
+
+    data_rows = rows[1:] if has_header else rows
+    esperado = len(columns)
+
+    for numero, row in enumerate(data_rows, start=1):
+        if len(row) != esperado:
+            raise CsvImportError(
+                f"fila {numero}: se esperaban {esperado} columnas (expected "
+                f"{esperado}) y el CSV trae {len(row)}"
+            )
+
+    return [list(row) for row in data_rows]
 
 
 def _read_source(

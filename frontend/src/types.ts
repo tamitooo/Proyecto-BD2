@@ -8,7 +8,7 @@ export interface SchemaInfo {
 export interface IndexInfo {
   name: string;
   column: string;
-  kind: string;      // hash | bplus_clustered | bplus_unclustered
+  kind: string;      // hash | bplus_clustered | bplus_unclustered | rtree
   unique: boolean;
 }
 
@@ -26,6 +26,36 @@ export interface TableInfo {
   files: StorageFile[];
   row_count: number;
   record_size: number;
+  /** Cómo se creó la tabla: demo, manual (formulario) o csv. */
+  source?: 'demo' | 'manual' | 'csv' | string;
+  /** Archivo del que salió el CSV, si la tabla se creó importando uno. */
+  original_filename?: string | null;
+}
+
+export interface CreateTableColumn {
+  name: string;
+  type: string;
+}
+
+export interface CreateTableRequest {
+  name: string;
+  storage_kind: 'heap' | 'sequential';
+  primary_key: string;
+  columns: CreateTableColumn[];
+}
+
+export interface CreateTableResponse {
+  table: TableInfo;
+}
+
+export interface CsvImportResult {
+  table: TableInfo;
+  imported_rows: number;
+  inferred_schema?: {
+    columnas: [string, string][];
+    primary_key: string;
+  };
+  original_filename?: string | null;
 }
 
 export interface PlanStep {

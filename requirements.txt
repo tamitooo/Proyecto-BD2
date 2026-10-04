@@ -17,3 +17,12 @@ matplotlib>=3.8
 # Puente HTTP motor <-> frontend React (backend/api.py)
 fastapi>=0.110
 uvicorn[standard]>=0.29
+
+# Necesario para el upload del CSV del panel de archivos
+# (POST /api/tables/import-csv usa multipart/form-data).
+python-multipart>=0.0.9
+
+# Comparacion contra el GiST de PostgreSQL en el benchmark espacial (Parte 2).
+# Es opcional: si falta, el benchmark mide solo secuencial y R-Tree y marca
+# PostgreSQL como no disponible.
+psycopg2-binary>=2.9

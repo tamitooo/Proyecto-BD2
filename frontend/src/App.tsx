@@ -7,6 +7,9 @@ import MapPanel from './panels/MapPanel';
 import { fetchTables, runQuery } from './api';
 import type { QueryResult, TableInfo } from './types';
 import './styles.css';
+// Reglas del gestor de tablas dinámicas (trabajo integrado desde main),
+// recoloreadas al tema claro.
+import './styles-table-manager.css';
 
 const DEFAULT_SQL = 'SELECT * FROM users WHERE age >= 20 ORDER BY age DESC';
 
@@ -80,7 +83,7 @@ export default function App() {
             tables={tables}
             selectedTable={selectedTable}
             onSelectTable={setSelectedTable}
-            onImported={loadTables}
+            onTablesChanged={loadTables}
           />
         </aside>
         <section className="app__center">

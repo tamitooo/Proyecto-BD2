@@ -22,9 +22,14 @@ from query.catalog import Catalog, CatalogError, TableMetadata
 from query.csv_loader import CsvImportReport, import_csv as import_csv_into
 from query.query_executor import QueryExecutor
 from query.query_result import QueryResult
+from query import table_manager
+from query.table_manager import TableManagementError
 from storage.heap_file import HeapFile
 from storage.record import Schema
 from storage.sequential_file import SequentialFile
+
+#: Versión del manifiesto del catálogo persistido en ``catalog.json``.
+CATALOG_VERSION = 1
 
 # El enunciado solo soporta INT, FLOAT y VARCHAR(n): no hay BOOL.
 USERS_SCHEMA = Schema(
@@ -69,6 +74,8 @@ class DemoEngine:
         self.catalog_path = self.data_dir / "catalog.json"
         self._lock = threading.Lock()  # el motor no es thread-safe: serializamos
         self._ready = False
+        #: Origen de cada tabla dinámica: ``"manual"`` (formulario) o ``"csv"``.
+        self._sources: Dict[str, Dict[str, Any]] = {}
 
         # Heap File (.dat + .free)
         self.users = HeapFile(str(self.data_dir / "users.dat"), USERS_SCHEMA)
@@ -109,21 +116,98 @@ class DemoEngine:
     # ------------------------------------------------------------------ API
 
     def run(self, sql: str) -> QueryResult:
+        """Ejecuta SQL. **Toma el lock** (no la llames con el lock tomado)."""
         with self._lock:
             return self.executor.execute(sql)
 
+    # ------------------------------------------- gestión de tablas (API)
+
+    def create_table(
+        self,
+        *,
+        name: str,
+        columns: Any,
+        primary_key: str,
+        storage_kind: str = "heap",
+    ) -> Dict[str, Any]:
+        """Crea una tabla dinámica desde el panel de gestión.
+
+        **No es una segunda implementación del DDL**: construye la sentencia
+        ``CREATE TABLE`` y la ejecuta con el mismo ejecutor que el panel de
+        consultas, así que el índice Hash de la clave primaria, el registro en el
+        catálogo y la persistencia se comportan igual por las dos puertas.
+
+        No se envuelve en el lock a propósito: la secuencia tiene que ser
+        **atómica de principio a fin** (comprobar que no existe, crear, registrar
+        el origen) y ``run()`` ya toma el lock. Como ``threading.Lock`` no es
+        reentrante, envolver aquí produciría un interbloqueo. El motor real ya
+        está serializado por el lock de ``run()``.
+        """
+        return table_manager.create_table(
+            self,
+            name=name,
+            columns=columns,
+            primary_key=primary_key,
+            storage_kind=storage_kind,
+            source="manual",
+        )
+
+    def _remember_source(
+        self,
+        name: str,
+        *,
+        source: str,
+        filename: Optional[str] = None,
+    ) -> None:
+        """Anota cómo se creó una tabla (formulario o CSV) para el panel."""
+        self._sources[name.lower()] = {
+            "source": source,
+            "original_filename": filename,
+        }
+        self._save_catalog()
+
+    def _forget_source(self, name: str) -> None:
+        self._sources.pop(name.lower(), None)
+        self._save_catalog()
+
     def import_csv(
         self,
-        table: str,
-        source: Any,
+        table: Optional[str] = None,
+        source: Any = None,
         **options: Any,
-    ) -> CsvImportReport:
-        """Carga un CSV en una tabla existente (mismo camino que INSERT).
+    ) -> Any:
+        """Importa un CSV. Admite **dos formas de uso**:
 
-        El API recibe el **texto** del CSV, así que un argumento de una sola
-        línea sin comas se trata como error de nombre de archivo y no como
-        contenido (``allow_path=False``), para no reportar "0 filas" como éxito.
+        * ``import_csv("usuarios", csv_texto)`` — carga en una tabla existente
+          (mismo camino que ``INSERT``, con reporte fila a fila);
+        * ``import_csv(name=..., filename=..., content=..., primary_key=...)`` —
+          **crea la tabla deduciendo el esquema** del CSV y luego carga las filas.
+
+        La segunda forma es la que usa el panel de gestión: permite subir un CSV
+        sin haber definido la tabla antes.
         """
+        if table is None and source is None and "name" in options:
+            # No se toma el lock: ``create_table`` y ``run`` ya lo toman, y
+            # ``threading.Lock`` no es reentrante.
+            return table_manager.import_csv_as_table(
+                self,
+                name=options.pop("name"),
+                filename=options.pop("filename", None),
+                content=options.pop("content"),
+                primary_key=options.pop("primary_key"),
+                storage_kind=options.pop("storage_kind", "heap"),
+                **options,
+            )
+
+        if table is None or source is None:
+            raise TableManagementError(
+                "import_csv necesita (tabla, contenido) o "
+                "(name=..., content=..., primary_key=...)"
+            )
+
+        # El API recibe el **texto** del CSV, así que un argumento de una sola
+        # línea sin comas se trata como error de nombre de archivo y no como
+        # contenido (``allow_path=False``), para no reportar "0 filas" como éxito.
         options.setdefault("allow_path", False)
         with self._lock:
             report = import_csv_into(self.executor, table, source, **options)
@@ -372,12 +456,21 @@ class DemoEngine:
         if not self._ready:
             return
 
+        tablas = []
+        for definition in self.catalog.describe_tables():
+            if definition["name"] in self.DEMO_TABLES:
+                continue
+            # ``source`` permite al panel distinguir una tabla creada con el
+            # formulario de una creada al cargar un CSV.
+            origen = self._sources.get(definition["name"].lower(), {})
+            definition = dict(definition)
+            definition["source"] = origen.get("source", "manual")
+            definition["original_filename"] = origen.get("original_filename")
+            tablas.append(definition)
+
         payload = {
-            "tables": [
-                definition
-                for definition in self.catalog.describe_tables()
-                if definition["name"] not in self.DEMO_TABLES
-            ]
+            "version": CATALOG_VERSION,
+            "tables": tablas,
         }
 
         try:
@@ -406,6 +499,12 @@ class DemoEngine:
             try:
                 self.catalog.restore_table(definition, data_dir=self.data_dir)
                 restored.append(name)
+                # Se recupera también el origen para que el panel siga
+                # distinguiendo una tabla de formulario de una de CSV.
+                self._sources[name] = {
+                    "source": definition.get("source", "manual"),
+                    "original_filename": definition.get("original_filename"),
+                }
             except Exception as exc:  # manifiesto corrupto o archivos movidos
                 print(f"[catalog] no se pudo restaurar '{name}': {exc}")
 
@@ -431,6 +530,14 @@ class DemoEngine:
         return {
             "name": table.name,
             "storage_kind": table.storage_kind,
+            "source": self._sources.get(table.name.lower(), {}).get(
+                "source",
+                # Las tablas del catálogo (creadas por SQL) también son manuales.
+                "manual",
+            ),
+            "original_filename": self._sources.get(
+                table.name.lower(), {}
+            ).get("original_filename"),
             "schema": table.schema.to_dict(),
             "indexes": [
                 {

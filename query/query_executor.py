@@ -18,6 +18,16 @@ from query.query_planner import (
     replace_candidate,
 )
 from query.query_result import QueryResult
+from query.spatial_queries import (
+    SpatialExecutor,
+    SpatialQueryError,
+    find_distance_predicate,
+    find_polygon_predicate,
+    find_spatial_order_by,
+    find_spatial_predicate,
+    spatial_kind,
+)
+from spatial.geo import euclidean, haversine
 from query.sql_parser import (
     CreateIndexStatement,
     CreateTableStatement,
@@ -237,6 +247,15 @@ class QueryExecutor:
         table = self.catalog.get_table(query.table)
         self._validate_columns_for_select(statement, table)
 
+        # --- Parte 2: consultas espaciales -------------------------------
+        # Si el WHERE o el ORDER BY usan distancia(...) y la tabla tiene un
+        # índice R-Tree, se resuelve con el índice en lugar de escanear.
+        espacial = spatial_kind(query)
+        if espacial is not None:
+            resultado = self._execute_spatial(statement, table, espacial)
+            if resultado is not None:
+                return resultado
+
         planner = self._planner()
         # Con OR el planner intenta una unión de búsquedas por índice; si no
         # hay un índice común a todos los grupos, cae a un escaneo y el filtro
@@ -265,7 +284,35 @@ class QueryExecutor:
         if filter_predicates:
             filter_started = time.perf_counter()
             rows_in = len(rows)
-            rows = [row for row in rows if self._matches_query(query, row)]
+            detalles_espaciales = None
+
+            # Con OR los predicados no son una conjunción: se evalúan los grupos
+            # completos (una fila pasa si cumple CUALQUIER grupo).
+            if query.or_groups:
+                rows = [row for row in rows if self._matches_query(query, row)]
+            else:
+                # Los predicados espaciales no se pueden evaluar con un simple
+                # comparador: se resuelven calculando la distancia real (camino
+                # sin índice espacial), y los normales con el evaluador habitual.
+                espaciales = [
+                    p for p in filter_predicates
+                    if getattr(p, "is_spatial", False)
+                    and getattr(p, "distance", None) is not None
+                ]
+                if espaciales:
+                    rows, detalles_espaciales = self._apply_spatial_predicates(
+                        rows, espaciales
+                    )
+                normas = [
+                    p for p in filter_predicates
+                    if not (
+                        getattr(p, "is_spatial", False)
+                        and getattr(p, "distance", None) is not None
+                    )
+                ]
+                if normas:
+                    rows = [row for row in rows if self.matches_all(row, normas)]
+
             self._append_runtime(
                 runtime_steps,
                 "FILTER",
@@ -276,6 +323,7 @@ class QueryExecutor:
                     self._predicate_dict(p) for p in filter_predicates
                 ],
                 disjunction=bool(query.or_groups),
+                spatial_details=detalles_espaciales,
             )
 
         if query.joins:
@@ -367,6 +415,114 @@ class QueryExecutor:
             execution_plan=plan_payload,
         )
 
+    @staticmethod
+    def _apply_spatial_predicates(rows, predicates):
+        """Filtra filas evaluando ``distancia(...)`` sobre cada una.
+
+        Es el camino **sin índice espacial**: correcto pero ``O(n)``. Se usa
+        cuando no hay R-Tree (o cuando la consulta no se pudo resolver con él),
+        para no devolver resultados incorrectos. Incluye el nombre de las
+        columnas en la traza para que el plan explique qué se hizo.
+        """
+        detalles = []
+        filtradas = list(rows)
+
+        for predicate in predicates:
+            expression = getattr(predicate, "distance", None)
+            if expression is None:
+                continue
+
+            columnas = [
+                clave for clave in (filtradas[0].keys() if filtradas else ())
+            ]
+            lat_column = QueryExecutor._match_spatial_column(
+                columnas, expression.column
+            )
+            lon_column = QueryExecutor._match_lon_column(columnas, lat_column)
+
+            detalles.append(
+                {
+                    "column": expression.column,
+                    "lat_column": lat_column,
+                    "lon_column": lon_column,
+                    "operator": predicate.operator,
+                    "value": predicate.value,
+                    "metric": expression.metric,
+                }
+            )
+
+            if lat_column is None or lon_column is None:
+                # No se pueden resolver las coordenadas: no se puede evaluar la
+                # distancia. Se devuelve vacío en lugar de dejar pasar todo.
+                return [], detalles
+
+            umbral = float(predicate.value)
+            operador = predicate.operator
+            conservadas = []
+            for row in filtradas:
+                try:
+                    lat = float(row[lat_column])
+                    lon = float(row[lon_column])
+                except (TypeError, ValueError):
+                    continue
+                if expression.metric == "euclidean":
+                    distancia = euclidean(expression.point, (lat, lon))
+                else:
+                    distancia = haversine(expression.point, (lat, lon))
+
+                if operador == "<":
+                    pasa = distancia < umbral
+                elif operador == "<=":
+                    pasa = distancia <= umbral
+                elif operador == ">":
+                    pasa = distancia > umbral
+                else:
+                    pasa = distancia >= umbral
+
+                if pasa:
+                    row = dict(row)
+                    row["_distance"] = distancia
+                    row["_lat"] = lat
+                    row["_lon"] = lon
+                    conservadas.append(row)
+
+            filtradas = conservadas
+
+        return filtradas, detalles
+
+    @staticmethod
+    def _match_spatial_column(columnas, buscada: str) -> Optional[str]:
+        """Encuentra la columna de latitud a partir de la columna del índice."""
+        objetivo = (buscada or "").strip().lower()
+        for columna in columnas:
+            if str(columna).lower() == objetivo:
+                return columna
+        # El índice puede estar declarado sobre la longitud: se deduce la latitud.
+        if objetivo in {"lon", "lng", "long", "longitud"}:
+            for candidata in ("lat", "latitud", "latitude", "y"):
+                for columna in columnas:
+                    if str(columna).lower() == candidata:
+                        return columna
+        return None
+
+    @staticmethod
+    def _match_lon_column(columnas, lat_column: Optional[str]) -> Optional[str]:
+        """Deduce la columna de longitud a partir de la de latitud."""
+        if lat_column is None:
+            return None
+        nombre = str(lat_column).lower()
+        pares = {
+            "lat": ("lon", "lng", "long", "longitud"),
+            "latitud": ("longitud", "lon", "lng", "long"),
+            "latitude": ("longitude", "lon", "lng", "long"),
+            "y": ("x", "lon", "lng"),
+        }
+        for candidata in pares.get(nombre, ("lon", "lng", "long", "longitud")):
+            for columna in columnas:
+                if str(columna).lower() == candidata:
+                    return columna
+        return None
+
     def _resolve_select_names(self, statement: SelectStatement) -> SelectStatement:
         """Normaliza a los nombres del esquema las columnas de un SELECT.
 
@@ -381,9 +537,16 @@ class QueryExecutor:
 
         def normalizar(predicate: Predicate) -> Predicate:
             canonica = self._canonical_column_in(table, predicate.column)
-            if canonica is None:
+            if canonica is None or canonica == predicate.column:
+                # Se conserva el predicado tal cual (incluido su campo
+                # ``distance`` si es un predicado espacial).
                 return predicate
-            return Predicate(canonica, predicate.operator, predicate.value)
+            return Predicate(
+                canonica,
+                predicate.operator,
+                predicate.value,
+                distance=getattr(predicate, "distance", None),
+            )
 
         query = statement.query_spec
         spec = replace(
@@ -397,6 +560,7 @@ class QueryExecutor:
                 OrderBy(
                     self._canonical_column_in(table, item.column) or item.column,
                     item.descending,
+                    distance=getattr(item, "distance", None),
                 )
                 for item in query.order_by
             ),
@@ -427,9 +591,16 @@ class QueryExecutor:
 
         def normalizar(predicate: Predicate) -> Predicate:
             canonica = self._canonical_column_in(table, predicate.column)
-            if canonica is None:
+            if canonica is None or canonica == predicate.column:
+                # Se conserva el predicado tal cual (incluido su campo
+                # ``distance`` si es un predicado espacial).
                 return predicate
-            return Predicate(canonica, predicate.operator, predicate.value)
+            return Predicate(
+                canonica,
+                predicate.operator,
+                predicate.value,
+                distance=getattr(predicate, "distance", None),
+            )
 
         cambios = {
             "predicates": tuple(
@@ -450,6 +621,110 @@ class QueryExecutor:
             )
 
         return replace(statement, **cambios)
+
+    # ------------------------------------------------------------------
+    # SELECT espacial (Parte 2)
+    # ------------------------------------------------------------------
+
+    def _execute_spatial(
+        self,
+        statement: SelectStatement,
+        table: TableMetadata,
+        kind: str,
+    ) -> Optional[QueryResult]:
+        """Ejecuta una consulta espacial con el R-Tree.
+
+        Devuelve ``None`` si la tabla no tiene índice espacial para esa columna:
+        en ese caso la consulta sigue por el camino normal (escaneo + filtro),
+        que es correcto aunque más lento, y el plan lo refleja.
+        """
+        query = statement.query_spec
+        spatial = SpatialExecutor(self.catalog)
+
+        try:
+            if kind == "knn":
+                order_by = find_spatial_order_by(query)
+                if order_by is None:
+                    return None
+                k = statement.limit
+                if k is None:
+                    raise SpatialQueryError(
+                        "ORDER BY distancia(...) necesita LIMIT k para ser una "
+                        "búsqueda de k vecinos más cercanos"
+                    )
+                rows, plan = spatial.execute_knn(table, order_by, k)
+
+            elif kind == "range":
+                predicate = find_distance_predicate(query)
+                if predicate is None:
+                    return None
+                rows, plan = spatial.execute_range(
+                    table, predicate, limit=statement.limit
+                )
+                # El resto de predicados (no espaciales) se aplican aquí.
+                otras = [
+                    p for p in query.predicates
+                    if not getattr(p, "is_spatial", False)
+                ]
+                if otras:
+                    rows = [
+                        row for row in rows
+                        if self.matches_all(row, otras)
+                    ]
+                    plan["steps"].append(
+                        {
+                            "operator": "FILTER",
+                            "table": table.name,
+                            "index": None,
+                            "reason": "predicados no espaciales del WHERE",
+                            "details": {
+                                "predicates": [
+                                    self._predicate_dict(p) for p in otras
+                                ]
+                            },
+                        }
+                    )
+            elif kind == "polygon":
+                polygon = find_polygon_predicate(query)
+                if polygon is None:
+                    return None
+                registered = self.catalog.spatial_index_for(
+                    table.name, polygon.column
+                )
+                if registered is None:
+                    return None
+                index = registered.implementation
+                # La expresión espacial del polígono lleva su propia columna.
+                from query.query_planner import DistanceExpression
+
+                rows, plan = spatial.execute_polygon(
+                    table,
+                    DistanceExpression(
+                        polygon.column,
+                        (polygon.ring[0][0], polygon.ring[0][1]),
+                    ),
+                    polygon.ring,
+                )
+            else:
+                return None
+
+        except SpatialQueryError as exc:
+            # Sin índice espacial (o consulta mal formada): se devuelve el error
+            # como resultado legible, igual que el resto del motor.
+            if "no tiene índice R-Tree" in str(exc):
+                return None
+            raise QueryExecutionError(str(exc))
+
+        projected, columns = self._project_rows(
+            rows, statement.columns, grouped=False
+        )
+        return QueryResult.ok(
+            "SELECT",
+            columns=columns,
+            rows=projected,
+            affected_rows=len(projected),
+            execution_plan={**plan, "spatial": True, "kind": kind},
+        )
 
     # ------------------------------------------------------------------
     # INSERT
@@ -1173,6 +1448,7 @@ class QueryExecutor:
             unique=statement.unique,
             name=statement.name,
             if_not_exists=statement.if_not_exists,
+            lon_column=getattr(statement, "column2", None),
         )
         build_ms = self._elapsed_ms(started)
 
@@ -1334,12 +1610,17 @@ class QueryExecutor:
         inner = statement.statement
 
         if isinstance(inner, SelectStatement):
+            inner = self._resolve_select_names(inner)
             query = inner.query_spec
             table = self.catalog.get_table(query.table)
             self._validate_columns_for_select(inner, table)
 
-            plan = self._planner().plan(query)
-            payload = plan.to_dict()
+            # Parte 2: si la consulta es espacial y hay índice R-Tree, el plan es
+            # el del R-Tree (con su estimación de candidatos), no un escaneo.
+            payload = self._spatial_explain(inner, table)
+            if payload is None:
+                plan = self._planner().plan(query)
+                payload = plan.to_dict()
             payload["runtime_steps"] = []
 
             if statement.analyze:
@@ -1399,6 +1680,88 @@ class QueryExecutor:
             rows=[{"plan": self._render_plan(payload)}],
             execution_plan=payload,
         )
+
+    def _spatial_explain(
+        self,
+        statement: SelectStatement,
+        table: TableMetadata,
+    ) -> Optional[Dict[str, Any]]:
+        """Plan lógico de una consulta espacial, sin ejecutarla.
+
+        Devuelve ``None`` si la consulta no es espacial o si la tabla no tiene
+        índice R-Tree (en ese caso el plan correcto es un escaneo con filtro).
+        """
+        query = statement.query_spec
+        kind = spatial_kind(query)
+        if kind is None:
+            return None
+
+        if kind == "knn":
+            order_by = find_spatial_order_by(query)
+            if order_by is None or order_by.distance is None:
+                return None
+            expression = order_by.distance
+            registered = self.catalog.spatial_index_for(table.name, expression.column)
+            if registered is None:
+                return None
+            index = registered.implementation
+            operator = "RTREE_KNN"
+            details = {
+                "k": statement.limit,
+                "metric": expression.metric,
+                "point": list(expression.point),
+                "column": expression.column,
+                "points_indexed": len(index),
+                "height": index.tree.height,
+                "indexed_columns": [index.lat_column, index.lon_column],
+            }
+            reason = (
+                "k-NN por best-first search: se ordena la cola de nodos con "
+                "MINDIST (cota inferior) y sólo se calcula la distancia real "
+                "con los puntos de las hojas visitadas"
+            )
+        else:
+            predicate = find_spatial_predicate(query)
+            if predicate is None or predicate.distance is None:
+                return None
+            expression = predicate.distance
+            registered = self.catalog.spatial_index_for(table.name, expression.column)
+            if registered is None:
+                return None
+            index = registered.implementation
+            operator = "RTREE_RANGE_SCAN"
+            details = {
+                "radius": predicate.value,
+                "metric": expression.metric,
+                "point": list(expression.point),
+                "column": expression.column,
+                "points_indexed": len(index),
+                "height": index.tree.height,
+                "indexed_columns": [index.lat_column, index.lon_column],
+            }
+            reason = (
+                "búsqueda por rango: el MBR del círculo poda el R-Tree y la "
+                "distancia real se comprueba con las coordenadas exactas"
+            )
+
+        return {
+            "table": table.name,
+            "planner_type": "spatial_rtree",
+            "access_path": operator,
+            "used_indexes": [registered.metadata.name],
+            "spatial": True,
+            "kind": kind,
+            "steps": [
+                {
+                    "operator": operator,
+                    "table": table.name,
+                    "index": registered.metadata.name,
+                    "reason": reason,
+                    "details": details,
+                }
+            ],
+            "runtime_steps": [],
+        }
 
     @staticmethod
     def _render_plan(payload: Dict[str, Any]) -> str:
@@ -2006,11 +2369,19 @@ class QueryExecutor:
 
     @staticmethod
     def _predicate_dict(predicate):
-        return {
+        datos = {
             "column": predicate.column,
             "operator": predicate.operator,
             "value": predicate.value,
         }
+        distance = getattr(predicate, "distance", None)
+        if distance is not None:
+            datos["distance"] = {
+                "column": distance.column,
+                "point": list(distance.point),
+                "metric": distance.metric,
+            }
+        return datos
 
     @staticmethod
     def _canonical_column(rows, requested: str) -> str:

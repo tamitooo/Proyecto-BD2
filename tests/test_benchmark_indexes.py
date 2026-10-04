@@ -60,8 +60,8 @@ def test_dataset_contains_expected_unique_ids():
 
 
 def test_run_benchmarks_returns_all_expected_rows(tiny_results):
-    # 3 índices x 8 métricas por índice.
-    assert len(tiny_results) == 24
+    # 3 índices x 10 métricas por índice, más 1 línea base sin índice.
+    assert len(tiny_results) == 31
 
     indexes = {
         result.index_type
@@ -72,7 +72,35 @@ def test_run_benchmarks_returns_all_expected_rows(tiny_results):
         "bplus_clustered",
         "bplus_unclustered",
         "extendible_hash",
+        "linear_scan",
     }
+
+
+def test_linear_scan_baseline_is_present_and_comparable(tiny_results, tiny_config):
+    """El enunciado exige comparar los índices contra la búsqueda sin índice."""
+    baselines = [
+        result for result in tiny_results
+        if result.metric == "linear_scan"
+    ]
+
+    # Una sola línea base por tamaño de dataset (no una por índice).
+    assert len(baselines) == 1
+
+    baseline = baselines[0]
+    assert baseline.index_type == "linear_scan"
+    assert baseline.supported is True
+    assert baseline.dataset_size == tiny_config.sizes[0]
+    assert baseline.operations == tiny_config.exact_queries
+    assert baseline.avg_us is not None
+
+    # Se mide sobre el mismo conjunto de claves que 'exact_hit'.
+    hits = [
+        result for result in tiny_results
+        if result.metric == "exact_hit"
+    ]
+    assert hits
+    for hit in hits:
+        assert hit.result_items == baseline.result_items
 
 
 def test_all_expected_metrics_are_present(tiny_results):
@@ -82,6 +110,10 @@ def test_all_expected_metrics_are_present(tiny_results):
         "exact_hit",
         "exact_miss",
         "range_search",
+        # El índice solo: sin pagar la recuperación del registro.
+        "range_search_raw_index",
+        # Con la recuperación del registro, comparable con el B+ agrupado.
+        "range_search_materialized",
         "ordered_scan",
         "insert",
         "delete",
@@ -90,6 +122,9 @@ def test_all_expected_metrics_are_present(tiny_results):
     by_index = {}
 
     for result in tiny_results:
+        # La línea base sin índice no es una técnica de indexación.
+        if result.index_type == "linear_scan":
+            continue
         by_index.setdefault(
             result.index_type,
             set(),
@@ -368,8 +403,8 @@ def test_multiple_dataset_sizes_generate_independent_results():
 
     results = run_benchmarks(config)
 
-    # 2 tamaños x 3 índices x 8 métricas.
-    assert len(results) == 48
+    # 2 tamaños x (3 índices x 10 métricas + 1 línea base sin índice).
+    assert len(results) == 62
 
     assert {
         result.dataset_size

@@ -64,7 +64,7 @@ HTTP hacia la interfaz (`fastapi`, `uvicorn`).
 | 2.1.5 Interfaz de usuario (frontend) | ✅ Completo | `backend/`, `frontend/` |
 | 2.1.6 Comparación experimental | ✅ Completo | `benchmarks/`, `benchmark_results/`, `docs/` |
 | Documentación técnica (README) | ✅ Este documento | `README.md` |
-| Informe incremental | 🚧 En elaboración | `docs/` |
+| Informe incremental | 🚧 **Pendiente** (el archivo `docs/informe_incremental.md` está vacío) | material base en `docs/revision/` |
 
 Las Partes 2 a 5 (espacial, texto, multimedia y aplicación con IA) están planificadas en
 la sección [14](#14-roadmap-partes-2-a-5).
@@ -185,18 +185,20 @@ Proyecto-BD2/
 │   └── external_hashing.py      #   GROUP BY y JOIN por particionado en disco
 │
 ├── query/                       # 2.1.3 Procesamiento de consultas SQL
-│   ├── sql_parser.py            #   Parser SQL (SELECT/INSERT/DELETE, WHERE/GROUP BY/ORDER BY/JOIN)
+│   ├── sql_parser.py            #   Parser SQL (SELECT/INSERT/UPDATE/DELETE, CREATE/DROP TABLE, CREATE/DROP INDEX, BEGIN/END, EXPLAIN)
 │   ├── query_planner.py         #   Optimizador basado en reglas + estructura del plan
-│   ├── catalog.py               #   Registro de tablas, esquemas e índices en tiempo de ejecución
-│   ├── query_executor.py        #   Ejecutor SQL sobre storage + índices + operadores  ← ruta vigente
+│   ├── catalog.py               #   Registro de tablas, esquemas e índices + DDL (CREATE/DROP TABLE e INDEX)
+│   ├── query_executor.py        #   Ejecutor SQL sobre storage + índices + operadores + transacciones  ← ruta vigente
 │   ├── query_result.py          #   Contrato de respuesta serializable a JSON
+│   ├── csv_loader.py            #   Importación de CSV por el mismo camino que INSERT
 │   ├── executor.py              #   Ejecutor end-to-end anterior (legado, usado por examples/ y tests e2e)
 │   └── test_query_executor.py   #   Pruebas del ejecutor y del contrato del frontend
 │
 ├── transactions/                # 2.1.4 Transacciones y concurrencia
-│   ├── transaction_manager.py   #   BEGIN TRANSACTION / END TRANSACTION
-│   ├── lock_manager.py          #   Locks compartidos/exclusivos, crecimiento y detección de conflictos
+│   ├── transaction_manager.py   #   Ciclo de vida BEGIN/COMMIT/ROLLBACK (módulo didáctico)
+│   ├── lock_manager.py          #   Locks compartidos/exclusivos (PS/PX) + timeout (2PL estricto)
 │   └── demo_concurrencia.py     #   Demostración con hilos: race conditions y su resolución
+│                                #   (las transacciones por SQL las ejecuta query/query_executor.py)
 │
 ├── backend/                     # 2.1.5 Integración motor ↔ interfaz (API REST)
 │   ├── api.py                   #   Endpoints FastAPI
@@ -306,12 +308,23 @@ vuelve con `success = false` y un texto legible para el panel de resultados.
 
 ### 7.5 Transacciones y concurrencia (`transactions/`)
 
-- `transaction_manager.py`: `BEGIN TRANSACTION` / `END TRANSACTION` agrupando
-  operaciones.
-- `lock_manager.py`: locks **compartidos y exclusivos** por recurso, con crecimiento de
-  locks y detección de conflictos.
-- `demo_concurrencia.py`: simulación con **hilos** que muestra varias transacciones
-  ejecutándose a la vez, una *race condition* y cómo el sistema la resuelve.
+Hay **dos niveles**, y conviene no confundirlos al exponer el proyecto:
+
+1. **Transacciones dentro del motor (lo que se demuestra en la interfaz).**
+   `BEGIN TRANSACTION`, `END TRANSACTION`, `COMMIT` y `ROLLBACK` los ejecuta el
+   **mismo `QueryExecutor`** que atiende el panel de consultas y el API REST. En la
+   primera escritura de cada tabla se guarda su estado previo y se toma su **bloqueo
+   exclusivo**; `ROLLBACK` restaura las filas, reconstruye los índices y además deshace
+   el DDL de la transacción (`CREATE TABLE`, `CREATE INDEX`, `DROP TABLE`). `END
+   TRANSACTION`/`COMMIT` confirma y libera. El endpoint `GET /api/health` informa si hay
+   una transacción abierta (`transaction`), con su id, sentencias y tablas bloqueadas.
+2. **Módulo didáctico con hilos (`transactions/`).** `transaction_manager.py` modela el
+   ciclo de vida sobre una tabla en memoria y `lock_manager.py` implementa los bloqueos
+   compartidos (PS) y exclusivos (PX) por recurso con **protocolo 2PL estricto** (todo se
+   libera en COMMIT/ROLLBACK). El mecanismo frente a conflictos es **timeout** (2 s) que
+   lanza `RecursoBloqueado`, no una detección de interbloqueos por grafo de espera.
+   `demo_concurrencia.py` ejecuta varias transacciones con **hilos** y muestra una
+   *race condition* (actualización perdida sobre `X = 100`) y cómo los locks la evitan.
 
 ### 7.6 Interfaz de usuario e integración (`backend/` + `frontend/`)
 
@@ -442,8 +455,9 @@ Respuesta esperada de `/api/query` (contrato del frontend):
 | `ModuleNotFoundError: No module named 'storage'` | `uvicorn` se lanzó desde otra carpeta. Ejecútalo **desde la raíz** del repositorio: `python -m uvicorn backend.api:app --port 8000` |
 | El frontend muestra *"No se pudo contactar al API"* | El API no está corriendo o está en otro puerto. Levántalo en el `8000`, que es el destino del proxy |
 | `EADDRINUSE` / puerto ocupado | Cambia el puerto de Vite (`npm run dev -- --port 5174`) o detén el proceso que usa el 8000 |
-| Cambié los datos y quiero empezar de cero | Borra `backend/data/` y reinicia el API (vuelve a cargar los datos de ejemplo) |
-| `OR`, `LIMIT` o alias de tabla dan error | No forman parte del subconjunto SQL implementado; ver la sección [9](#9-subconjunto-sql-soportado) |
+| Cambié los datos y quiero empezar de cero | Borra `backend/data/` (incluido `catalog.json` para descartar las tablas creadas por SQL) y reinicia el API |
+| El alias de tabla (`FROM users u`) o un agregado sin `GROUP BY` dan error | Son las dos únicas limitaciones vigentes del subconjunto SQL; ver la sección [9](#9-subconjunto-sql-soportado) |
+| Creé una tabla y desapareció al reiniciar | No debería: su definición se guarda en `backend/data/catalog.json`. Si borraste esa carpeta, vuelve a crearla |
 | `pytest` falla al crear archivos temporales | Ejecuta las pruebas en una carpeta con permisos de escritura y sin antivirus que bloquee `%TEMP%` |
 
 ---
@@ -456,13 +470,28 @@ parser implementa exactamente:
 ```sql
 SELECT [*|col1, col2, ...] FROM tabla
   [JOIN tabla2 ON tabla.col = tabla2.col]
-  [WHERE predicado [AND predicado] ...]
+  [WHERE predicado [AND|OR predicado] ...]
   [GROUP BY col]
   [ORDER BY col [ASC|DESC]]
-  [LIMIT n]                 -- no soportado todavía
+  [LIMIT n]
 
 INSERT INTO tabla VALUES (v1, v2, ...)
-DELETE FROM tabla [WHERE predicado [AND predicado] ...]
+UPDATE tabla SET col = valor, ... [WHERE ...]
+DELETE FROM tabla [WHERE predicado [AND|OR predicado] ...]
+
+CREATE TABLE [IF NOT EXISTS] tabla (
+    col TIPO [PRIMARY KEY], ...
+    [, PRIMARY KEY (col)]
+) [USING HEAP|SEQUENTIAL]
+DROP TABLE [IF EXISTS] tabla
+
+CREATE [UNIQUE] INDEX [nombre] ON tabla (columna)
+    [USING HASH|BPLUS_CLUSTERED|BPLUS_UNCLUSTERED]
+DROP INDEX [IF EXISTS] nombre [ON tabla]
+
+BEGIN TRANSACTION | END TRANSACTION | COMMIT | ROLLBACK
+
+EXPLAIN [ANALYZE] <sentencia>
 ```
 
 | Característica | Estado | Ejemplo |
@@ -471,19 +500,101 @@ DELETE FROM tabla [WHERE predicado [AND predicado] ...]
 | Operadores de comparación | ✅ | `=`, `!=`, `<>`, `<`, `<=`, `>`, `>=` |
 | Rangos | ✅ | `WHERE age BETWEEN 19 AND 22` |
 | Conjunción de predicados | ✅ `AND` | `WHERE age >= 20 AND dept = 'CS'` |
-| Disyunción | ❌ `OR` | — |
+| Disyunción | ✅ `OR` (sin paréntesis) | `WHERE age >= 24 OR dept = 'CS'` |
 | Ordenamiento | ✅ `ASC`/`DESC` | `ORDER BY salary DESC` |
-| Agrupación y agregados | ✅ con `GROUP BY` | `SELECT dept, COUNT(*) AS total, AVG(salary) AS prom FROM employees GROUP BY dept` |
+| Límite de filas | ✅ `LIMIT` | `SELECT id FROM employees ORDER BY salary DESC LIMIT 3` |
+| Agrupación y agregados | ✅ con `GROUP BY` | `SELECT dept, COUNT(*) AS total FROM employees GROUP BY dept` |
 | Agregados sin `GROUP BY` | ❌ | `SELECT COUNT(*) FROM users` |
 | Equi-JOIN | ✅ igualdad entre columnas, **sin alias** | `SELECT users.name, employees.id FROM users JOIN employees ON users.dept = employees.dept` |
 | Alias de tabla (`FROM users u`) | ❌ | — |
-| `LIMIT` | ❌ | — |
+| `CREATE TABLE` / `DROP TABLE` (DDL) | ✅ | `CREATE TABLE alumnos (id INT PRIMARY KEY, nombre VARCHAR(100))` |
+| `CREATE INDEX` / `DROP INDEX` | ✅ las tres técnicas, `UNIQUE` solo con Hash | `CREATE INDEX idx_alumnos_nota ON alumnos (nota) USING BPLUS_UNCLUSTERED` |
+| `UPDATE` | ✅ | `UPDATE users SET age = 21 WHERE id = 3` |
+| `BEGIN` / `END TRANSACTION` / `COMMIT` / `ROLLBACK` | ✅ dentro del motor | `BEGIN TRANSACTION` … `ROLLBACK` |
+| `EXPLAIN` / `EXPLAIN ANALYZE` | ✅ | `EXPLAIN ANALYZE SELECT * FROM employees WHERE salary >= 4000` |
+| Carga de CSV | ✅ (endpoint + botón + CLI) | ver [§9.1](#91-carga-de-datos-desde-csv) |
 
 **Índices utilizables por el planner:** Hash Extendible (igualdad), B+ no agrupado
 (igualdad y rango), B+ agrupado (igualdad, rango y `ORDER BY` sin `External Sort`).
+Un `WHERE` con `OR` sobre una misma columna indexada se resuelve como **unión de
+búsquedas por índice** (`HASH_INDEX_UNION` / `BPLUS_INDEX_UNION`), y un rango con los
+dos extremos (`age >= 19 AND age <= 23`) usa **un solo** `range_search` en lugar de
+indexar un extremo y filtrar el resto.
 
-Las limitaciones marcadas con ❌ corresponden a los issues abiertos #24–#28 del tablero
-del equipo y no afectan a los ejemplos precargados en la interfaz.
+**Índices creados por el usuario:** `CREATE INDEX` construye el índice y lo puebla
+recorriendo la tabla, así que funciona también sobre datos ya cargados (el caso de la
+demo: se carga el CSV y después se indexa). El índice sobrevive al reinicio porque queda
+en el manifiesto del catálogo y se reconstruye al abrirlo. El índice de la `PRIMARY KEY`
+no se puede eliminar: es lo que garantiza que no haya claves primarias duplicadas.
+
+**Tipos de columna admitidos:** `INT` (INTEGER/SMALLINT/BIGINT), `FLOAT`
+(REAL/DOUBLE/DECIMAL/NUMERIC) y `VARCHAR(n)` (CHAR/TEXT/STRING). La `PRIMARY KEY`
+declarada (o la primera columna si no se declara) genera automáticamente un **índice
+Hash único**.
+
+`EXPLAIN` devuelve el plan lógico sin ejecutar la consulta; `EXPLAIN ANALYZE` además la
+ejecuta y añade la **traza real** con tiempos y filas por operador. Ambas responden en el
+campo `execution_plan` y como texto en la columna `plan`.
+
+Las limitaciones marcadas con ❌ quedan como trabajo futuro (agregados sin `GROUP BY` y
+alias de tabla).
+
+### 9.1 Carga de datos desde CSV
+
+El flujo siempre es: **primero se crea la tabla** (con su esquema y tipos) y **después se
+carga el CSV**. La tabla puede llamarse como sea y tener las columnas que quieras; el CSV
+no necesita estar en el mismo orden que el `CREATE TABLE`, porque el mapeo es **por
+nombre de columna**.
+
+```sql
+CREATE TABLE animales (
+    id INT PRIMARY KEY,
+    nombre VARCHAR(40),
+    especie VARCHAR(30),
+    edad INT,
+    peso FLOAT
+);
+```
+
+Luego se carga un CSV cuya cabecera nombre esas columnas (en cualquier orden):
+
+```csv
+peso,especie,id,nombre,edad
+12.5,Perro,1,Firulais,5
+4.2,Gato,2,"Michi, el gato",3
+```
+
+Tres formas equivalentes (todas usan el mismo camino que `INSERT`, por lo que respetan la
+clave primaria y mantienen los índices):
+
+```bash
+# 1) Línea de comandos (sin API en ejecución)
+python -m tools.import_csv --list
+python -m tools.import_csv --sql "CREATE TABLE alumnos (id INT PRIMARY KEY, nombre VARCHAR(100), carrera_id INT, nota INT)" \
+                           --table alumnos --file alumnos_prueba_bd2.csv
+
+# 2) API REST
+curl.exe -X POST http://127.0.0.1:8000/api/tables/alumnos/import \
+  -H "Content-Type: application/json" \
+  -d "{\"csv_text\":\"id,nombre,carrera_id,nota\n1,Ana,1,15\n\",\"has_header\":true}"
+```
+
+3. **Interfaz web:** panel de **Archivos → "Cargar CSV en la tabla seleccionada"**, donde
+   además se elige el **separador** (coma, punto y coma de Excel en español, o tabulador)
+   y si la primera fila es el **encabezado**.
+
+El CSV se interpreta con la librería estándar `csv` (admite comillas y comas dentro de un
+campo: `"Pérez, Juan"`). Las columnas se mapean **por nombre de encabezado**, así que el
+CSV puede traerlas en cualquier orden. Si el encabezado no nombra todas las columnas de la
+tabla, la importación **falla con un mensaje que lista las columnas esperadas** en lugar de
+mapear por posición y guardar datos en la columna equivocada (para forzar el mapeo por
+posición, usa `has_header=False`). El reporte devuelve filas leídas, insertadas,
+rechazadas y los errores por fila.
+
+Las tablas creadas con `CREATE TABLE` **persisten entre reinicios** del API: su definición
+se guarda en `backend/data/catalog.json` y se restauran al arrancar. Un CSV con una ruta
+que no existe, un encabezado que no coincide o cero filas de datos se reporta como
+**error**, no como una importación exitosa de 0 filas.
 
 ---
 
@@ -496,6 +607,8 @@ Base: `http://127.0.0.1:8000` · Documentación interactiva (Swagger UI): `/docs
 | `GET` | `/api/health` | Estado del API y lista de tablas registradas |
 | `GET` | `/api/tables` | Catálogo completo: tablas, almacenamiento, esquema, índices, archivos, tamaño y número de registros |
 | `GET` | `/api/tables/{name}` | Igual que el anterior para una sola tabla (404 si no existe) |
+| `GET` | `/api/catalog` | Tablas creadas por el usuario (las persistidas en `catalog.json`) |
+| `POST` | `/api/tables/{name}/import` | Importa un CSV (`csv_text`, `has_header`, `delimiter`) en una tabla existente |
 | `POST` | `/api/query` | Ejecuta una sentencia SQL y devuelve el `QueryResult` completo (nunca lanza excepción) |
 
 Ejemplo de petición:
@@ -510,8 +623,8 @@ curl.exe -X POST http://127.0.0.1:8000/api/query \
 
 ## 11. Pruebas
 
-La suite contiene **261 funciones de prueba** distribuidas en `tests/` (17 archivos) y
-`query/test_query_executor.py`:
+La suite contiene **326 funciones de prueba** distribuidas en `tests/` (19 archivos,
+incluido `test_dinamica_parte1.py`) y `query/test_query_executor.py`:
 
 | Archivo | Qué verifica |
 |---|---|
@@ -525,13 +638,19 @@ La suite contiene **261 funciones de prueba** distribuidas en `tests/` (17 archi
 | `query/test_query_executor.py` | Ejecución real (SELECT/INSERT/DELETE, WHERE, ORDER BY, GROUP BY, JOIN) y contrato del frontend |
 | `tests/test_storage_integration.py` | Integración almacenamiento + índices (incluye la invalidación de RID al reorganizar) |
 | `tests/test_end_to_end.py` | Flujo parser → planner → ejecutor → almacenamiento |
-| `tests/test_transactions.py` | Transacciones y locks |
+| `tests/test_transactions.py` | Transacciones y locks (módulo con hilos) |
+| `tests/test_profesor_script.py` | El script SQL de la cátedra sobre el CSV de prueba, de punta a punta |
+| `tests/test_dinamica_parte1.py` | `CREATE INDEX`/`DROP INDEX`, transacciones dentro del motor, unión de índices en `OR`, rango con dos extremos y línea base del benchmark |
 | `tests/test_benchmark_*.py` | Validez metodológica de los benchmarks (carga masiva idéntica a la API pública) |
 
 ```bash
 python -m pytest -q                                   # suite completa
 python -m unittest discover -s tests -t . -v          # alternativa sin pytest
 ```
+
+El resultado esperado es **326 pruebas sin fallos** (una se marca como *skip* cuando el
+entorno no permite crear temporales; algunas pruebas que usan `tmp_path` de pytest
+requieren permiso de escritura en `%TEMP%`, ver §13).
 
 ---
 
@@ -541,7 +660,10 @@ Metodología completa en
 [`docs/conclusiones_experimentales.md`](docs/conclusiones_experimentales.md) y tabla de
 ventajas/desventajas en
 [`docs/comparacion_ventajas_desventajas.md`](docs/comparacion_ventajas_desventajas.md).
-Datasets de 1 000, 10 000 y 100 000 registros, semilla fija 42 y 3 repeticiones.
+Semilla fija 42 y 3 repeticiones. El comparativo de **almacenamiento** usa 1 000, 10 000 y
+100 000 registros; el de **índices** usa 1 000, 10 000 y 50 000 (a 100 000 la medición de
+mutaciones una a una deja de ser practicable en este entorno) e incluye una **línea base
+sin índice**, que es lo que permite cuantificar la mejora real de cada estructura.
 
 ### 12.1 Heap File vs Archivo Secuencial Paginado
 
@@ -554,16 +676,26 @@ Datasets de 1 000, 10 000 y 100 000 registros, semilla fija 42 y 3 repeticiones.
 | Espacio | Empate | Heap: 0.03–0.7 % de desperdicio; Secuencial: exacto tras reorganizar, hasta 30 % de tombstones entre reorganizaciones |
 | Reutilización de espacio | **Heap File** | 300/300 y 3000/3000 inserciones reutilizaron un slot liberado |
 
-### 12.2 B+ agrupado vs B+ no agrupado vs Hash Extendible (100 000 claves)
+### 12.2 B+ agrupado vs B+ no agrupado vs Hash Extendible (50 000 claves)
 
-| Métrica | B+ agrupado | B+ no agrupado | Hash extendible |
-|---|---|---|---|
-| Construcción | 14 566 ms | 8 912 ms | **2 760 ms** |
-| Igualdad exacta (*hit*) | 13.97 µs | 2.72 µs | **1.58 µs** |
-| Búsqueda por rango | 8 456 µs | **949 µs** | no aplica |
-| Recorrido ordenado | 949 ms | **131 ms** | no aplica |
-| Inserción / borrado | 30.7 / 36.9 µs | 22.6 / 47.6 µs | **1.9 / 7.8 µs** |
-| Espacio | 4.71 MB | 1.44 MB | **1.38 MB** |
+El benchmark incluye además la **línea base sin índice** (búsqueda lineal) que exige el
+enunciado, para que la mejora sea medible y no solo afirmada.
+
+| Métrica | B+ agrupado | B+ no agrupado | Hash extendible | Búsqueda lineal |
+|---|---|---|---|---|
+| Construcción | 1 361 ms | 1 009 ms | **297 ms** | — |
+| Igualdad exacta (*hit*) | 9.14 µs | 3.48 µs | **1.44 µs** | 24 699 µs |
+| Mejora frente a la búsqueda lineal | 2 703× | 7 100× | **17 208×** | 1× |
+| Rango (solo índice) | 377 µs | **326 µs** | no aplica | — |
+| Rango + recuperar cada fila | 3 298 µs | **771 µs** | no aplica | — |
+| Recorrido ordenado | 470 ms | **276 ms** | no aplica | — |
+| Inserción / borrado | 21.4 / 17.0 µs | 15.6 / 17.1 µs | **2.3 / 4.7 µs** | — |
+| Espacio (bytes) | 2 285 197 | 669 049 | **637 755** | — |
+
+**Sobre el espacio del B+ agrupado:** el 85 % de sus 2.29 MB son los **registros
+completos** que guarda en las hojas (≈ 39 bytes por registro). Es el costo explícito del
+*index clustering*: a cambio, `SELECT *` y `ORDER BY` no necesitan tocar el Heap File. El
+benchmark lo reporta en el campo `payload_bytes`.
 
 **Cuándo usar cada estructura:**
 
@@ -580,8 +712,8 @@ Datasets de 1 000, 10 000 y 100 000 registros, semilla fija 42 y 3 repeticiones.
 `benchmark_results/plots/`: `storage_dashboard.png`, `storage_insert.png`,
 `storage_search.png`, `storage_space.png`, `storage_mutation.png`,
 `index_dashboard.png`, `index_build_time.png`, `index_exact_lookup.png`,
-`index_range_search.png`, `index_ordered_scan.png`, `index_size.png`,
-`index_mutations.png`.
+`index_range_search.png`, `index_range_search_fair.png`, `index_ordered_scan.png`,
+`index_size.png`, `index_mutations.png`.
 
 **Limitación declarada:** el entorno de medición intercepta la E/S de archivos
 (≈ 0.46 ms por escritura y ≈ 2.56 ms por lectura de 43 bytes), por lo que los tiempos
@@ -621,6 +753,11 @@ Detalle ampliado en
 
 | Documento | Contenido |
 |---|---|
+| [`docs/revision_parte1.md`](docs/revision_parte1.md) | **Revisión a fondo de la Parte 1**: qué se corrigió, verificación en vivo del flujo de la demo, hallazgos abiertos con su defensa, alineación con la clase y guion de demo de 5 minutos |
+| [`docs/revision/indices.md`](docs/revision/indices.md) | Corrección de las estructuras de indexación, uso de índices en el planner y metodología de los experimentos |
+| [`docs/revision/sql_dinamico.md`](docs/revision/sql_dinamico.md) | Superficie SQL, importación de CSV, transacciones y los dos ejecutores |
+| [`docs/revision/frontend.md`](docs/revision/frontend.md) | Tema claro, los 4 paneles y los flujos de CSV y DDL en la interfaz |
+| [`docs/revision/alineacion_clase.md`](docs/revision/alineacion_clase.md) | Comparación con el material de clase (semanas 1–7), componente por componente, con plan de repaso |
 | [`docs/comparacion_ventajas_desventajas.md`](docs/comparacion_ventajas_desventajas.md) | Tabla comparativa de técnicas con evidencia medida |
 | [`docs/conclusiones_experimentales.md`](docs/conclusiones_experimentales.md) | Metodología, resultados completos, interpretación y limitaciones |
 | [`docs/guia_issues_y_entregables.md`](docs/guia_issues_y_entregables.md) | Flujo de trabajo con issues, checklist del avance y guion de la exposición |

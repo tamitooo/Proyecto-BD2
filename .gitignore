@@ -6,6 +6,7 @@ venv/
 
 # Directorios temporales que crean los benchmarks y la demo
 .benchmark_work/
+.benchmark_heap/
 demo_parte1_data/
 
 # Carpetas temporales de las pruebas (cuando %TEMP% no es utilizable)

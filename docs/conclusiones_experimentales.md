@@ -246,6 +246,52 @@ penalizada por la misma copia).
 
 ---
 
+### 3.4 Por qué el rango parecía contradecir la teoría (y por qué no la contradice)
+
+La primera versión de estas mediciones mostraba al **B+ agrupado perdiendo** en
+búsqueda por rango, que es lo contrario de lo que predice la teoría. **Los índices
+estaban correctos**; el benchmark medía dos cosas distintas:
+
+- al **no agrupado** le pedía *sólo el recorrido del índice*, que devuelve RIDs;
+- al **agrupado** le pedía el recorrido **más una copia defensiva** (`deepcopy`) de
+  cada registro completo que devuelve.
+
+Es decir, a uno se le pedía traer el dato y al otro no. Y encima el agrupado pagaba
+una copia por fila. Con esa medición el agrupado pierde **3.6× a 4.5×**, y el gráfico
+resultante contradice la clase.
+
+El arreglo es medir la **consulta real**: el índice **más** traer cada fila **desde el
+almacenamiento**. Ahí el agrupado tiene el registro en su propia hoja y no paga
+ninguna lectura extra, mientras que el no agrupado paga una lectura por RID:
+
+| Variante medida | N = 1 000 | N = 10 000 | N = 50 000 | Quién gana |
+|---|---|---|---|---|
+| Sólo el índice (ingenuo) | 89.0 / 5.8 | 705.8 / 65.2 | 3 681.7 / 380.8 | no agrupado (10–15×) |
+| Recorrido de hojas sin copia | 6.2 / 6.6 | 64.9 / 68.6 | 374.5 / 379.9 | **empate** |
+| **Índice + traer la fila (real)** | **83.1 / 1 436.4** | **676.8 / 12 145.4** | **4 104.3 / 61 341.3** | **agrupado (15–18×)** |
+| Índice + traer la fila de un `dict` | 75.8 / 17.0 | 784.6 / 217.8 | 3 622.2 / 1 004.4 | no agrupado (3.6–4.5×) |
+
+*(cada celda es B+ agrupado / B+ no agrupado, en µs por consulta)*
+
+Tres lecturas que conviene tener presentes:
+
+1. **En la consulta real el agrupado gana por 15–18×**, que es exactamente lo que
+   enseña la teoría: al estar los registros en las hojas del índice, el rango se
+   resuelve como una lectura secuencial y no hay que ir a buscar cada fila.
+2. **El recorrido de las hojas, sin recuperar nada, es un empate** (374.5 vs 379.9 µs a
+   50 000). Tiene sentido: ambos recorren hojas enlazadas; la diferencia está en *qué*
+   guardan, no en cómo se recorren.
+3. **La variante "en memoria" se conserva a propósito** como contraste
+   metodológico: reproduce el resultado que parecía contradecir la teoría y demuestra
+   que la causa era medir la recuperación contra un diccionario en lugar del disco. En
+   un motor puramente en memoria, el índice agrupado *efectivamente* pierde, porque
+   mueve registros completos de ~39 bytes frente al RID de 8 bytes del no agrupado.
+
+Gráficas: `index_range_search_fair.png` (la comparación real, donde el agrupado gana)
+e `index_range_search_breakdown.png` (el desglose que explica el malentendido).
+
+---
+
 ## 4. Conclusiones: cuándo usar cada estructura
 
 | Escenario de consulta | Estructura recomendada | Motivo (evidencia medida) |

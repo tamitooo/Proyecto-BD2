@@ -686,11 +686,22 @@ enunciado, para que la mejora sea medible y no solo afirmada.
 | Construcción | 1 361 ms | 1 009 ms | **297 ms** | — |
 | Igualdad exacta (*hit*) | 9.14 µs | 3.48 µs | **1.44 µs** | 24 699 µs |
 | Mejora frente a la búsqueda lineal | 2 703× | 7 100× | **17 208×** | 1× |
-| Rango (solo índice) | 377 µs | **326 µs** | no aplica | — |
-| Rango + recuperar cada fila | 3 298 µs | **771 µs** | no aplica | — |
+| Igualdad + traer la fila | **10.7 µs** | 809.6 µs | 133.4 µs | — |
+| Rango: sólo el índice | 3 682 µs | **381 µs** | no aplica | — |
+| Rango: recorrido de hojas sin copia | 374.5 µs | 379.9 µs | no aplica | — |
+| **Rango + traer la fila (consulta real)** | **4 104 µs** | 61 341 µs | no aplica | — |
 | Recorrido ordenado | 470 ms | **276 ms** | no aplica | — |
 | Inserción / borrado | 21.4 / 17.0 µs | 15.6 / 17.1 µs | **2.3 / 4.7 µs** | — |
 | Espacio (bytes) | 2 285 197 | 669 049 | **637 755** | — |
+
+> **Coherencia con la teoría del B+ agrupado.** Medido como consulta real —índice
+> **más** traer cada fila del almacenamiento— el **B+ agrupado gana la búsqueda por
+> rango por 15–18×**, porque los registros ya están en sus hojas y no paga lecturas
+> por RID. Una versión anterior de estas mediciones lo mostraba perdiendo: le pedía al
+> agrupado el recorrido *más una copia* de cada registro, y al no agrupado sólo el
+> recorrido (que devuelve RIDs). La causa y el desglose están en
+> [`docs/conclusiones_experimentales.md`](docs/conclusiones_experimentales.md) §3.4 y
+> en las gráficas `index_range_search_fair.png` y `index_range_search_breakdown.png`.
 
 **Sobre el espacio del B+ agrupado:** el 85 % de sus 2.29 MB son los **registros
 completos** que guarda en las hojas (≈ 39 bytes por registro). Es el costo explícito del

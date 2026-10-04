@@ -1,5 +1,6 @@
 import csv
 import json
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -60,8 +61,8 @@ def test_dataset_contains_expected_unique_ids():
 
 
 def test_run_benchmarks_returns_all_expected_rows(tiny_results):
-    # 3 índices x 10 métricas por índice, más 1 línea base sin índice.
-    assert len(tiny_results) == 31
+    # 3 índices x 13 métricas por índice, más 1 línea base sin índice.
+    assert len(tiny_results) == 40
 
     indexes = {
         result.index_type
@@ -108,12 +109,18 @@ def test_all_expected_metrics_are_present(tiny_results):
         "build",
         "serialized_size",
         "exact_hit",
+        # Igualdad + traer la fila: es donde el B+ agrupado gana.
+        "exact_hit_materialized",
         "exact_miss",
+        "exact_miss_materialized",
+        # Solo el índice: el agrupado paga copia defensiva, el no agrupado RIDs.
         "range_search",
-        # El índice solo: sin pagar la recuperación del registro.
-        "range_search_raw_index",
-        # Con la recuperación del registro, comparable con el B+ agrupado.
+        # Índice + recuperar la fila DESDE EL HEAP FILE (la comparación real).
         "range_search_materialized",
+        # La misma recuperación desde un dict: contraste metodológico.
+        "range_search_inmemory",
+        # Recorrido crudo de las hojas, sin la copia defensiva del agrupado.
+        "range_search_raw_index",
         "ordered_scan",
         "insert",
         "delete",
@@ -403,13 +410,70 @@ def test_multiple_dataset_sizes_generate_independent_results():
 
     results = run_benchmarks(config)
 
-    # 2 tamaños x (3 índices x 10 métricas + 1 línea base sin índice).
-    assert len(results) == 62
+    # 2 tamaños x (3 índices x 13 métricas + 1 línea base sin índice).
+    assert len(results) == 80
 
     assert {
         result.dataset_size
         for result in results
     } == {10, 15}
+
+
+def test_la_recuperacion_por_rid_cuesta_y_favorece_al_agrupado():
+    """Coherencia con la teoría del B+ agrupado.
+
+    Las hojas del índice agrupado ya contienen el registro, así que resolver una
+    consulta no cuesta lecturas extra. El no agrupado devuelve RIDs y cada uno
+    es una lectura en el Heap File. Por eso, midiendo la consulta REAL (índice +
+    traer la fila), el agrupado tiene que ganar por un margen amplio.
+
+    Si esta prueba falla, el benchmark volvió a medir la recuperación contra un
+    diccionario en memoria y las gráficas contradirán la teoría de clase.
+    """
+    config = BenchmarkConfig(
+        sizes=[2000],
+        seed=11,
+        exact_queries=40,
+        range_queries=20,
+        mutation_operations=5,
+        query_repeats=2,
+        build_repeats=1,
+        bplus_order=64,
+        hash_bucket_capacity=64,
+        range_fraction=0.02,
+        heap_dir=str(Path(tempfile.mkdtemp())),
+    )
+    resultados = {
+        (result.index_type, result.metric): result
+        for result in run_benchmarks(config)
+    }
+
+    for metrica in ("range_search_materialized", "exact_hit_materialized"):
+        agrupado = resultados[("bplus_clustered", metrica)].avg_us
+        no_agrupado = resultados[("bplus_unclustered", metrica)].avg_us
+
+        assert agrupado is not None and no_agrupado is not None
+        assert agrupado < no_agrupado, (
+            f"{metrica}: el B+ agrupado ({agrupado} us) debería ser más rápido "
+            f"que el no agrupado ({no_agrupado} us) cuando se recupera la fila "
+            "desde el almacenamiento"
+        )
+
+    # Y el contraste metodológico debe reproducir el efecto contrario: midiendo
+    # la recuperación contra un dict, el agrupado pierde porque paga la copia
+    # defensiva del registro y el no agrupado sólo mueve un RID.
+    en_memoria_agrupado = resultados[
+        ("bplus_clustered", "range_search_inmemory")
+    ].avg_us
+    en_memoria_no_agrupado = resultados[
+        ("bplus_unclustered", "range_search_inmemory")
+    ].avg_us
+
+    assert en_memoria_agrupado > en_memoria_no_agrupado, (
+        "el contraste en memoria debería mostrar al no agrupado ganando; "
+        "es la explicación de por qué la gráfica original parecía contradecir "
+        "la teoría"
+    )
 
 
 def test_dataset_size_must_be_positive():

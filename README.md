@@ -735,46 +735,37 @@ benchmark lo reporta en el campo `payload_bytes`.
 - **External Sort** → `ORDER BY` sin índice disponible; **External Hashing** →
   `GROUP BY` y equi-`JOIN` sobre datasets grandes (`O(N+M)` promedio).
 
-### 12.3 Parte 2 · Secuencial vs R-Tree propio vs GiST de PostgreSQL
+### 12.3 Parte 2 · Secuencial vs R-Tree propio vs GiST de PostgreSQL (PostGIS)
 
 Promedio de 100 consultas por medición, semilla fija 42, datasets con focos de densidad.
-Detalle completo, decisiones de diseño y limitaciones en
+**El baseline es PostGIS 3.6.2** sobre PostgreSQL 17 (`geometry(Point,4326)`, GiST,
+`ST_DWithin`, operador `<->`). Detalle completo, decisiones de diseño y limitaciones en
 [`docs/parte2_espacial.md`](docs/parte2_espacial.md).
 
-| Consulta | N | Secuencial | R-Tree propio | GiST PostgreSQL |
+| Consulta | N | Secuencial | R-Tree propio | GiST/PostGIS |
 |---|---|---|---|---|
-| Rango 1 km | 1 000 | 1.756 ms | **0.098 ms** (17.9×) | 1.083 ms |
-| Rango 1 km | 10 000 | 17.068 ms | **0.777 ms** (22.0×) | 1.699 ms |
-| Rango 1 km | 100 000 | 202.174 ms | 4.202 ms (48.1×) | **2.675 ms** (75.6×) |
-| k-NN k=10 | 100 000 | 236.632 ms | 17.427 ms (13.6×) | **0.932 ms** (253.9×) |
-| k-NN k=100 | 100 000 | 214.881 ms | 20.466 ms (10.5×) | **2.253 ms** (95.4×) |
-| Polígono 4 vértices | 100 000 | — | 19.265 ms | — |
+| Rango 1 km | 1 000 | 1.756 ms | **0.098 ms** (17.9×) | 0.276 ms (6.4×) |
+| Rango 1 km | 100 000 | 179.433 ms | 4.047 ms (44.3×) | **1.028 ms** (174.5×) |
+| k-NN k=10 | 1 000 | 1.752 ms | 0.811 ms (2.2×) | **0.392 ms** (4.5×) |
+| k-NN k=10 | 100 000 | 216.119 ms | 19.090 ms (11.3×) | **0.758 ms** (285.2×) |
+| k-NN k=100 | 100 000 | 221.423 ms | 20.808 ms (10.6×) | **1.797 ms** (123.2×) |
+| Rango 10 km | 100 000 | 179.044 ms | 55.523 ms (3.2×) | **27.152 ms** (6.6×) |
+| Polígono 4 vértices | 100 000 | — | 17.073 ms | — |
 
-**Cuándo usar cada técnica:** el **R-Tree propio** es mejor en rangos pequeños
-(poda agresiva por el MBR del círculo) y no depende de un motor externo; **GiST de
-PostgreSQL** es mejor en k-NN (índice en C, estructura 3D sobre la esfera) y si los
-datos ya viven en PostgreSQL; en **datasets pequeños (< 1 000 puntos)** el índice no
-compensa el coste de construcción.
+**Cuándo usar cada técnica:** **GiST de PostGIS** gana en producción con volúmenes
+grandes (175× en rango y 285× en k-NN a 100 000 puntos) porque el índice está en C y
+está integrado en el optimizador; el **R-Tree propio** gana con datasets pequeños
+(2.8× más rápido que PostGIS a 1 000 puntos, sin coste de planificación ni ida y
+vuelta), en intersección con polígonos y cuando no hay servidor de base de datos
+disponible (44× más rápido que el escaneo sin dependencias externas).
 
-> **Nota metodológica importante.** El enunciado pide comparar contra **GiST de
-> PostgreSQL vía PostGIS**. PostGIS **no está instalado** en la máquina de medición y
-> no hay red ni Docker para instalarlo (se verificó: no hay ningún archivo `*postgis*`
-> en `share/extension`, `lib` ni `bin`). Lo que está medido es el **GiST nativo de
-> PostgreSQL 17** con `cube` + `earthdistance` (`ll_to_earth`, `earth_box`, `<->`),
-> que **es un GiST real** —el plan produce `Index Scan using ..._gist Order By <->`—
-> pero indexa un tipo distinto (`cube` en lugar de `geometry`). La técnica comparada
-> es la misma; el baseline no es literalmente el que pide el enunciado.
->
-> Para cerrarlo en una máquina con PostGIS basta con:
->
-> ```bash
-> python -m benchmarks.benchmark_spatial --sizes 1000 10000 100000 --pg-mode postgis
-> ```
->
-> `--pg-mode` acepta `postgis` (lo **exige** y falla con un mensaje claro si no está),
-> `earthdistance` y `auto` (por defecto: prefiere PostGIS y cae a `earthdistance`).
-> Hay también `--pg-dsn` para apuntar a otro servidor. Detalle completo en
-> [`docs/parte2_espacial.md`](docs/parte2_espacial.md) §6.
+> **Nota de rendimiento (importante si repites las mediciones).** En PostGIS el índice
+> GiST es sobre la columna `geometry`; si se castea a `geography` dentro del `WHERE` o
+> del `ORDER BY`, PostgreSQL **no puede usar el índice** y hace un *Seq Scan*: se midió
+> 64.8 ms frente a 9.2 ms. El benchmark usa la forma indexable
+> (`geom && ST_Expand(...)` + `ST_DWithin`, y `<->` sobre la columna indexada), que es
+> el patrón documentado. El modo `--pg-mode earthdistance` queda como alternativa para
+> máquinas sin PostGIS.
 
 ### 12.4 Gráficas
 

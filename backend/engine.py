@@ -8,6 +8,7 @@ este módulo, vía backend/api.py.
 
 from __future__ import annotations
 
+import json
 import os
 import threading
 from pathlib import Path
@@ -17,6 +18,7 @@ from indexes.clustered_bplus import ClusteredBPlusIndex
 from indexes.extendible_hash import ExtendibleHash
 from indexes.unclustered_bplus import UnclusteredBPlusIndex
 from query.catalog import Catalog, TableMetadata
+from query.csv_loader import CsvImportReport, import_csv as import_csv_into
 from query.query_executor import QueryExecutor
 from query.query_result import QueryResult
 from storage.heap_file import HeapFile
@@ -38,21 +40,24 @@ DEPARTMENTS_SCHEMA = Schema(
 )
 
 SEED_SQL = [
-    "INSERT INTO users VALUES (1, 'Ana Torres', 20, 'CS')",
-    "INSERT INTO users VALUES (2, 'Luis Paredes', 23, 'EE')",
-    "INSERT INTO users VALUES (3, 'Mia Rojas', 19, 'CS')",
-    "INSERT INTO users VALUES (4, 'Karla Ruiz', 25, 'EE')",
-    "INSERT INTO employees VALUES (10, 'Ana Torres', 'CS', 3200.0)",
-    "INSERT INTO employees VALUES (11, 'Luis Paredes', 'EE', 4800.0)",
-    "INSERT INTO employees VALUES (12, 'Mia Rojas', 'CS', 5100.0)",
-    "INSERT INTO employees VALUES (13, 'Karla Ruiz', 'EE', 3900.0)",
-    "INSERT INTO departments VALUES (1, 'Ciencias de la Computacion', 'Lima')",
-    "INSERT INTO departments VALUES (2, 'Ingenieria Electronica', 'Arequipa')",
+    ("users", "INSERT INTO users VALUES (1, 'Ana Torres', 20, 'CS')"),
+    ("users", "INSERT INTO users VALUES (2, 'Luis Paredes', 23, 'EE')"),
+    ("users", "INSERT INTO users VALUES (3, 'Mia Rojas', 19, 'CS')"),
+    ("users", "INSERT INTO users VALUES (4, 'Karla Ruiz', 25, 'EE')"),
+    ("employees", "INSERT INTO employees VALUES (10, 'Ana Torres', 'CS', 3200.0)"),
+    ("employees", "INSERT INTO employees VALUES (11, 'Luis Paredes', 'EE', 4800.0)"),
+    ("employees", "INSERT INTO employees VALUES (12, 'Mia Rojas', 'CS', 5100.0)"),
+    ("employees", "INSERT INTO employees VALUES (13, 'Karla Ruiz', 'EE', 3900.0)"),
+    ("departments", "INSERT INTO departments VALUES (1, 'Ciencias de la Computacion', 'Lima')"),
+    ("departments", "INSERT INTO departments VALUES (2, 'Ingenieria Electronica', 'Arequipa')"),
 ]
 
 
 class DemoEngine:
     """Une el motor real del proyecto con una API pensada para el frontend."""
+
+    #: Tablas creadas por código: no entran en el manifiesto del catálogo.
+    DEMO_TABLES = {"users", "employees", "departments"}
 
     def __init__(self, data_dir: str | Path | None = None, seed: bool = True) -> None:
         base = data_dir or os.environ.get("BD2_DATA_DIR") or (
@@ -60,7 +65,9 @@ class DemoEngine:
         )
         self.data_dir = Path(base)
         self.data_dir.mkdir(parents=True, exist_ok=True)
+        self.catalog_path = self.data_dir / "catalog.json"
         self._lock = threading.Lock()  # el motor no es thread-safe: serializamos
+        self._ready = False
 
         # Heap File (.dat + .free)
         self.users = HeapFile(str(self.data_dir / "users.dat"), USERS_SCHEMA)
@@ -68,7 +75,10 @@ class DemoEngine:
         # Archivo Secuencial Paginado: el constructor agrega .main y .aux
         self.employees = SequentialFile(str(self.data_dir / "employees"), EMPLOYEES_SCHEMA)
 
-        self.catalog = Catalog()
+        self.catalog = Catalog(
+            data_dir=self.data_dir,
+            on_change=self._save_catalog,
+        )
         self.catalog.register_table("users", self.users)
         self.catalog.register_table("employees", self.employees)
         self.catalog.register_table("departments", self.departments)
@@ -89,7 +99,10 @@ class DemoEngine:
         )
 
         self.executor = QueryExecutor(self.catalog)
-        if seed and self._count(self.users) == 0:
+        self.restored_tables = self._load_catalog()
+        self._ready = True
+
+        if seed:
             self._seed()
 
     # ------------------------------------------------------------------ API
@@ -98,11 +111,102 @@ class DemoEngine:
         with self._lock:
             return self.executor.execute(sql)
 
+    def import_csv(
+        self,
+        table: str,
+        source: Any,
+        **options: Any,
+    ) -> CsvImportReport:
+        """Carga un CSV en una tabla existente (mismo camino que INSERT).
+
+        El API recibe el **texto** del CSV, así que un argumento de una sola
+        línea sin comas se trata como error de nombre de archivo y no como
+        contenido (``allow_path=False``), para no reportar "0 filas" como éxito.
+        """
+        options.setdefault("allow_path", False)
+        with self._lock:
+            report = import_csv_into(self.executor, table, source, **options)
+            self._save_catalog()
+            return report
+
     def tables(self) -> List[Dict[str, Any]]:
         return [self._table_info(self.catalog.get_table(n)) for n in self.catalog.table_names()]
 
+    def transaction_state(self) -> Optional[Dict[str, Any]]:
+        """Transacción activa del motor, o ``None`` si no hay BEGIN pendiente.
+
+        El frontend lo usa para avisar de que hay una transacción abierta sin
+        confirmar (es el estado que el enunciado pide poder demostrar).
+        """
+        txn = self.executor.transaction
+        if txn is None or not txn.active:
+            return None
+        return {
+            "id": txn.id,
+            "statements": txn.statements,
+            "tables": sorted(txn.snapshots),
+            "locked_tables": list(txn.locked_tables),
+            "active": True,
+        }
+
     def table_info(self, name: str) -> Dict[str, Any]:
         return self._table_info(self.catalog.get_table(name))
+
+    def catalog_manifest(self) -> Dict[str, Any]:
+        """Tablas creadas por el usuario (las que sobreviven al reinicio)."""
+        return {
+            "path": str(self.catalog_path),
+            "tables": [
+                definition
+                for definition in self.catalog.describe_tables()
+                if definition["name"] not in self.DEMO_TABLES
+            ],
+        }
+
+    # -------------------------------------------------------- persistencia
+
+    def _save_catalog(self) -> None:
+        if not self._ready:
+            return
+
+        payload = {
+            "tables": [
+                definition
+                for definition in self.catalog.describe_tables()
+                if definition["name"] not in self.DEMO_TABLES
+            ]
+        }
+
+        try:
+            self.catalog_path.write_text(
+                json.dumps(payload, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+        except OSError:
+            # La persistencia del catálogo no debe romper una sentencia DDL.
+            pass
+
+    def _load_catalog(self) -> List[str]:
+        if not self.catalog_path.exists():
+            return []
+
+        try:
+            payload = json.loads(self.catalog_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return []
+
+        restored: List[str] = []
+        for definition in payload.get("tables", []):
+            name = str(definition.get("name", "")).lower()
+            if not name or self.catalog.has_table(name):
+                continue
+            try:
+                self.catalog.restore_table(definition, data_dir=self.data_dir)
+                restored.append(name)
+            except Exception as exc:  # manifiesto corrupto o archivos movidos
+                print(f"[catalog] no se pudo restaurar '{name}': {exc}")
+
+        return restored
 
     # -------------------------------------------------------------- interno
 
@@ -140,7 +244,26 @@ class DemoEngine:
         }
 
     def _seed(self) -> None:
-        for sql in SEED_SQL:
+        """Carga los datos de demostración solo en las tablas que están vacías.
+
+        Se revisa tabla por tabla: si el usuario borró (DROP/CREATE) o vació solo
+        una de ellas, el API debe arrancar igual y sembrar únicamente esa.
+        """
+        pendientes = {
+            name: storage
+            for name, storage in (
+                ("users", self.users),
+                ("employees", self.employees),
+                ("departments", self.departments),
+            )
+            if self._count(storage) == 0
+        }
+        if not pendientes:
+            return
+
+        for table, sql in SEED_SQL:
+            if table not in pendientes:
+                continue
             result = self.executor.execute(sql)
             if not result.success:
                 raise RuntimeError(f"seed falló: {sql} -> {result.error}")

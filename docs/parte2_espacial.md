@@ -217,31 +217,56 @@ se solapen, que es el caso interesante), y tiempos en milisegundos.
 
 ---
 
-## 6. Sobre el baseline: por qué no es PostGIS
+## 6. Sobre el baseline: esto es lo único que NO cumple al pie de la letra
 
-El enunciado pide comparar contra **GiST de PostgreSQL** (con PostGIS). En el
-entorno de desarrollo **PostGIS no está instalado y no hay red para instalarlo**
-(se verificó: `pg_available_extensions` no lo lista y `npm`/pip no alcanzan la
-red). En lugar de dejar la comparación sin hacer, se usó el **GiST nativo de
-PostgreSQL 17** con las extensiones ``cube`` y ``earthdistance``:
+**Hay que decirlo sin rodeos: el enunciado pide comparar contra *GiST de PostgreSQL*
+(vía PostGIS con `ST_DWithin` y geometrías), y lo que está medido es *GiST nativo de
+PostgreSQL* con `cube` + `earthdistance`.** La **técnica** es GiST en los dos casos; lo
+que cambia es el **tipo espacial** que el índice indexa. Pero el baseline no es
+literalmente el que pide el enunciado.
 
-```sql
-CREATE EXTENSION cube;
-CREATE EXTENSION earthdistance;
+### Por qué no se pudo hacer con PostGIS
 
-CREATE INDEX tiendas_gist ON tiendas USING gist (ll_to_earth(lat, lon));
+Se verificó de forma exhaustiva en la máquina de desarrollo:
 
--- k-NN por índice (Index Scan ordenado por distancia)
-SELECT id FROM tiendas
-ORDER BY ll_to_earth(lat, lon) <-> ll_to_earth(-12.0464, -77.0428) LIMIT 10;
+| Comprobación | Resultado |
+|---|---|
+| `pg_available_extensions` incluye `postgis` | ❌ no aparece (sí `btree_gist`, `cube`, `earthdistance`) |
+| `C:\Program Files\PostgreSQL\17\share\extension\*postgis*` | ❌ 0 archivos |
+| `C:\Program Files\PostgreSQL\17\lib\*postgis*` | ❌ 0 archivos |
+| `C:\Program Files\PostgreSQL\17\bin\*postgis*` | ❌ 0 archivos |
+| Búsqueda recursiva de `*postgis*` en `C:\Program Files` | ❌ 0 resultados |
+| Red para instalar (`npm`, pip) | ❌ inalcanzable |
+| Docker (imagen `postgis/postgis`) | ❌ no instalado |
 
--- Rango
-SELECT id FROM tiendas
-WHERE ll_to_earth(lat, lon) <@ earth_box(ll_to_earth(-12.0464, -77.0428), 5000)
-  AND earth_distance(ll_to_earth(lat, lon), ll_to_earth(-12.0464, -77.0428)) <= 5000;
+**PostGIS no está instalado y no hay red ni Docker para instalarlo.** Sin los archivos
+de la extensión en `share/extension` + `lib`, `CREATE EXTENSION postgis` es imposible:
+no es una limitación de permisos, es que los binarios no existen en la máquina.
+
+### Cómo cerrarlo (tres caminos, en orden de esfuerzo)
+
+**1. Ejecutar el benchmark en una máquina con PostGIS.** Es un cambio de una bandera:
+
+```bash
+python -m benchmarks.benchmark_spatial --sizes 1000 10000 100000 --pg-mode postgis
 ```
 
-El plan de PostgreSQL confirma que **es un índice GiST de verdad**:
+El benchmark ahora acepta `--pg-mode`:
+* `postgis` → **exige** PostGIS y falla con un mensaje claro si no está (no disimula);
+* `earthdistance` → fuerza `cube` + `earthdistance`;
+* `auto` (por defecto) → **prefiere PostGIS** y sólo cae a `earthdistance` si no está.
+
+También acepta `--pg-dsn` para apuntar a otro servidor (o `BD2_PG_DSN`). El camino de
+PostGIS (`geometry(Point,4326)`, `ST_SetSRID`, `ST_MakePoint`, `ST_DWithin`,
+`geom <->`) está escrito y **verificado en su lógica**, aunque no ejecutado: en esta
+máquina `--pg-mode postgis` devuelve `N/A` en todas las filas con el motivo, en lugar
+de inventar números.
+
+**2. Docker, cuando haya red.** `docker run --name postgis -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgis/postgis`
+y después el comando del punto 1 con `--pg-dsn`.
+
+**3. Declararlo como limitación del entorno (lo que se hizo).** El baseline usado es un
+GiST real: el plan de PostgreSQL lo confirma.
 
 ```
 Limit
@@ -249,11 +274,29 @@ Limit
         Order By: ((ll_to_earth(lat, lon))::cube <-> '(...)'::cube)
 ```
 
-**Lo que cambia respecto a PostGIS** es la implementación del tipo espacial
-(``cube`` 3D sobre la esfera en lugar de ``geometry``), **no la técnica de
-indexación**: ambas usan GiST. El benchmark está escrito para que, si algún día
-hay PostGIS, baste con poner ``USE_POSTGIS = True``: el script usa entonces
-``geometry``, ``ST_DWithin`` y el operador ``<->`` sobre geometrías.
+`Index Scan` + `Order By` sobre el índice **es** la prueba de que GiST está resolviendo
+el k-NN. El rango usa `Bitmap Index Scan on probe_geo_gist` con
+`ll_to_earth(...) <@ earth_box(...)`. Es decir: la **estructura y el algoritmo** que se
+comparan son GiST de verdad; lo que no es igual es el tipo de dato indexado.
+
+### Qué decir en la defensa
+
+> *"El baseline es GiST de PostgreSQL. El enunciado pedía PostGIS y no está instalado
+> en la máquina ni se puede instalar sin red, así que usamos el GiST nativo con
+> `earthdistance`/`cube`. La técnica comparada es la misma —GiST— y el plan lo
+> confirma: `Index Scan using ..._gist Order By <->`. El benchmark tiene un modo
+> `--pg-mode postgis` que, en una máquina con PostGIS, repite la medición con
+> `ST_DWithin` y geometrías, así que la comparación es reproducible y el resultado
+> quedaría cerrado en cuanto haya PostGIS."*
+
+### Lo que NO está en duda
+
+El resto de la sección 2.2.4 **sí** se cumple íntegro: están las tres técnicas
+(secuencial, R-Tree propio y GiST), los tres radios (1, 5, 10 km), los tres valores de
+k (10, 50, 100), los tres tamaños de dataset (1 000, 10 000, 100 000), las cuatro
+métricas (tiempo de construcción, tiempo de consulta como promedio de 100 consultas,
+espacio del índice y tamaño del resultado), las gráficas comparativas y la tabla de
+cuándo usar cada técnica.
 
 ---
 

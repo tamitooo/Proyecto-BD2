@@ -61,7 +61,9 @@ from spatial.geo import (
 )
 from spatial.index import SpatialIndex
 
-#: Cambiar a True si algún día está PostGIS instalado.
+#: Compatibilidad: el modo se elige ahora con ``--pg-mode`` (auto|postgis|earthdistance).
+#: Se mantiene la constante para no romper imports antiguos: ``True`` equivale a
+#: forzar PostGIS.
 USE_POSTGIS = False
 
 #: Radios del enunciado.
@@ -356,7 +358,12 @@ def _benchmark_rtree(
 class PostgresGiST:
     """Índice GiST de PostgreSQL vía earthdistance/cube (o PostGIS si existe)."""
 
-    def __init__(self, dsn: Optional[str] = None, table: str = "spatial_bench"):
+    def __init__(
+        self,
+        dsn: Optional[str] = None,
+        table: str = "spatial_bench",
+        mode: Optional[str] = None,
+    ):
         self.dsn = dsn or os.environ.get(
             "BD2_PG_DSN",
             "host=127.0.0.1 port=5432 user=postgres password=postgres dbname=postgres",
@@ -365,14 +372,20 @@ class PostgresGiST:
         self.connection = None
         self.available = False
         self.error: Optional[str] = None
-        self.mode = "earthdistance"
+        #: "auto" prueba PostGIS y cae a earthdistance; "postgis" y
+        #: "earthdistance" fuerzan el modo y fallan con un mensaje claro.
+        self.requested_mode = mode or os.environ.get("BD2_PG_MODE", "auto")
+        self.mode = self.requested_mode
         self._connect()
 
     def _connect(self) -> None:
         try:
             import psycopg2  # noqa: F401
         except ImportError:
-            self.error = "falta el driver psycopg2"
+            self.error = (
+                "falta el driver psycopg2; instala 'psycopg2-binary' para "
+                "comparar contra el GiST de PostgreSQL"
+            )
             return
 
         try:
@@ -381,15 +394,27 @@ class PostgresGiST:
             self.connection = psycopg2.connect(self.dsn)
             self.connection.autocommit = True
             with self.connection.cursor() as cur:
-                if USE_POSTGIS:
+                if self.requested_mode == "postgis":
+                    # Modo exigido por el enunciado: falla si no hay PostGIS.
                     cur.execute("create extension if not exists postgis")
                     self.mode = "postgis"
-                else:
+                elif self.requested_mode == "earthdistance":
                     cur.execute("create extension if not exists cube")
                     cur.execute("create extension if not exists earthdistance")
                     self.mode = "earthdistance"
+                else:
+                    # Automático: se prefiere PostGIS (lo que pide el enunciado)
+                    # y sólo si no está disponible se usa earthdistance.
+                    try:
+                        cur.execute("create extension if not exists postgis")
+                        self.mode = "postgis"
+                    except Exception:
+                        self.connection.rollback()
+                        cur.execute("create extension if not exists cube")
+                        cur.execute("create extension if not exists earthdistance")
+                        self.mode = "earthdistance"
             self.available = True
-        except Exception as exc:  # sin servidor, sin permisos, etc.
+        except Exception as exc:  # sin servidor, sin permisos, sin extension
             self.error = f"{type(exc).__name__}: {exc}"
             self.connection = None
 
@@ -594,9 +619,12 @@ def _benchmark_postgres(
 # Orquestación
 # ----------------------------------------------------------------------
 
-def run_benchmarks(config: SpatialBenchmarkConfig) -> List[SpatialResult]:
+def run_benchmarks(
+    config: SpatialBenchmarkConfig,
+    pg_mode: str = "auto",
+) -> List[SpatialResult]:
     resultados: List[SpatialResult] = []
-    engine = PostgresGiST()
+    engine = PostgresGiST(mode=pg_mode)
 
     try:
         for size in config.sizes:
@@ -654,9 +682,22 @@ def write_json(
         "environment": {
             "platform": platform.platform(),
             "python": platform.python_version(),
-            "gist_backend": "earthdistance+cube (PostGIS no disponible)"
-            if not USE_POSTGIS
-            else "postgis",
+            "gist_backend": (
+                "postgis"
+                if any(
+                    r.technique == "postgres_gist"
+                    and r.supported
+                    and "postgis" in r.notes.lower()
+                    for r in results
+                )
+                else "earthdistance+cube (PostGIS no disponible en este entorno)"
+            ),
+            "postgis_available": any(
+                r.technique == "postgres_gist"
+                and r.supported
+                and "postgis" in r.notes.lower()
+                for r in results
+            ),
         },
         "results": [asdict(resultado) for resultado in results],
     }
@@ -710,6 +751,22 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--rtree-max-entries", type=int, default=16)
     parser.add_argument("--output-dir", default="benchmark_results")
     parser.add_argument("--no-polygon", action="store_true")
+    parser.add_argument(
+        "--pg-mode",
+        choices=["auto", "postgis", "earthdistance"],
+        default="auto",
+        help=(
+            "Backend del GiST: 'postgis' lo exige (falla si no está instalado, "
+            "que es lo que pide el enunciado), 'earthdistance' usa cube+"
+            "earthdistance y 'auto' (por defecto) prefiere PostGIS y cae a "
+            "earthdistance si no está disponible"
+        ),
+    )
+    parser.add_argument(
+        "--pg-dsn",
+        default=None,
+        help="Cadena de conexión de PostgreSQL (por defecto la local)",
+    )
     return parser.parse_args()
 
 
@@ -724,7 +781,10 @@ def main() -> int:
         run_polygon=not args.no_polygon,
     )
 
-    results = run_benchmarks(config)
+    if args.pg_dsn:
+        os.environ["BD2_PG_DSN"] = args.pg_dsn
+
+    results = run_benchmarks(config, pg_mode=args.pg_mode)
 
     output_dir = Path(args.output_dir)
     write_csv(results, output_dir / "spatial_benchmark.csv")

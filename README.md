@@ -756,12 +756,25 @@ PostgreSQL** es mejor en k-NN (índice en C, estructura 3D sobre la esfera) y si
 datos ya viven en PostgreSQL; en **datasets pequeños (< 1 000 puntos)** el índice no
 compensa el coste de construcción.
 
-> **Nota metodológica:** el enunciado pide comparar contra GiST de PostgreSQL con
-> **PostGIS**, que no está instalado en el entorno y no se pudo instalar (sin red).
-> Se usó el **GiST nativo de PostgreSQL 17** con las extensiones `cube` y
-> `earthdistance` (``ll_to_earth``, ``earth_box``, operador `<->`), que es un GiST
-> real y produce un *Index Scan* ordenado por distancia. Si algún día hay PostGIS,
-> basta con poner `USE_POSTGIS = True` en el benchmark.
+> **Nota metodológica importante.** El enunciado pide comparar contra **GiST de
+> PostgreSQL vía PostGIS**. PostGIS **no está instalado** en la máquina de medición y
+> no hay red ni Docker para instalarlo (se verificó: no hay ningún archivo `*postgis*`
+> en `share/extension`, `lib` ni `bin`). Lo que está medido es el **GiST nativo de
+> PostgreSQL 17** con `cube` + `earthdistance` (`ll_to_earth`, `earth_box`, `<->`),
+> que **es un GiST real** —el plan produce `Index Scan using ..._gist Order By <->`—
+> pero indexa un tipo distinto (`cube` en lugar de `geometry`). La técnica comparada
+> es la misma; el baseline no es literalmente el que pide el enunciado.
+>
+> Para cerrarlo en una máquina con PostGIS basta con:
+>
+> ```bash
+> python -m benchmarks.benchmark_spatial --sizes 1000 10000 100000 --pg-mode postgis
+> ```
+>
+> `--pg-mode` acepta `postgis` (lo **exige** y falla con un mensaje claro si no está),
+> `earthdistance` y `auto` (por defecto: prefiere PostGIS y cae a `earthdistance`).
+> Hay también `--pg-dsn` para apuntar a otro servidor. Detalle completo en
+> [`docs/parte2_espacial.md`](docs/parte2_espacial.md) §6.
 
 ### 12.4 Gráficas
 

@@ -23,3 +23,31 @@ export async function runQuery(sql: string): Promise<QueryResult> {
   });
   return parse<QueryResult>(response);
 }
+
+export interface CsvImportReport {
+  table: string;
+  columns: string[];
+  rows_read: number;
+  inserted: number;
+  failed: number;
+  errors: string[];
+  success: boolean;
+}
+
+export async function importCsv(
+  table: string,
+  csvText: string,
+  hasHeader = true,
+  delimiter = ',',
+): Promise<CsvImportReport> {
+  const response = await fetch(`${BASE}/tables/${encodeURIComponent(table)}/import`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      csv_text: csvText,
+      has_header: hasHeader,
+      delimiter,
+    }),
+  });
+  return parse<CsvImportReport>(response);
+}

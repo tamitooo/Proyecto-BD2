@@ -9,6 +9,13 @@ import './styles.css';
 
 const DEFAULT_SQL = 'SELECT * FROM users WHERE age >= 20 ORDER BY age DESC';
 
+/** Nombre de la tabla creada por un CREATE TABLE exitoso (rows[0].table). */
+function createdTableName(result: QueryResult): string | null {
+  if (!result.success || result.statement !== 'CREATE TABLE') return null;
+  const name = result.rows[0]?.table;
+  return typeof name === 'string' ? name : null;
+}
+
 export default function App() {
   const [tables, setTables] = useState<TableInfo[]>([]);
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
@@ -17,11 +24,15 @@ export default function App() {
   const [running, setRunning] = useState(false);
   const [backendError, setBackendError] = useState<string | null>(null);
 
-  const loadTables = useCallback(async () => {
+  /** Recarga el catálogo y, si se pide, deja seleccionada la tabla indicada. */
+  const loadTables = useCallback(async (select?: string) => {
     try {
       const data = await fetchTables();
       setTables(data);
-      setSelectedTable((current) => current ?? data[0]?.name ?? null);
+      setSelectedTable((current) => {
+        if (select && data.some((item) => item.name === select)) return select;
+        return current ?? data[0]?.name ?? null;
+      });
       setBackendError(null);
     } catch (error) {
       setBackendError(error instanceof Error ? error.message : String(error));
@@ -36,9 +47,12 @@ export default function App() {
     if (!sql.trim()) return;
     setRunning(true);
     try {
-      setResult(await runQuery(sql.trim()));
+      const executed = await runQuery(sql.trim());
+      setResult(executed);
       setBackendError(null);
-      void loadTables();   // refresca archivos y contadores tras INSERT/DELETE
+      // Recarga archivos y contadores tras INSERT/DELETE/DDL y, si la sentencia
+      // creó una tabla, la deja seleccionada para que el siguiente CSV vaya a ella.
+      await loadTables(createdTableName(executed) ?? undefined);
     } catch (error) {
       setBackendError(error instanceof Error ? error.message : String(error));
     } finally {
@@ -61,7 +75,12 @@ export default function App() {
 
       <main className="app__body">
         <aside className="app__side">
-          <FilesPanel tables={tables} selectedTable={selectedTable} onSelectTable={setSelectedTable} />
+          <FilesPanel
+            tables={tables}
+            selectedTable={selectedTable}
+            onSelectTable={setSelectedTable}
+            onImported={loadTables}
+          />
         </aside>
         <section className="app__center">
           <QueryPanel sql={sql} onChangeSql={setSql} onRun={executeQuery} running={running} />

@@ -3,6 +3,7 @@ import FilesPanel from './panels/FilesPanel';
 import QueryPanel from './panels/QueryPanel';
 import ResultsPanel from './panels/ResultsPanel';
 import PlanPanel from './panels/PlanPanel';
+import MapPanel from './panels/MapPanel';
 import { fetchTables, runQuery } from './api';
 import type { QueryResult, TableInfo } from './types';
 import './styles.css';
@@ -85,6 +86,12 @@ export default function App() {
         <section className="app__center">
           <QueryPanel sql={sql} onChangeSql={setSql} onRun={executeQuery} running={running} />
           <ResultsPanel result={result} />
+          {/* Quinto panel (Parte 2): mapa de puntos y búsquedas espaciales. */}
+          <MapPanel
+            tables={tables}
+            selectedTable={selectedTable}
+            onSelectTable={setSelectedTable}
+          />
         </section>
         <aside className="app__side">
           <PlanPanel plan={result?.execution_plan ?? null} />

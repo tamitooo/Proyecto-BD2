@@ -129,6 +129,17 @@ export const EXAMPLE_GROUPS: { group: string; items: Example[] }[] = [
       { label: 'ORDER BY + LIMIT', sql: 'SELECT id, name, salary FROM employees ORDER BY salary DESC LIMIT 2' },
     ],
   },
+  {
+    // Parte 2: las búsquedas espaciales (rango, k-NN, polígono, Euclidiana y
+    // Haversine) se lanzan desde el panel de mapa, que usa /api/spatial/*.
+    // Aquí solo se listan lecturas SQL de la tabla espacial cargada por CSV.
+    group: 'Datos espaciales (Parte 2 · se visualizan en el panel de mapa)',
+    items: [
+      { label: 'Ver todos los puntos (ajusta el nombre «tiendas»)', sql: 'SELECT * FROM tiendas' },
+      { label: 'Puntos con sus coordenadas', sql: 'SELECT id, nombre, lat, lon FROM tiendas' },
+      { label: 'Puntos ordenados por clave', sql: 'SELECT id, nombre, lat, lon FROM tiendas ORDER BY id LIMIT 10' },
+    ],
+  },
 ];
 
 export default function QueryPanel({ sql, onChangeSql, onRun, running }: Props) {

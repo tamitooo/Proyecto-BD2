@@ -65,3 +65,67 @@ export interface QueryResult {
   execution_plan: ExecutionPlan | null;
   error: string | null;
 }
+
+/* ------------------------------------------------------------------ *
+ * Parte 2: base de datos espacial (R-Tree, rango, k-NN, polígonos)
+ * ------------------------------------------------------------------ */
+
+/** Un punto 2D devuelto por /api/spatial/points o /api/spatial/query. */
+export interface SpatialPoint {
+  rid: string;
+  lat: number;
+  lon: number;
+  label: string | null;
+  /** Solo lo rellena /api/spatial/query (distancia al punto de consulta). */
+  distance_m: number | null;
+  row: Record<string, CellValue>;
+}
+
+export interface SpatialBounds {
+  min_lat: number;
+  max_lat: number;
+  min_lon: number;
+  max_lon: number;
+}
+
+/** GET /api/spatial/points/{table} */
+export interface SpatialPoints {
+  table: string;
+  lat_column: string;
+  lon_column: string;
+  label_column: string | null;
+  count: number;
+  bounds: SpatialBounds | null;
+  points: SpatialPoint[];
+}
+
+export type SpatialKind = 'range' | 'knn';
+export type SpatialMetric = 'euclidean' | 'haversine';
+
+/** Cuerpo de POST /api/spatial/query */
+export interface SpatialQueryRequest {
+  table: string;
+  kind: SpatialKind;
+  lat: number;
+  lon: number;
+  radius_m?: number;
+  k?: number;
+  metric?: SpatialMetric;
+  /** Vértices [lat, lon] del polígono de intersección (opcional). */
+  polygon?: [number, number][];
+}
+
+/** Respuesta de POST /api/spatial/query. */
+export interface SpatialQueryResult {
+  success: boolean;
+  kind: SpatialKind;
+  metric: SpatialMetric;
+  table: string;
+  access_path: string;
+  used_indexes: string[];
+  execution_time_ms: number;
+  distance_unit: string;
+  points: SpatialPoint[];
+  candidates_visited: number | null;
+  error: string | null;
+}

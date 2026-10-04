@@ -97,6 +97,13 @@ body {
   color: var(--text); border: 1px solid var(--border); border-radius: 8px; font-size: 0.82rem;
 }
 
+.input {
+  width: 100%; padding: 7px; background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px; font-size: 0.82rem;
+  font-family: inherit;
+}
+.input:disabled { opacity: 0.6; cursor: not-allowed; }
+
 .actions { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 
 .button {
@@ -112,6 +119,7 @@ body {
 
 .button:focus-visible,
 .select:focus-visible,
+.input:focus-visible,
 .editor:focus-visible,
 .table-list__item:focus-visible {
   outline: 2px solid var(--accent);
@@ -172,3 +180,108 @@ body {
   gap: 12px; padding-bottom: 4px;
 }
 .index-form--inline .select { min-width: 0; }
+
+/* ------------------------------------------------------------------ *
+ * Panel de mapa (Parte 2): SVG propio, legible sobre fondo blanco.
+ * Trazos oscuros (#0f172a, --accent, #64748b) sobre rellenos claros.
+ * ------------------------------------------------------------------ */
+
+.map__controls {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px;
+  margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
+}
+.map__field {
+  display: flex; flex-direction: column; gap: 2px;
+  font-size: 0.72rem; color: var(--muted); min-width: 132px; flex: 1 1 132px;
+}
+.map__field--wide { flex: 1 1 260px; min-width: 220px; }
+.map__field .select,
+.map__field .input { margin-top: 0; }
+.map__buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-bottom: 1px; }
+
+.map__meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 6px; }
+.map__pill {
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px;
+  padding: 3px 9px; font-size: 0.7rem; color: var(--muted);
+}
+.map__pill strong { color: var(--text); }
+
+/* El marco recorta el SVG y le da el fondo claro del "papel" del mapa. */
+.map__frame {
+  border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+  background: var(--code-bg);
+}
+.map__svg { display: block; width: 100%; height: auto; cursor: crosshair; touch-action: none; }
+.map__background { fill: var(--code-bg); }
+
+.map__grid line { stroke: #cbd5e1; stroke-width: 1; }
+.map__axis text { fill: var(--muted); font-size: 10px; font-family: 'Cascadia Mono', Consolas, monospace; }
+.map__axis .map__axis-title { fill: #334155; font-size: 10px; font-family: inherit; }
+/* Valores de lat/lon con halo blanco: se leen aunque caigan sobre la rejilla. */
+.map__axis .map__axis-value {
+  fill: #334155; paint-order: stroke; stroke: #ffffff; stroke-width: 3px;
+  stroke-linejoin: round; pointer-events: none;
+}
+
+.map__polygon {
+  fill: var(--accent); fill-opacity: 0.12;
+  stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 6 3;
+}
+
+.map__radius circle {
+  fill: var(--accent); fill-opacity: 0.08;
+  stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 5 3;
+}
+
+.map__knn line { stroke: var(--accent); stroke-width: 1.2; stroke-dasharray: 4 3; opacity: 0.85; }
+
+/* Puntos: gris cuando no son resultado, azul y más grandes cuando lo son. */
+.map__point {
+  fill: #64748b; stroke: #ffffff; stroke-width: 1.5; cursor: pointer;
+}
+.map__point--dim { fill: #94a3b8; opacity: 0.85; }
+.map__point--hit { fill: var(--accent); stroke: #ffffff; stroke-width: 2; }
+.map__point--selected { stroke: #0f172a; stroke-width: 3; }
+/* Estados hover al final: mismo peso que .map__point y deben ganar por orden. */
+.map__point:hover { fill: #334155; }
+.map__point--dim:hover { fill: #64748b; }
+.map__point--hit:hover { fill: #075985; }
+
+/* Halo blanco bajo el texto para que la etiqueta se lea sobre el mapa. */
+.map__labels text {
+  fill: var(--text); font-size: 10px; font-weight: 600;
+  paint-order: stroke; stroke: #ffffff; stroke-width: 3px; stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.map__rank circle { fill: var(--accent); stroke: #ffffff; stroke-width: 1.5; }
+.map__rank text { fill: #ffffff; font-size: 8px; font-weight: 700; pointer-events: none; }
+
+.map__query line { stroke: #0f172a; stroke-width: 1.5; }
+.map__query circle { fill: #0f172a; stroke: #ffffff; stroke-width: 2; }
+
+/* Origen de los resultados cuando el formulario ya no coincide con ellos. */
+.map__origin circle {
+  fill: none; stroke: #0f172a; stroke-width: 1.2; stroke-dasharray: 3 3; opacity: 0.7;
+}
+
+.map__legend {
+  display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0 2px;
+  font-size: 0.72rem; color: var(--muted);
+}
+.map__legend span { display: inline-flex; align-items: center; gap: 5px; }
+.map__swatch { width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--border); display: inline-block; }
+.map__swatch--point { background: #64748b; border-color: #ffffff; }
+.map__swatch--hit { background: var(--accent); border-color: #ffffff; }
+.map__swatch--query { background: #0f172a; border-color: #ffffff; }
+.map__swatch--radius { background: var(--accent-soft); border-color: var(--accent); border-style: dashed; border-radius: 3px; }
+.map__swatch--polygon { background: var(--accent-soft); border-color: var(--accent); border-radius: 3px; }
+
+.map__raw-error {
+  margin-top: 4px; font-family: 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.68rem; word-break: break-all;
+}
+
+.map__row { cursor: pointer; }
+.map__row:hover { background: var(--surface-2); }
+.map__row--selected { background: var(--accent-soft); }

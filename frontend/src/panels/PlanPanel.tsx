@@ -19,6 +19,10 @@ export default function PlanPanel({ plan }: Props) {
   }
 
   const total = plan.total_execution_time_ms ?? 0;
+  // INSERT/UPDATE/DELETE y el DDL no envían pasos lógicos (steps: []): el
+  // mensaje no puede afirmar que hubo un escaneo secuencial.
+  const hasLogicalPlan = plan.steps.length > 0;
+  const isDdl = plan.planner_type === 'ddl';
 
   return (
     <div className="panel">
@@ -33,7 +37,11 @@ export default function PlanPanel({ plan }: Props) {
 
       <h3 className="panel__subtitle">Índices utilizados</h3>
       {plan.used_indexes.length === 0 ? (
-        <p className="panel__hint">Ninguno: se resolvió con escaneo secuencial.</p>
+        <p className="panel__hint">
+          {hasLogicalPlan
+            ? 'Ninguno: se resolvió con escaneo secuencial.'
+            : `Sin índices en la ruta ${plan.access_path}: la sentencia no eligió ningún índice.`}
+        </p>
       ) : (
         <ul className="chips">
           {plan.used_indexes.map((index) => <li key={index} className="chip">{index}</li>)}
@@ -41,40 +49,52 @@ export default function PlanPanel({ plan }: Props) {
       )}
 
       <h3 className="panel__subtitle">Plan lógico (reglas del optimizador)</h3>
-      <table className="grid">
-        <thead>
-          <tr><th>#</th><th>Operador</th><th>Tabla</th><th>Índice</th><th>Justificación</th></tr>
-        </thead>
-        <tbody>
-          {plan.steps.map((step, index) => (
-            <tr key={`${step.operator}-${index}`}>
-              <td>{index + 1}</td>
-              <td className="mono">{step.operator}</td>
-              <td>{step.table ?? '—'}</td>
-              <td className="mono">{step.index ?? '—'}</td>
-              <td>{step.reason || '—'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {hasLogicalPlan ? (
+        <table className="grid">
+          <thead>
+            <tr><th>#</th><th>Operador</th><th>Tabla</th><th>Índice</th><th>Justificación</th></tr>
+          </thead>
+          <tbody>
+            {plan.steps.map((step, index) => (
+              <tr key={`${step.operator}-${index}`}>
+                <td>{index + 1}</td>
+                <td className="mono">{step.operator}</td>
+                <td>{step.table ?? '—'}</td>
+                <td className="mono">{step.index ?? '—'}</td>
+                <td>{step.reason || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p className="panel__hint">
+          {isDdl
+            ? `Sentencia DDL (${plan.access_path}): no genera pasos lógicos de consulta, se aplica directamente sobre el catálogo y el almacenamiento.`
+            : `La mutación no envía pasos lógicos al optimizador (${plan.access_path}); el operador real está en la traza de ejecución.`}
+        </p>
+      )}
 
       <h3 className="panel__subtitle">Ejecución real (instrumentación)</h3>
-      <table className="grid">
-        <thead>
-          <tr><th>#</th><th>Operador</th><th>Tiempo</th><th>Entrada</th><th>Salida</th></tr>
-        </thead>
-        <tbody>
-          {plan.runtime_steps.map((step, index) => (
-            <tr key={`${step.operator}-${index}`}>
-              <td>{index + 1}</td>
-              <td className="mono">{step.operator}</td>
-              <td>{step.elapsed_ms !== undefined ? `${step.elapsed_ms.toFixed(3)} ms` : '—'}</td>
-              <td>{step.rows_in ?? '—'}</td>
-              <td>{step.rows_out ?? '—'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {plan.runtime_steps.length > 0 ? (
+        <table className="grid">
+          <thead>
+            <tr><th>#</th><th>Operador</th><th>Tiempo</th><th>Entrada</th><th>Salida</th></tr>
+          </thead>
+          <tbody>
+            {plan.runtime_steps.map((step, index) => (
+              <tr key={`${step.operator}-${index}`}>
+                <td>{index + 1}</td>
+                <td className="mono">{step.operator}</td>
+                <td>{step.elapsed_ms !== undefined ? `${step.elapsed_ms.toFixed(3)} ms` : '—'}</td>
+                <td>{step.rows_in ?? '—'}</td>
+                <td>{step.rows_out ?? '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p className="panel__hint">Esta sentencia no registró tiempos por operador.</p>
+      )}
     </div>
   );
 }

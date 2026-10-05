@@ -6,7 +6,21 @@ venv/
 
 # Directorios temporales que crean los benchmarks y la demo
 .benchmark_work/
+.benchmark_heap/
 demo_parte1_data/
+
+# Carpetas temporales de las pruebas (cuando %TEMP% no es utilizable)
+.pytest_tmp/
+.pytest_tmp_*/
+
+# Andamiaje local de revisiones y sondeos: no forma parte del entregable
+.review/
+.review_tmp/
+.sonda_engine/
+.sonda_*.py
+.shim2/
+.shim_tmp/
+.shim_*.log
 
 # Salidas de herramientas de cobertura / tipado
 .coverage

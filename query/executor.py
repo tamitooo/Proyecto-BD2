@@ -1,6 +1,21 @@
 """
 Ejecutor minimo de consultas relacionales (Parte 1, seccion 2.1.3).
 
+⚠️ **LEGADO — no usar en código nuevo ni en la demo.**
+
+La ruta de integración vigente es ``query/query_executor.py`` (con
+``query/catalog.py``), que es la que usan el API REST, la interfaz y la suite
+principal. Este módulo se conserva sólo porque ``examples/demo_parte1.py`` y
+``tests/test_end_to_end.py`` lo usan.
+
+Se comporta **distinto** al ejecutor vigente ante el mismo SQL, así que no debe
+mezclarse en una demostración:
+
+* ignora ``LIMIT`` en silencio (``LIMIT 2`` puede devolver más filas);
+* un ``WHERE a OR b`` devuelve 0 filas (no maneja ``or_groups``);
+* ``CREATE TABLE``, ``UPDATE`` y las transacciones lanzan ``TypeError``;
+* puede reportar un ``access_path`` con índice y aun así hacer un escaneo.
+
 Encadena las piezas ya implementadas por el equipo:
 
     SQL  ->  SQLParser  ->  QuerySpec  ->  QueryPlanner  ->  QueryPlan

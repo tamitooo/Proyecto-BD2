@@ -7,12 +7,17 @@ Benchmark reproducible para comparar:
 
 Métricas:
 - build time
-- exact hit / exact miss
-- range search
+- exact hit / exact miss, también con recuperación de la fila
+- range search (sólo el índice / + recuperar la fila / en memoria)
 - ordered scan
 - insertion workload
 - deletion workload
 - serialized index size (aproximación portable al espacio adicional)
+
+La recuperación de la fila se mide contra un **Heap File real en disco**, no
+contra un diccionario en memoria: es la única forma de que la comparación
+B+ agrupado vs B+ no agrupado sea coherente con la teoría (el agrupado tiene
+el registro en su hoja; el no agrupado paga una lectura por RID).
 
 Los resultados se exportan en CSV y JSON para alimentar las gráficas del
 proyecto sin depender de librerías externas.
@@ -33,6 +38,57 @@ from typing import Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 from indexes.clustered_bplus import ClusteredBPlusIndex
 from indexes.extendible_hash import ExtendibleHash
 from indexes.unclustered_bplus import UnclusteredBPlusIndex
+from storage.heap_file import PAGE_SIZE, HeapFile, RID
+from storage.record import Schema
+
+# Permite ejecutarlo como módulo o como script directo.
+if __package__ in (None, ""):
+    import os
+    import sys
+
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from benchmarks.benchmark_heap_vs_sequential import bulk_build_heap
+
+
+def _rid_positions(position: int, slots_per_page: int) -> Tuple[int, int]:
+    return position // slots_per_page, position % slots_per_page
+
+
+class HeapBacking:
+    """Heap File real en disco, para medir la recuperación de filas de verdad.
+
+    Es la pieza que faltaba para que el benchmark sea coherente con la teoría:
+    un índice no agrupado devuelve RIDs y **cada RID es una lectura**; uno
+    agrupado ya trae el registro en su hoja. Si la "recuperación" se mide con un
+    `dict` en memoria, el no agrupado parece ganar siempre, porque mover un RID
+    de 8 bytes es más barato que copiar el registro completo.
+
+    El archivo se construye con carga masiva (bulk build) para que sea viable en
+    100 000 registros: insertar uno a uno tarda minutos u horas.
+    """
+
+    def __init__(self, records: Sequence[dict], schema: Schema, path: str):
+        self.schema = schema
+        self.slots_per_page = max(1, PAGE_SIZE // schema.record_size)
+        bulk_build_heap(path, records, schema)
+        self.heap = HeapFile(path, schema)
+        #: RID -> registro, sólo para la variante "en memoria", que se conserva
+        #: como contraste metodológico (no es la comparación real).
+        self.lookup = {
+            RID(*_rid_positions(position, self.slots_per_page)): record
+            for position, record in enumerate(records)
+        }
+
+    def rid_of(self, position: int) -> RID:
+        return RID(*_rid_positions(position, self.slots_per_page))
+
+    def read(self, rid) -> Optional[dict]:
+        """Lectura real: abre el archivo, hace seek y desempaca la página."""
+        return self.heap.read(rid)
+
+    def scan(self) -> List[dict]:
+        return [values for _, values in self.heap.scan()]
 
 
 @dataclass
@@ -48,6 +104,9 @@ class BenchmarkResult:
     p95_us: Optional[float] = None
     result_items: Optional[int] = None
     size_bytes: Optional[int] = None
+    #: Bytes de registros completos que el índice arrastra por guardarlos dentro
+    #: (solo el B+ agrupado); es el costo real del index clustering.
+    payload_bytes: Optional[int] = None
     notes: str = ""
 
 
@@ -63,6 +122,8 @@ class BenchmarkConfig:
     bplus_order: int = 64
     hash_bucket_capacity: int = 64
     range_fraction: float = 0.01
+    #: Directorio donde se materializan los Heap Files del respaldo en disco.
+    heap_dir: str = ".benchmark_heap"
 
 
 class _Adapter:
@@ -75,6 +136,9 @@ class _Adapter:
         delete: Callable[[object, int, Tuple[int, int]], bool],
         range_search: Optional[Callable[[object, int, int], list]] = None,
         ordered_scan: Optional[Callable[[object], list]] = None,
+        materialize: Optional[Callable[[object, list], list]] = None,
+        materialize_in_memory: Optional[Callable[[object, list], list]] = None,
+        raw_range_search: Optional[Callable[[object, int, int], list]] = None,
         notes: str = "",
     ):
         self.name = name
@@ -84,6 +148,15 @@ class _Adapter:
         self.delete = delete
         self.range_search = range_search
         self.ordered_scan = ordered_scan
+        #: Convierte el resultado del índice en filas completas (para el B+ no
+        #: agrupado implica ir a buscar cada RID). Permite medir el rango de
+        #: forma justa entre índices agrupados y no agrupados.
+        self.materialize = materialize
+        #: Recorrido del rango SIN la copia defensiva de la capa agrupada:
+        #: aísla el costo del algoritmo (recorrer hojas) del costo de copiar
+        #: registros, que es una decisión de implementación.
+        self.raw_range_search = raw_range_search
+        self.materialize_in_memory = materialize_in_memory
         self.notes = notes
 
     @property
@@ -93,6 +166,14 @@ class _Adapter:
     @property
     def supports_order(self):
         return self.ordered_scan is not None
+
+    @property
+    def supports_materialized_range(self):
+        return self.range_search is not None and self.materialize is not None
+
+    @property
+    def supports_raw_range(self):
+        return self.raw_range_search is not None
 
 
 def _percentile(values: Sequence[int], percentile: float) -> float:
@@ -151,12 +232,52 @@ def _make_dataset(size: int, seed: int) -> List[dict]:
     return records
 
 
-def _rid_for(record: dict) -> Tuple[int, int]:
-    # RID sintético, estable y liviano.
-    return (record["id"] // 128, record["id"] % 128)
+#: Mapa id -> RID del Heap File real que se está usando en la corrida. Lo fija
+#: `run_benchmarks` para que los índices guarden RIDs que existan de verdad en
+#: el almacenamiento y la recuperación por RID sea una lectura real.
+_ACTIVE_RIDS: Dict[int, RID] = {}
 
 
-def _make_adapters(config: BenchmarkConfig) -> List[_Adapter]:
+def _rid_for(record: dict) -> RID:
+    """RID del registro en el Heap File real de la corrida actual."""
+    try:
+        return _ACTIVE_RIDS[record["id"]]
+    except KeyError:
+        # Fuera de `run_benchmarks` (llamadas directas en pruebas) se usa un
+        # RID sintético: las métricas que no recuperan filas no lo necesitan.
+        return RID(*_rid_positions(record["id"], 128))
+
+
+def _make_adapters(
+    config: BenchmarkConfig,
+    rid_to_record: Optional[dict] = None,
+    heap: Optional["HeapBacking"] = None,
+) -> List[_Adapter]:
+    """Adaptadores de cada índice.
+
+    ``heap`` es el Heap File real donde vive la fila: es lo que permite medir
+    la recuperación por RID como una lectura de disco y no como un lookup en
+    memoria. ``rid_to_record`` se conserva para la variante "en memoria", que
+    sirve de contraste metodológico.
+    """
+
+    def materialize_from_rids(_index, rids):
+        """Recuperar cada fila desde el Heap File real (una lectura por RID)."""
+        if heap is None:
+            return list(rids)
+        rows = []
+        for rid in rids:
+            row = heap.read(rid)
+            if row is not None:
+                rows.append(row)
+        return rows
+
+    def materialize_in_memory(_index, rids):
+        """Recuperar cada fila desde un diccionario en memoria (contraste)."""
+        if rid_to_record is None:
+            return list(rids)
+        return [rid_to_record[rid] for rid in rids]
+
     return [
         _Adapter(
             name="bplus_clustered",
@@ -173,9 +294,17 @@ def _make_adapters(config: BenchmarkConfig) -> List[_Adapter]:
                 high,
             ),
             ordered_scan=lambda index: index.scan(),
+            # El índice agrupado ya devuelve registros completos (con su
+            # copia defensiva), así que materializar no añade trabajo.
+            materialize=lambda index, rows: list(rows),
+            materialize_in_memory=lambda index, rows: list(rows),
+            # Recorrido crudo de las hojas: sin el deepcopy de la capa agrupada.
+            raw_range_search=lambda index, low, high: [
+                record for _key, record in index.tree.range_search(low, high)
+            ],
             notes=(
                 "Las hojas almacenan registros completos; exact/range/scan "
-                "incluyen materialización de registros."
+                "incluyen materialización (copia defensiva) de registros."
             ),
         ),
         _Adapter(
@@ -193,9 +322,17 @@ def _make_adapters(config: BenchmarkConfig) -> List[_Adapter]:
                 high,
             ),
             ordered_scan=lambda index: index.scan(),
+            materialize=materialize_from_rids,
+            materialize_in_memory=materialize_in_memory,
+            # El no agrupado ya devuelve solo RIDs: su recorrido crudo es el mismo.
+            raw_range_search=lambda index, low, high: index.range_search(
+                low,
+                high,
+            ),
             notes=(
-                "Las hojas almacenan RIDs; no incluye el costo posterior "
-                "de recuperar el registro desde storage."
+                "Las hojas almacenan RIDs; la métrica 'range_search' no "
+                "incluye recuperar el registro y 'range_search_materialized' "
+                "sí (una búsqueda por RID)."
             ),
         ),
         _Adapter(
@@ -213,6 +350,8 @@ def _make_adapters(config: BenchmarkConfig) -> List[_Adapter]:
             delete=lambda index, key, rid: index.delete(key, rid),
             range_search=None,
             ordered_scan=None,
+            materialize=materialize_from_rids,
+            materialize_in_memory=materialize_in_memory,
             notes=(
                 "Optimizado para igualdad exacta. Range search y ordered "
                 "scan no son capacidades nativas del hash."
@@ -315,12 +454,57 @@ def _serialized_size_bytes(index) -> Optional[int]:
             node.prev = previous_node
 
 
+def _records_held_by(index) -> List[dict]:
+    """Registros completos guardados DENTRO del índice (hojas del agrupado)."""
+    tree = getattr(index, "tree", None)
+    if tree is None:
+        return []
+
+    records: List[dict] = []
+    node = getattr(tree, "root", None)
+    if node is None:
+        return records
+
+    while not node.is_leaf:
+        node = node.children[0]
+    while node is not None:
+        # En las hojas, ``keys`` y ``values`` son listas paralelas.
+        for value in getattr(node, "values", []):
+            if isinstance(value, dict):
+                records.append(value)
+            elif isinstance(value, list):
+                records.extend(item for item in value if isinstance(item, dict))
+        node = node.next
+    return records
+
+
+def _payload_size_bytes(records: Sequence[dict]) -> int:
+    """Bytes de datos de usuario que el índice arrastra por guardar registros.
+
+    Con ``pickle`` el B+ agrupado sale ~3.5x mas grande solo porque el
+    serializador es mas verboso con dicts/strings, no porque ocupe mas en
+    disco. Medir el payload real permite comparar el espacio en igualdad de
+    condiciones y ademas declarar explicitamente el costo del index clustering.
+    """
+    total = 0
+    for record in records:
+        for value in record.values():
+            if isinstance(value, str):
+                total += len(value.encode("utf-8"))
+            elif isinstance(value, (int, float)):
+                total += 8
+            elif value is not None:
+                total += 8
+    return total
+
+
 def _benchmark_serialized_size(
     adapter: _Adapter,
     index,
     dataset_size: int,
 ):
     size_bytes = _serialized_size_bytes(index)
+    payload_bytes = _payload_size_bytes(_records_held_by(index))
 
     if size_bytes is None:
         return BenchmarkResult(
@@ -335,6 +519,19 @@ def _benchmark_serialized_size(
             ),
         )
 
+    notes = (
+        "size_bytes = tamaño de pickle del índice (aproximación portable, "
+        "sobreestima dicts/strings). "
+    )
+    if payload_bytes:
+        notes += (
+            f"de los cuales {payload_bytes} bytes son registros completos que "
+            "el índice agrupado guarda en sus hojas: ese es el costo real del "
+            "index clustering y no lo pagan el B+ no agrupado ni el hash."
+        )
+    else:
+        notes += "El índice solo guarda clave + RID, no registros completos."
+
     return BenchmarkResult(
         dataset_size=dataset_size,
         index_type=adapter.name,
@@ -342,11 +539,8 @@ def _benchmark_serialized_size(
         supported=True,
         operations=1,
         size_bytes=size_bytes,
-        notes=(
-            "Tamaño de pickle del índice; se usa como aproximación portable "
-            "al espacio adicional de la estructura, no como tamaño físico "
-            "de páginas en disco."
-        ),
+        payload_bytes=payload_bytes,
+        notes=notes,
     )
 
 
@@ -367,20 +561,52 @@ def _benchmark_exact(
             durations.append(time.perf_counter_ns() - start)
             result_items += len(result)
 
-    stats = _timing_summary(
-        durations,
-        result_items=result_items,
+    results = [
+        BenchmarkResult(
+            dataset_size=len(index),
+            index_type=adapter.name,
+            metric=metric,
+            supported=True,
+            operations=len(durations),
+            **_timing_summary(durations, result_items=result_items),
+            notes=adapter.notes,
+        )
+    ]
+
+    # 2) La misma búsqueda + traer la fila. En el índice agrupado no hay paso
+    #    extra (el registro ya está en la hoja); en el no agrupado y el hash es
+    #    una lectura por RID en el Heap File. Ésta es la comparación real.
+    if adapter.materialize is None:
+        return results
+
+    durations = []
+    result_items = 0
+
+    for _ in range(config.query_repeats):
+        for key in keys:
+            start = time.perf_counter_ns()
+            rids = adapter.search(index, key)
+            rows = adapter.materialize(index, rids)
+            durations.append(time.perf_counter_ns() - start)
+            result_items += len(rows)
+
+    results.append(
+        BenchmarkResult(
+            dataset_size=len(index),
+            index_type=adapter.name,
+            metric=f"{metric}_materialized",
+            supported=True,
+            operations=len(durations),
+            **_timing_summary(durations, result_items=result_items),
+            notes=(
+                "Búsqueda por igualdad + traer la fila. El índice agrupado ya "
+                "tiene el registro en su hoja; el no agrupado y el hash pagan "
+                "una lectura por RID en el Heap File."
+            ),
+        )
     )
 
-    return BenchmarkResult(
-        dataset_size=len(index),
-        index_type=adapter.name,
-        metric=metric,
-        supported=True,
-        operations=len(durations),
-        **stats,
-        notes=adapter.notes,
-    )
+    return results
 
 
 def _benchmark_range(
@@ -389,17 +615,28 @@ def _benchmark_range(
     ranges: Sequence[Tuple[int, int]],
     dataset_size: int,
     config: BenchmarkConfig,
-):
+) -> List[BenchmarkResult]:
     if not adapter.supports_range:
-        return BenchmarkResult(
-            dataset_size=dataset_size,
-            index_type=adapter.name,
-            metric="range_search",
-            supported=False,
-            operations=0,
-            notes="No soportado nativamente por Extendible Hashing.",
-        )
+        return [
+            BenchmarkResult(
+                dataset_size=dataset_size,
+                index_type=adapter.name,
+                metric=metric,
+                supported=False,
+                operations=0,
+                notes="No soportado nativamente por Extendible Hashing.",
+            )
+            for metric in (
+                "range_search",
+                "range_search_materialized",
+                "range_search_inmemory",
+                "range_search_raw_index",
+            )
+        ]
 
+    results: List[BenchmarkResult] = []
+
+    # 1) Costo del índice aislado.
     durations = []
     result_items = 0
 
@@ -410,20 +647,115 @@ def _benchmark_range(
             durations.append(time.perf_counter_ns() - start)
             result_items += len(result)
 
-    stats = _timing_summary(
-        durations,
-        result_items=result_items,
+    results.append(
+        BenchmarkResult(
+            dataset_size=dataset_size,
+            index_type=adapter.name,
+            metric="range_search",
+            supported=True,
+            operations=len(durations),
+            **_timing_summary(durations, result_items=result_items),
+            notes=(
+                "Solo el índice. El B+ agrupado devuelve registros "
+                "(con copia defensiva); el no agrupado devuelve RIDs."
+            ),
+        )
     )
 
-    return BenchmarkResult(
-        dataset_size=dataset_size,
-        index_type=adapter.name,
-        metric="range_search",
-        supported=True,
-        operations=len(durations),
-        **stats,
-        notes=adapter.notes,
+    # 2) Costo real de la consulta: índice + recuperar cada fila DEL DISCO.
+    #    Ésta es la comparación coherente con la teoría.
+    durations = []
+    result_items = 0
+
+    for _ in range(config.query_repeats):
+        for low, high in ranges:
+            start = time.perf_counter_ns()
+            rids = adapter.range_search(index, low, high)
+            rows = adapter.materialize(index, rids)
+            durations.append(time.perf_counter_ns() - start)
+            result_items += len(rows)
+
+    results.append(
+        BenchmarkResult(
+            dataset_size=dataset_size,
+            index_type=adapter.name,
+            metric="range_search_materialized",
+            supported=True,
+            operations=len(durations),
+            **_timing_summary(durations, result_items=result_items),
+            notes=(
+                "Range scan + recuperar cada fila desde el Heap File: es la "
+                "comparación real. El B+ agrupado tiene el registro en su hoja "
+                "(no lee nada extra); el no agrupado paga una lectura por RID."
+            ),
+        )
     )
+
+    # 3) La misma recuperación pero desde un diccionario en memoria. Se conserva
+    #    sólo como contraste metodológico: explica por qué medir en memoria hacía
+    #    parecer que el índice agrupado perdía.
+    if adapter.materialize_in_memory is None:
+        return results
+
+    durations = []
+    result_items = 0
+
+    for _ in range(config.query_repeats):
+        for low, high in ranges:
+            start = time.perf_counter_ns()
+            rids = adapter.range_search(index, low, high)
+            rows = adapter.materialize_in_memory(index, rids)
+            durations.append(time.perf_counter_ns() - start)
+            result_items += len(rows)
+
+    results.append(
+        BenchmarkResult(
+            dataset_size=dataset_size,
+            index_type=adapter.name,
+            metric="range_search_inmemory",
+            supported=True,
+            operations=len(durations),
+            **_timing_summary(durations, result_items=result_items),
+            notes=(
+                "CONTRASTE METODOLÓGICO: recupera la fila desde un dict en "
+                "memoria en lugar del Heap File. Con esta medición el B+ "
+                "agrupado parece perder, porque mover un RID es más barato que "
+                "copiar el registro. No es la comparación real."
+            ),
+        )
+    )
+
+    # 4) Recorrido crudo de las hojas, sin la copia defensiva del agrupado.
+    if not adapter.supports_raw_range:
+        return results
+
+    durations = []
+    result_items = 0
+
+    for _ in range(config.query_repeats):
+        for low, high in ranges:
+            start = time.perf_counter_ns()
+            rows = adapter.raw_range_search(index, low, high)
+            durations.append(time.perf_counter_ns() - start)
+            result_items += len(rows)
+
+    results.append(
+        BenchmarkResult(
+            dataset_size=dataset_size,
+            index_type=adapter.name,
+            metric="range_search_raw_index",
+            supported=True,
+            operations=len(durations),
+            **_timing_summary(durations, result_items=result_items),
+            notes=(
+                "Recorrido de las hojas sin la copia defensiva del B+ "
+                "agrupado: aísla el costo del algoritmo (en el B+ no "
+                "agrupado coincide con 'range_search')."
+            ),
+        )
+    )
+
+    return results
 
 
 def _benchmark_ordered_scan(
@@ -542,6 +874,67 @@ def _benchmark_delete_workload(
     )
 
 
+def _benchmark_linear_scan(
+    records: Sequence[dict],
+    existing_keys: Sequence[int],
+    ranges: Sequence[tuple],
+    config: BenchmarkConfig,
+) -> BenchmarkResult:
+    """Línea base: búsqueda por igualdad recorriendo todos los registros.
+
+    El enunciado exige comparar cada índice contra la alternativa sin índice,
+    de modo que la mejora sea medible y no solo afirmada. Se ejecuta una vez
+    por tamaño de dataset, no por índice, así que no multiplica el número de
+    filas del resultado por adaptador.
+    """
+    durations = []
+    result_items = 0
+
+    for _ in range(config.query_repeats):
+        for key in existing_keys:
+            start = time.perf_counter_ns()
+            found = [
+                record for record in records if record["id"] == key
+            ]
+            durations.append(time.perf_counter_ns() - start)
+            result_items += len(found)
+
+    return BenchmarkResult(
+        dataset_size=len(records),
+        index_type="linear_scan",
+        metric="linear_scan",
+        supported=True,
+        operations=len(durations),
+        **_timing_summary(durations, result_items=result_items),
+        notes=(
+            "Línea base sin índice: un registro se busca recorriendo el "
+            "arreglo completo. Sirve para medir la mejora real de cada "
+            "índice en igualdad exacta."
+        ),
+    )
+
+
+def _heap_schema() -> Schema:
+    """Esquema del Heap File de respaldo: las mismas columnas del dataset."""
+    return Schema(
+        [
+            ("id", "INT"),
+            ("group", "INT"),
+            ("value", "INT"),
+            ("payload", "VARCHAR(16)"),
+        ],
+        primary_key="id",
+    )
+
+
+def _heap_dir(config: BenchmarkConfig) -> Path:
+    """Directorio temporal donde se materializan los Heap Files del benchmark."""
+    base = getattr(config, "heap_dir", None)
+    directory = Path(base) if base else Path(".benchmark_heap")
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory
+
+
 def run_benchmarks(config: BenchmarkConfig) -> List[BenchmarkResult]:
     rng = random.Random(config.seed)
     results = []
@@ -551,7 +944,23 @@ def run_benchmarks(config: BenchmarkConfig) -> List[BenchmarkResult]:
             raise ValueError("dataset sizes must be >= 1")
 
         records = _make_dataset(size, config.seed)
-        adapters = _make_adapters(config)
+
+        #: Heap File REAL en disco donde viven las filas. Es lo que hace que
+        #: "recuperar la fila" cueste una lectura y no un lookup en memoria.
+        heap_dir = _heap_dir(config)
+        heap_path = heap_dir / f"heap_{size}.dat"
+        schema = _heap_schema()
+        heap = HeapBacking(records, schema, str(heap_path))
+
+        # Los índices deben guardar los RID que existen en ese Heap File.
+        _ACTIVE_RIDS.clear()
+        for position, record in enumerate(records):
+            _ACTIVE_RIDS[record["id"]] = heap.rid_of(position)
+
+        #: RID -> registro, sólo para la variante "en memoria" (contraste).
+        rid_to_record = heap.lookup
+
+        adapters = _make_adapters(config, rid_to_record, heap)
 
         query_count = min(config.exact_queries, size)
         range_count = min(config.range_queries, size)
@@ -589,6 +998,16 @@ def run_benchmarks(config: BenchmarkConfig) -> List[BenchmarkResult]:
             for start in range_starts
         ]
 
+        # Línea base sin índice para el mismo conjunto de claves.
+        results.append(
+            _benchmark_linear_scan(
+                records,
+                existing_keys,
+                ranges,
+                config,
+            )
+        )
+
         new_records = [
             {
                 "id": size + i,
@@ -624,7 +1043,7 @@ def run_benchmarks(config: BenchmarkConfig) -> List[BenchmarkResult]:
                 )
             )
 
-            results.append(
+            results.extend(
                 _benchmark_exact(
                     adapter,
                     built_index,
@@ -634,7 +1053,7 @@ def run_benchmarks(config: BenchmarkConfig) -> List[BenchmarkResult]:
                 )
             )
 
-            results.append(
+            results.extend(
                 _benchmark_exact(
                     adapter,
                     built_index,
@@ -644,7 +1063,7 @@ def run_benchmarks(config: BenchmarkConfig) -> List[BenchmarkResult]:
                 )
             )
 
-            results.append(
+            results.extend(
                 _benchmark_range(
                     adapter,
                     built_index,
@@ -737,6 +1156,11 @@ def _print_summary(results: Sequence[BenchmarkResult]):
             value = "N/A"
         elif result.metric == "serialized_size":
             value = f"{result.size_bytes:,} bytes"
+            if result.payload_bytes:
+                value += (
+                    f" (de los cuales {result.payload_bytes:,} son registros "
+                    "del índice agrupado)"
+                )
         elif result.avg_us is not None:
             value = f"{result.avg_us:,.3f} us/op"
         else:

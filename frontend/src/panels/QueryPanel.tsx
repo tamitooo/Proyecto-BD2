@@ -38,10 +38,106 @@ export const EXAMPLE_GROUPS: { group: string; items: Example[] }[] = [
     ],
   },
   {
-    group: 'Mutaciones (INSERT / DELETE)',
+    group: 'Mutaciones (INSERT / UPDATE / DELETE)',
     items: [
       { label: 'INSERT nuevo registro', sql: "INSERT INTO users VALUES (9, 'Sofia Lazo', 27, 'CS')" },
+      { label: 'UPDATE con condición', sql: "UPDATE users SET age = 21 WHERE id = 3" },
       { label: 'DELETE con condición', sql: 'DELETE FROM users WHERE id = 9' },
+    ],
+  },
+  {
+    group: 'DDL: crear y borrar tablas (con carga de CSV)',
+    items: [
+      {
+        label: 'CREATE TABLE alumnos (igual que el script del curso)',
+        sql:
+          'CREATE TABLE alumnos (\n' +
+          '    id INT PRIMARY KEY,\n' +
+          '    nombre VARCHAR(100),\n' +
+          '    carrera_id INT,\n' +
+          '    nota INT\n' +
+          ')',
+      },
+      { label: 'Consultar la tabla nueva', sql: 'SELECT * FROM alumnos WHERE nota >= 14 ORDER BY id' },
+      { label: 'DROP TABLE IF EXISTS alumnos (evita el error si ya existía)', sql: 'DROP TABLE IF EXISTS alumnos' },
+      { label: 'DROP TABLE alumnos', sql: 'DROP TABLE alumnos' },
+    ],
+  },
+  {
+    group: 'Índices: crear y eliminar (CREATE INDEX / DROP INDEX)',
+    items: [
+      {
+        label: 'CREATE INDEX B+ no agrupado sobre users.age',
+        sql: 'CREATE INDEX idx_users_age_bpu ON users (age) USING BPLUS_UNCLUSTERED',
+      },
+      {
+        label: 'CREATE UNIQUE INDEX Hash sobre users.name',
+        sql: 'CREATE UNIQUE INDEX idx_users_name_hash ON users (name) USING HASH',
+      },
+      {
+        label: 'CREATE INDEX B+ agrupado sobre departments.city (columna libre)',
+        sql: 'CREATE INDEX idx_dept_city_bpc ON departments (city) USING BPLUS_CLUSTERED',
+      },
+      {
+        label: 'DROP INDEX del índice creado (IF EXISTS: no falla si no existe)',
+        sql: 'DROP INDEX IF EXISTS idx_users_age_bpu ON users',
+      },
+      {
+        label: 'DROP INDEX sin IF EXISTS (falla si el índice no existe)',
+        sql: 'DROP INDEX idx_dept_city_bpc ON departments',
+      },
+    ],
+  },
+  {
+    group: 'Transacciones (BEGIN TRANSACTION / END TRANSACTION / ROLLBACK)',
+    items: [
+      { label: '1. BEGIN TRANSACTION (abre la transacción)', sql: 'BEGIN TRANSACTION' },
+      {
+        label: '2. INSERT dentro de la transacción',
+        sql: "INSERT INTO users VALUES (99, 'Transitorio Rollback', 20, 'CS')",
+      },
+      { label: '3. SELECT: el cambio pendiente ya se ve', sql: 'SELECT * FROM users WHERE id = 99' },
+      { label: '4a. ROLLBACK (deshace el INSERT pendiente)', sql: 'ROLLBACK' },
+      {
+        label: '4b. END TRANSACTION (confirma; alternativa a 4a tras el paso 3)',
+        sql: 'END TRANSACTION',
+      },
+      {
+        label: '5. Limpieza opcional del registro de prueba',
+        sql: 'DELETE FROM users WHERE id = 99',
+      },
+    ],
+  },
+  {
+    group: 'EXPLAIN: plan lógico y ejecución real',
+    items: [
+      {
+        label: 'EXPLAIN de una consulta',
+        sql: 'EXPLAIN SELECT * FROM employees WHERE salary >= 4000 ORDER BY salary',
+      },
+      {
+        label: 'EXPLAIN ANALYZE (con tiempos por operador)',
+        sql: 'EXPLAIN ANALYZE SELECT * FROM employees WHERE salary >= 4000 ORDER BY salary',
+      },
+      { label: 'EXPLAIN de un INSERT', sql: "EXPLAIN INSERT INTO users VALUES (77, 'Test', 20, 'CS')" },
+    ],
+  },
+  {
+    group: 'OR, LIMIT y alias de columnas',
+    items: [
+      { label: 'WHERE con OR', sql: "SELECT * FROM users WHERE age >= 24 OR dept = 'CS'" },
+      { label: 'ORDER BY + LIMIT', sql: 'SELECT id, name, salary FROM employees ORDER BY salary DESC LIMIT 2' },
+    ],
+  },
+  {
+    // Parte 2: las búsquedas espaciales (rango, k-NN, polígono, Euclidiana y
+    // Haversine) se lanzan desde el panel de mapa, que usa /api/spatial/*.
+    // Aquí solo se listan lecturas SQL de la tabla espacial cargada por CSV.
+    group: 'Datos espaciales (Parte 2 · se visualizan en el panel de mapa)',
+    items: [
+      { label: 'Ver todos los puntos (ajusta el nombre «tiendas»)', sql: 'SELECT * FROM tiendas' },
+      { label: 'Puntos con sus coordenadas', sql: 'SELECT id, nombre, lat, lon FROM tiendas' },
+      { label: 'Puntos ordenados por clave', sql: 'SELECT id, nombre, lat, lon FROM tiendas ORDER BY id LIMIT 10' },
     ],
   },
 ];
@@ -51,8 +147,10 @@ export default function QueryPanel({ sql, onChangeSql, onRun, running }: Props) 
     <div className="panel">
       <h2 className="panel__title">Panel de consultas</h2>
       <p className="panel__hint">
-        SELECT / INSERT / DELETE · WHERE (=, !=, &lt;&gt;, &lt;, &lt;=, &gt;, &gt;=, BETWEEN, AND) ·
-        GROUP BY · ORDER BY · JOIN ... ON. Sin OR, sin LIMIT y sin alias de tabla.
+        SELECT / INSERT / UPDATE / DELETE / CREATE TABLE / DROP TABLE / CREATE INDEX /
+        DROP INDEX / BEGIN TRANSACTION / END TRANSACTION / ROLLBACK / EXPLAIN ·
+        WHERE (=, !=, &lt;&gt;, &lt;, &lt;=, &gt;, &gt;=, BETWEEN, AND, OR) · GROUP BY ·
+        ORDER BY · LIMIT · JOIN ... ON
       </p>
 
       <select

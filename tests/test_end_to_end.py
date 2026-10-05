@@ -295,8 +295,9 @@ class _EndToEndBase:
             self._sql("INSERT INTO alumnos VALUES (8, 'X')")
 
     def test_sql_invalido_lanza_error_de_parseo(self):
+        # UPDATE ya está soportado; se usa un comando fuera del subconjunto.
         with self.assertRaises(SQLParseError):
-            self._sql("UPDATE alumnos SET nota = 10")
+            self._sql("TRUNCATE TABLE alumnos")
 
     def test_tabla_desconocida(self):
         with self.assertRaises(KeyError):

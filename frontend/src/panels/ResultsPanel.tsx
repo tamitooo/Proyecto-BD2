@@ -11,6 +11,13 @@ function renderValue(value: CellValue): string {
   return String(value);
 }
 
+//: Sentencias que devuelven filas (leen). El resto mutan el almacenamiento.
+const READ_STATEMENTS = new Set(['SELECT', 'EXPLAIN', 'ROLLBACK']);
+
+function isReadStatement(statement: string): boolean {
+  return READ_STATEMENTS.has(statement.trim().toUpperCase());
+}
+
 export default function ResultsPanel({ result }: Props) {
   const [showJson, setShowJson] = useState(false);
 
@@ -34,7 +41,9 @@ export default function ResultsPanel({ result }: Props) {
     );
   }
 
-  const isRead = result.columns.length > 0;
+  // Una lectura con 0 filas devuelve columns = []; por eso el tipo de sentencia
+  // decide si son filas devueltas o filas afectadas.
+  const isRead = isReadStatement(result.statement);
 
   return (
     <div className="panel">
@@ -51,9 +60,15 @@ export default function ResultsPanel({ result }: Props) {
       </div>
 
       {!isRead ? (
-        <p className="panel__hint">La mutación se aplicó correctamente sobre el almacenamiento en disco.</p>
+        <p className="panel__hint">
+          La sentencia se aplicó correctamente sobre el almacenamiento en disco
+          {result.affected_rows > 0 ? ` (${result.affected_rows} filas afectadas).` : '.'}
+        </p>
       ) : result.rows.length === 0 ? (
-        <p className="panel__hint">La consulta no devolvió registros.</p>
+        <p className="panel__hint">
+          La consulta no devolvió registros. El panel de plan muestra la ruta de
+          acceso que se usó.
+        </p>
       ) : (
         <>
           <div className="actions">

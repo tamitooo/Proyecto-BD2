@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { createTable, importCsv } from '../api';
+import { createTable, importCsvFile } from '../api';
 import type { CreateTableColumn } from '../types';
 
 interface Props {
@@ -137,7 +137,7 @@ export default function TableManager({ onChanged }: Props) {
     setMessage(null);
 
     try {
-      const result = await importCsv(csvFile, {
+      const result = await importCsvFile(csvFile, {
         name: csvTableName,
         primaryKey: csvPrimaryKey,
         storageKind: csvStorageKind,

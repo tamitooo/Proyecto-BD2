@@ -228,6 +228,21 @@ class SequentialFile:
         self._tombstones_main = 0
         self.n_reorganizaciones += 1
 
+    def replace_all(self, rows):
+        """Deja el archivo con exactamente ``rows``, ordenado (rollback de transaccion).
+
+        Reescribe .main ordenado por clave primaria y vacia .aux, igual que una
+        reorganizacion, pero ademas sirve para restaurar un estado anterior.
+        """
+        rows = list(rows)
+        rows.sort(key=self._clave)
+        with open(self.main_path, "wb") as f:
+            for row in rows:
+                f.write(self.schema.pack(row, flag=self.schema.FLAG_USED))
+        open(self.aux_path, "wb").close()
+        self._tombstones_main = 0
+        return len(rows)
+
     def espacio_utilizado_bytes(self):
         """Devuelve el peso total combinado de ambos archivos en disco."""
         return os.path.getsize(self.main_path) + os.path.getsize(self.aux_path)

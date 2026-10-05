@@ -1,73 +1,121 @@
-dataset_size,index_type,metric,supported,operations,total_ms,avg_us,median_us,p95_us,result_items,size_bytes,notes
-1000,bplus_clustered,build,True,1000,44.2122,14737.4,13454.6,17713.8,,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización de registros.
-1000,bplus_clustered,serialized_size,True,1,,,,,,44773,"Tamaño de pickle del índice; se usa como aproximación portable al espacio adicional de la estructura, no como tamaño físico de páginas en disco."
-1000,bplus_clustered,exact_hit,True,1500,14.9752,9.983466666666667,8.7,13.6,1500,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización de registros.
-1000,bplus_clustered,exact_miss,True,1500,3.4043,2.2695333333333334,2.2,2.4,0,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización de registros.
-1000,bplus_clustered,range_search,True,300,24.0844,80.28133333333332,68.2,115.2,3270,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización de registros.
-1000,bplus_clustered,ordered_scan,True,3,24.4738,8157.933333333333,7831.2,10470.0,3000,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización de registros.
-1000,bplus_clustered,insert,True,200,2.7116,13.558,12.5,15.0,,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización de registros.
-1000,bplus_clustered,delete,True,200,1.5817,7.9085,6.9,13.1,,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización de registros.
-1000,bplus_unclustered,build,True,1000,18.0953,6031.766666666667,6325.0,6470.8,,,Las hojas almacenan RIDs; no incluye el costo posterior de recuperar el registro desde storage.
-1000,bplus_unclustered,serialized_size,True,1,,,,,,13020,"Tamaño de pickle del índice; se usa como aproximación portable al espacio adicional de la estructura, no como tamaño físico de páginas en disco."
-1000,bplus_unclustered,exact_hit,True,1500,2.2181,1.4787333333333335,1.5,1.9,1500,,Las hojas almacenan RIDs; no incluye el costo posterior de recuperar el registro desde storage.
-1000,bplus_unclustered,exact_miss,True,1500,1.4239,0.9492666666666667,0.8,1.3,0,,Las hojas almacenan RIDs; no incluye el costo posterior de recuperar el registro desde storage.
-1000,bplus_unclustered,range_search,True,300,2.1727,7.242333333333333,5.9,10.4,3270,,Las hojas almacenan RIDs; no incluye el costo posterior de recuperar el registro desde storage.
-1000,bplus_unclustered,ordered_scan,True,3,1.0082,336.06666666666666,322.8,368.1,3000,,Las hojas almacenan RIDs; no incluye el costo posterior de recuperar el registro desde storage.
-1000,bplus_unclustered,insert,True,200,1.9001,9.5005,9.3,14.1,,,Las hojas almacenan RIDs; no incluye el costo posterior de recuperar el registro desde storage.
-1000,bplus_unclustered,delete,True,200,1.474,7.37,6.5,11.2,,,Las hojas almacenan RIDs; no incluye el costo posterior de recuperar el registro desde storage.
-1000,extendible_hash,build,True,1000,14.7162,4905.4,3236.8,8590.5,,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
-1000,extendible_hash,serialized_size,True,1,,,,,,12280,"Tamaño de pickle del índice; se usa como aproximación portable al espacio adicional de la estructura, no como tamaño físico de páginas en disco."
-1000,extendible_hash,exact_hit,True,1500,2.3798,1.5865333333333334,1.5,1.9,1500,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
-1000,extendible_hash,exact_miss,True,1500,1.8636,1.2424000000000002,1.3,1.5,0,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
-1000,extendible_hash,range_search,False,0,,,,,,,No soportado nativamente por Extendible Hashing.
-1000,extendible_hash,ordered_scan,False,0,,,,,,,Extendible Hashing no garantiza orden. Para ORDER BY se requiere External Sort.
-1000,extendible_hash,insert,True,200,0.8632,4.316,1.2,39.1,,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
-1000,extendible_hash,delete,True,200,0.6339,3.1695,2.8,3.3,,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
-10000,bplus_clustered,build,True,10000,620.5651,206855.03333333335,204712.8,215107.2,,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización de registros.
-10000,bplus_clustered,serialized_size,True,1,,,,,,455775,"Tamaño de pickle del índice; se usa como aproximación portable al espacio adicional de la estructura, no como tamaño físico de páginas en disco."
-10000,bplus_clustered,exact_hit,True,1500,15.5511,10.3674,9.3,14.1,1500,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización de registros.
-10000,bplus_clustered,exact_miss,True,1500,6.5591,4.372733333333334,4.1,6.0,0,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización de registros.
-10000,bplus_clustered,range_search,True,300,213.6706,712.2353333333334,665.0,1045.7,30012,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización de registros.
-10000,bplus_clustered,ordered_scan,True,3,226.3131,75437.7,76061.2,76786.8,30000,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización de registros.
-10000,bplus_clustered,insert,True,200,5.3696,26.848,20.4,42.1,,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización de registros.
-10000,bplus_clustered,delete,True,200,2.6418,13.209,13.0,14.8,,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización de registros.
-10000,bplus_unclustered,build,True,10000,475.9176,158639.2,135476.2,207451.3,,,Las hojas almacenan RIDs; no incluye el costo posterior de recuperar el registro desde storage.
-10000,bplus_unclustered,serialized_size,True,1,,,,,,130170,"Tamaño de pickle del índice; se usa como aproximación portable al espacio adicional de la estructura, no como tamaño físico de páginas en disco."
-10000,bplus_unclustered,exact_hit,True,1500,3.4439,2.2959333333333336,2.2,3.2,1500,,Las hojas almacenan RIDs; no incluye el costo posterior de recuperar el registro desde storage.
-10000,bplus_unclustered,exact_miss,True,1500,1.8215,1.2143333333333333,1.2,1.5,0,,Las hojas almacenan RIDs; no incluye el costo posterior de recuperar el registro desde storage.
-10000,bplus_unclustered,range_search,True,300,19.1507,63.83566666666666,57.4,93.0,30012,,Las hojas almacenan RIDs; no incluye el costo posterior de recuperar el registro desde storage.
-10000,bplus_unclustered,ordered_scan,True,3,15.5626,5187.533333333333,4904.5,5822.8,30000,,Las hojas almacenan RIDs; no incluye el costo posterior de recuperar el registro desde storage.
-10000,bplus_unclustered,insert,True,200,2.5796,12.898,12.6,14.0,,,Las hojas almacenan RIDs; no incluye el costo posterior de recuperar el registro desde storage.
-10000,bplus_unclustered,delete,True,200,3.9135,19.5675,20.1,25.0,,,Las hojas almacenan RIDs; no incluye el costo posterior de recuperar el registro desde storage.
-10000,extendible_hash,build,True,10000,150.8317,50277.23333333334,53008.8,54401.1,,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
-10000,extendible_hash,serialized_size,True,1,,,,,,125089,"Tamaño de pickle del índice; se usa como aproximación portable al espacio adicional de la estructura, no como tamaño físico de páginas en disco."
-10000,extendible_hash,exact_hit,True,1500,3.1407,2.0938000000000003,1.8,2.5,1500,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
-10000,extendible_hash,exact_miss,True,1500,1.3594,0.9062666666666667,0.9,1.2,0,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
-10000,extendible_hash,range_search,False,0,,,,,,,No soportado nativamente por Extendible Hashing.
-10000,extendible_hash,ordered_scan,False,0,,,,,,,Extendible Hashing no garantiza orden. Para ORDER BY se requiere External Sort.
-10000,extendible_hash,insert,True,200,0.4378,2.189,2.2,2.6,,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
-10000,extendible_hash,delete,True,200,0.863,4.315,3.8,5.8,,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
-100000,bplus_clustered,build,True,100000,14566.2371,4855412.366666667,4867282.9,4893155.4,,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización de registros.
-100000,bplus_clustered,serialized_size,True,1,,,,,,4712759,"Tamaño de pickle del índice; se usa como aproximación portable al espacio adicional de la estructura, no como tamaño físico de páginas en disco."
-100000,bplus_clustered,exact_hit,True,1500,20.96,13.973333333333334,11.6,22.1,1500,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización de registros.
-100000,bplus_clustered,exact_miss,True,1500,3.7934,2.5289333333333333,2.4,2.9,0,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización de registros.
-100000,bplus_clustered,range_search,True,300,2536.9229,8456.409666666666,7944.4,10774.4,300300,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización de registros.
-100000,bplus_clustered,ordered_scan,True,3,2845.6405,948546.8333333334,972787.2,979610.5,300000,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización de registros.
-100000,bplus_clustered,insert,True,200,6.14,30.7,29.0,37.8,,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización de registros.
-100000,bplus_clustered,delete,True,200,7.3786,36.893,33.1,53.3,,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización de registros.
-100000,bplus_unclustered,build,True,100000,8911.5557,2970518.5666666664,2971075.0,3257053.5,,,Las hojas almacenan RIDs; no incluye el costo posterior de recuperar el registro desde storage.
-100000,bplus_unclustered,serialized_size,True,1,,,,,,1442190,"Tamaño de pickle del índice; se usa como aproximación portable al espacio adicional de la estructura, no como tamaño físico de páginas en disco."
-100000,bplus_unclustered,exact_hit,True,1500,4.0792,2.7194666666666665,2.5,4.0,1500,,Las hojas almacenan RIDs; no incluye el costo posterior de recuperar el registro desde storage.
-100000,bplus_unclustered,exact_miss,True,1500,1.5831,1.0554000000000001,1.1,1.2,0,,Las hojas almacenan RIDs; no incluye el costo posterior de recuperar el registro desde storage.
-100000,bplus_unclustered,range_search,True,300,284.5688,948.5626666666666,845.25,1334.9,300300,,Las hojas almacenan RIDs; no incluye el costo posterior de recuperar el registro desde storage.
-100000,bplus_unclustered,ordered_scan,True,3,393.4237,131141.23333333334,132206.2,141799.9,300000,,Las hojas almacenan RIDs; no incluye el costo posterior de recuperar el registro desde storage.
-100000,bplus_unclustered,insert,True,200,4.5168,22.584,21.9,29.3,,,Las hojas almacenan RIDs; no incluye el costo posterior de recuperar el registro desde storage.
-100000,bplus_unclustered,delete,True,200,9.5141,47.5705,45.25,70.4,,,Las hojas almacenan RIDs; no incluye el costo posterior de recuperar el registro desde storage.
-100000,extendible_hash,build,True,100000,2759.6987,919899.5666666667,909826.1,1007789.2,,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
-100000,extendible_hash,serialized_size,True,1,,,,,,1377275,"Tamaño de pickle del índice; se usa como aproximación portable al espacio adicional de la estructura, no como tamaño físico de páginas en disco."
-100000,extendible_hash,exact_hit,True,1500,2.3774,1.5849333333333333,1.3,2.8,1500,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
-100000,extendible_hash,exact_miss,True,1500,1.7109,1.1405999999999998,1.1,1.6,0,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
-100000,extendible_hash,range_search,False,0,,,,,,,No soportado nativamente por Extendible Hashing.
-100000,extendible_hash,ordered_scan,False,0,,,,,,,Extendible Hashing no garantiza orden. Para ORDER BY se requiere External Sort.
-100000,extendible_hash,insert,True,200,0.3761,1.8805,1.7,3.1,,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
-100000,extendible_hash,delete,True,200,1.5542,7.771,7.3,8.5,,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
+dataset_size,index_type,metric,supported,operations,total_ms,avg_us,median_us,p95_us,result_items,size_bytes,payload_bytes,notes
+1000,linear_scan,linear_scan,True,1500,111.4581,74.30539999999999,70.95,101.0,1500,,,Línea base sin índice: un registro se busca recorriendo el arreglo completo. Sirve para medir la mejora real de cada índice en igualdad exacta.
+1000,bplus_clustered,build,True,1000,36.4717,12157.233333333334,11512.0,13761.5,,,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización (copia defensiva) de registros.
+1000,bplus_clustered,serialized_size,True,1,,,,,,44773,39000,"size_bytes = tamaño de pickle del índice (aproximación portable, sobreestima dicts/strings). de los cuales 39000 bytes son registros completos que el índice agrupado guarda en sus hojas: ese es el costo real del index clustering y no lo pagan el B+ no agrupado ni el hash."
+1000,bplus_clustered,exact_hit,True,1500,15.5959,10.397266666666667,9.1,13.1,1500,,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización (copia defensiva) de registros.
+1000,bplus_clustered,exact_hit_materialized,True,1500,13.7978,9.198533333333334,8.6,12.7,1500,,,Búsqueda por igualdad + traer la fila. El índice agrupado ya tiene el registro en su hoja; el no agrupado y el hash pagan una lectura por RID en el Heap File.
+1000,bplus_clustered,exact_miss,True,1500,3.4122,2.2748000000000004,2.3,2.3,0,,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización (copia defensiva) de registros.
+1000,bplus_clustered,exact_miss_materialized,True,1500,4.4278,2.9518666666666666,2.4,3.8,0,,,Búsqueda por igualdad + traer la fila. El índice agrupado ya tiene el registro en su hoja; el no agrupado y el hash pagan una lectura por RID en el Heap File.
+1000,bplus_clustered,range_search,True,300,26.7094,89.03133333333332,96.8,114.3,3270,,,Solo el índice. El B+ agrupado devuelve registros (con copia defensiva); el no agrupado devuelve RIDs.
+1000,bplus_clustered,range_search_materialized,True,300,24.9162,83.054,70.35,114.5,3270,,,Range scan + recuperar cada fila desde el Heap File: es la comparación real. El B+ agrupado tiene el registro en su hoja (no lee nada extra); el no agrupado paga una lectura por RID.
+1000,bplus_clustered,range_search_inmemory,True,300,22.7432,75.81066666666668,68.35,115.6,3270,,,"CONTRASTE METODOLÓGICO: recupera la fila desde un dict en memoria en lugar del Heap File. Con esta medición el B+ agrupado parece perder, porque mover un RID es más barato que copiar el registro. No es la comparación real."
+1000,bplus_clustered,range_search_raw_index,True,300,1.8489,6.163,5.25,9.6,3270,,,Recorrido de las hojas sin la copia defensiva del B+ agrupado: aísla el costo del algoritmo (en el B+ no agrupado coincide con 'range_search').
+1000,bplus_clustered,ordered_scan,True,3,20.1664,6722.133333333333,6896.0,6914.6,3000,,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización (copia defensiva) de registros.
+1000,bplus_clustered,insert,True,200,2.807,14.035,12.4,20.0,,,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización (copia defensiva) de registros.
+1000,bplus_clustered,delete,True,200,1.8379,9.1895,8.4,11.6,,,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización (copia defensiva) de registros.
+1000,bplus_unclustered,build,True,1000,18.5757,6191.9,6187.5,6934.9,,,,Las hojas almacenan RIDs; la métrica 'range_search' no incluye recuperar el registro y 'range_search_materialized' sí (una búsqueda por RID).
+1000,bplus_unclustered,serialized_size,True,1,,,,,,25056,0,"size_bytes = tamaño de pickle del índice (aproximación portable, sobreestima dicts/strings). El índice solo guarda clave + RID, no registros completos."
+1000,bplus_unclustered,exact_hit,True,1500,1.5631,1.0420666666666667,1.0,1.3,1500,,,Las hojas almacenan RIDs; la métrica 'range_search' no incluye recuperar el registro y 'range_search_materialized' sí (una búsqueda por RID).
+1000,bplus_unclustered,exact_hit_materialized,True,1500,224.3714,149.58093333333332,110.3,274.1,1500,,,Búsqueda por igualdad + traer la fila. El índice agrupado ya tiene el registro en su hoja; el no agrupado y el hash pagan una lectura por RID en el Heap File.
+1000,bplus_unclustered,exact_miss,True,1500,1.1146,0.7430666666666668,0.7,0.8,0,,,Las hojas almacenan RIDs; la métrica 'range_search' no incluye recuperar el registro y 'range_search_materialized' sí (una búsqueda por RID).
+1000,bplus_unclustered,exact_miss_materialized,True,1500,1.5053,1.0035333333333334,0.9,1.3,0,,,Búsqueda por igualdad + traer la fila. El índice agrupado ya tiene el registro en su hoja; el no agrupado y el hash pagan una lectura por RID en el Heap File.
+1000,bplus_unclustered,range_search,True,300,1.7307,5.769,5.3,8.0,3270,,,Solo el índice. El B+ agrupado devuelve registros (con copia defensiva); el no agrupado devuelve RIDs.
+1000,bplus_unclustered,range_search_materialized,True,300,430.9174,1436.3913333333333,1206.85,2198.7,3270,,,Range scan + recuperar cada fila desde el Heap File: es la comparación real. El B+ agrupado tiene el registro en su hoja (no lee nada extra); el no agrupado paga una lectura por RID.
+1000,bplus_unclustered,range_search_inmemory,True,300,5.1052,17.017333333333333,16.0,25.2,3270,,,"CONTRASTE METODOLÓGICO: recupera la fila desde un dict en memoria en lugar del Heap File. Con esta medición el B+ agrupado parece perder, porque mover un RID es más barato que copiar el registro. No es la comparación real."
+1000,bplus_unclustered,range_search_raw_index,True,300,1.9732,6.577333333333333,5.7,9.8,3270,,,Recorrido de las hojas sin la copia defensiva del B+ agrupado: aísla el costo del algoritmo (en el B+ no agrupado coincide con 'range_search').
+1000,bplus_unclustered,ordered_scan,True,3,0.9303,310.1,307.9,327.0,3000,,,Las hojas almacenan RIDs; la métrica 'range_search' no incluye recuperar el registro y 'range_search_materialized' sí (una búsqueda por RID).
+1000,bplus_unclustered,insert,True,200,1.2597,6.2985,6.2,6.8,,,,Las hojas almacenan RIDs; la métrica 'range_search' no incluye recuperar el registro y 'range_search_materialized' sí (una búsqueda por RID).
+1000,bplus_unclustered,delete,True,200,1.7428,8.714,8.3,11.0,,,,Las hojas almacenan RIDs; la métrica 'range_search' no incluye recuperar el registro y 'range_search_materialized' sí (una búsqueda por RID).
+1000,extendible_hash,build,True,1000,8.7435,2914.5,1958.9,5054.4,,,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
+1000,extendible_hash,serialized_size,True,1,,,,,,24316,0,"size_bytes = tamaño de pickle del índice (aproximación portable, sobreestima dicts/strings). El índice solo guarda clave + RID, no registros completos."
+1000,extendible_hash,exact_hit,True,1500,1.5681,1.0454,0.9,1.4,1500,,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
+1000,extendible_hash,exact_hit_materialized,True,1500,201.7611,134.5074,109.5,230.9,1500,,,Búsqueda por igualdad + traer la fila. El índice agrupado ya tiene el registro en su hoja; el no agrupado y el hash pagan una lectura por RID en el Heap File.
+1000,extendible_hash,exact_miss,True,1500,1.2758,0.8505333333333333,0.8,0.9,0,,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
+1000,extendible_hash,exact_miss_materialized,True,1500,1.5183,1.0122,1.0,1.1,0,,,Búsqueda por igualdad + traer la fila. El índice agrupado ya tiene el registro en su hoja; el no agrupado y el hash pagan una lectura por RID en el Heap File.
+1000,extendible_hash,range_search,False,0,,,,,,,,No soportado nativamente por Extendible Hashing.
+1000,extendible_hash,range_search_materialized,False,0,,,,,,,,No soportado nativamente por Extendible Hashing.
+1000,extendible_hash,range_search_inmemory,False,0,,,,,,,,No soportado nativamente por Extendible Hashing.
+1000,extendible_hash,range_search_raw_index,False,0,,,,,,,,No soportado nativamente por Extendible Hashing.
+1000,extendible_hash,ordered_scan,False,0,,,,,,,,Extendible Hashing no garantiza orden. Para ORDER BY se requiere External Sort.
+1000,extendible_hash,insert,True,200,0.9216,4.608,1.3,40.2,,,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
+1000,extendible_hash,delete,True,200,0.5706,2.853,2.6,3.0,,,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
+10000,linear_scan,linear_scan,True,1500,5374.8306,3583.2203999999997,4076.3,5388.6,1500,,,Línea base sin índice: un registro se busca recorriendo el arreglo completo. Sirve para medir la mejora real de cada índice en igualdad exacta.
+10000,bplus_clustered,build,True,10000,568.8351,189611.7,185118.1,204242.4,,,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización (copia defensiva) de registros.
+10000,bplus_clustered,serialized_size,True,1,,,,,,455775,390000,"size_bytes = tamaño de pickle del índice (aproximación portable, sobreestima dicts/strings). de los cuales 390000 bytes son registros completos que el índice agrupado guarda en sus hojas: ese es el costo real del index clustering y no lo pagan el B+ no agrupado ni el hash."
+10000,bplus_clustered,exact_hit,True,1500,16.1445,10.763,9.4,15.2,1500,,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización (copia defensiva) de registros.
+10000,bplus_clustered,exact_hit_materialized,True,1500,14.8036,9.869066666666667,9.1,12.2,1500,,,Búsqueda por igualdad + traer la fila. El índice agrupado ya tiene el registro en su hoja; el no agrupado y el hash pagan una lectura por RID en el Heap File.
+10000,bplus_clustered,exact_miss,True,1500,5.6457,3.7638000000000003,3.6,4.2,0,,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización (copia defensiva) de registros.
+10000,bplus_clustered,exact_miss_materialized,True,1500,4.2564,2.8376,2.6,4.0,0,,,Búsqueda por igualdad + traer la fila. El índice agrupado ya tiene el registro en su hoja; el no agrupado y el hash pagan una lectura por RID en el Heap File.
+10000,bplus_clustered,range_search,True,300,211.747,705.8233333333334,636.55,1012.8,30012,,,Solo el índice. El B+ agrupado devuelve registros (con copia defensiva); el no agrupado devuelve RIDs.
+10000,bplus_clustered,range_search_materialized,True,300,203.0485,676.8283333333334,638.4,925.4,30012,,,Range scan + recuperar cada fila desde el Heap File: es la comparación real. El B+ agrupado tiene el registro en su hoja (no lee nada extra); el no agrupado paga una lectura por RID.
+10000,bplus_clustered,range_search_inmemory,True,300,235.3707,784.569,679.3,1211.6,30012,,,"CONTRASTE METODOLÓGICO: recupera la fila desde un dict en memoria en lugar del Heap File. Con esta medición el B+ agrupado parece perder, porque mover un RID es más barato que copiar el registro. No es la comparación real."
+10000,bplus_clustered,range_search_raw_index,True,300,19.4813,64.93766666666666,61.3,94.7,30012,,,Recorrido de las hojas sin la copia defensiva del B+ agrupado: aísla el costo del algoritmo (en el B+ no agrupado coincide con 'range_search').
+10000,bplus_clustered,ordered_scan,True,3,224.8691,74956.36666666667,73344.9,79014.2,30000,,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización (copia defensiva) de registros.
+10000,bplus_clustered,insert,True,200,4.0029,20.0145,18.6,27.1,,,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización (copia defensiva) de registros.
+10000,bplus_clustered,delete,True,200,3.6738,18.369,17.8,21.1,,,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización (copia defensiva) de registros.
+10000,bplus_unclustered,build,True,10000,379.6409,126546.96666666667,124869.4,131201.9,,,,Las hojas almacenan RIDs; la métrica 'range_search' no incluye recuperar el registro y 'range_search_materialized' sí (una búsqueda por RID).
+10000,bplus_unclustered,serialized_size,True,1,,,,,,250224,0,"size_bytes = tamaño de pickle del índice (aproximación portable, sobreestima dicts/strings). El índice solo guarda clave + RID, no registros completos."
+10000,bplus_unclustered,exact_hit,True,1500,2.5148,1.6765333333333332,1.5,2.5,1500,,,Las hojas almacenan RIDs; la métrica 'range_search' no incluye recuperar el registro y 'range_search_materialized' sí (una búsqueda por RID).
+10000,bplus_unclustered,exact_hit_materialized,True,1500,275.9195,183.94633333333334,158.2,297.7,1500,,,Búsqueda por igualdad + traer la fila. El índice agrupado ya tiene el registro en su hoja; el no agrupado y el hash pagan una lectura por RID en el Heap File.
+10000,bplus_unclustered,exact_miss,True,1500,1.6741,1.1160666666666665,0.9,1.4,0,,,Las hojas almacenan RIDs; la métrica 'range_search' no incluye recuperar el registro y 'range_search_materialized' sí (una búsqueda por RID).
+10000,bplus_unclustered,exact_miss_materialized,True,1500,1.6468,1.0978666666666665,1.1,1.1,0,,,Búsqueda por igualdad + traer la fila. El índice agrupado ya tiene el registro en su hoja; el no agrupado y el hash pagan una lectura por RID en el Heap File.
+10000,bplus_unclustered,range_search,True,300,19.563,65.21,62.0,94.1,30012,,,Solo el índice. El B+ agrupado devuelve registros (con copia defensiva); el no agrupado devuelve RIDs.
+10000,bplus_unclustered,range_search_materialized,True,300,3643.6243,12145.414333333334,11956.6,13784.7,30012,,,Range scan + recuperar cada fila desde el Heap File: es la comparación real. El B+ agrupado tiene el registro en su hoja (no lee nada extra); el no agrupado paga una lectura por RID.
+10000,bplus_unclustered,range_search_inmemory,True,300,65.337,217.79,204.1,330.6,30012,,,"CONTRASTE METODOLÓGICO: recupera la fila desde un dict en memoria en lugar del Heap File. Con esta medición el B+ agrupado parece perder, porque mover un RID es más barato que copiar el registro. No es la comparación real."
+10000,bplus_unclustered,range_search_raw_index,True,300,20.5921,68.64033333333333,62.45,103.9,30012,,,Recorrido de las hojas sin la copia defensiva del B+ agrupado: aísla el costo del algoritmo (en el B+ no agrupado coincide con 'range_search').
+10000,bplus_unclustered,ordered_scan,True,3,27.774,9258.0,9976.3,10166.7,30000,,,Las hojas almacenan RIDs; la métrica 'range_search' no incluye recuperar el registro y 'range_search_materialized' sí (una búsqueda por RID).
+10000,bplus_unclustered,insert,True,200,2.5161,12.5805,12.1,16.2,,,,Las hojas almacenan RIDs; la métrica 'range_search' no incluye recuperar el registro y 'range_search_materialized' sí (una búsqueda por RID).
+10000,bplus_unclustered,delete,True,200,2.8302,14.151,12.6,20.1,,,,Las hojas almacenan RIDs; la métrica 'range_search' no incluye recuperar el registro y 'range_search_materialized' sí (una búsqueda por RID).
+10000,extendible_hash,build,True,10000,113.0033,37667.76666666666,38013.3,42585.6,,,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
+10000,extendible_hash,serialized_size,True,1,,,,,,245143,0,"size_bytes = tamaño de pickle del índice (aproximación portable, sobreestima dicts/strings). El índice solo guarda clave + RID, no registros completos."
+10000,extendible_hash,exact_hit,True,1500,1.896,1.264,1.0,2.5,1500,,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
+10000,extendible_hash,exact_hit_materialized,True,1500,219.6941,146.46273333333335,109.9,281.3,1500,,,Búsqueda por igualdad + traer la fila. El índice agrupado ya tiene el registro en su hoja; el no agrupado y el hash pagan una lectura por RID en el Heap File.
+10000,extendible_hash,exact_miss,True,1500,1.3825,0.9216666666666666,0.9,1.2,0,,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
+10000,extendible_hash,exact_miss_materialized,True,1500,1.5474,1.0315999999999999,1.0,1.1,0,,,Búsqueda por igualdad + traer la fila. El índice agrupado ya tiene el registro en su hoja; el no agrupado y el hash pagan una lectura por RID en el Heap File.
+10000,extendible_hash,range_search,False,0,,,,,,,,No soportado nativamente por Extendible Hashing.
+10000,extendible_hash,range_search_materialized,False,0,,,,,,,,No soportado nativamente por Extendible Hashing.
+10000,extendible_hash,range_search_inmemory,False,0,,,,,,,,No soportado nativamente por Extendible Hashing.
+10000,extendible_hash,range_search_raw_index,False,0,,,,,,,,No soportado nativamente por Extendible Hashing.
+10000,extendible_hash,ordered_scan,False,0,,,,,,,,Extendible Hashing no garantiza orden. Para ORDER BY se requiere External Sort.
+10000,extendible_hash,insert,True,200,0.2507,1.2535,1.2,1.5,,,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
+10000,extendible_hash,delete,True,200,0.5869,2.9345,2.8,3.3,,,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
+50000,linear_scan,linear_scan,True,1500,38263.6785,25509.119,25088.4,26832.0,1500,,,Línea base sin índice: un registro se busca recorriendo el arreglo completo. Sirve para medir la mejora real de cada índice en igualdad exacta.
+50000,bplus_clustered,build,True,50000,4003.0204,1334340.1333333333,1282860.3,1461911.6,,,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización (copia defensiva) de registros.
+50000,bplus_clustered,serialized_size,True,1,,,,,,2285197,1950000,"size_bytes = tamaño de pickle del índice (aproximación portable, sobreestima dicts/strings). de los cuales 1950000 bytes son registros completos que el índice agrupado guarda en sus hojas: ese es el costo real del index clustering y no lo pagan el B+ no agrupado ni el hash."
+50000,bplus_clustered,exact_hit,True,1500,16.441,10.960666666666667,10.2,15.0,1500,,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización (copia defensiva) de registros.
+50000,bplus_clustered,exact_hit_materialized,True,1500,17.4458,11.630533333333332,10.5,16.5,1500,,,Búsqueda por igualdad + traer la fila. El índice agrupado ya tiene el registro en su hoja; el no agrupado y el hash pagan una lectura por RID en el Heap File.
+50000,bplus_clustered,exact_miss,True,1500,3.6697,2.446466666666667,2.4,2.5,0,,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización (copia defensiva) de registros.
+50000,bplus_clustered,exact_miss_materialized,True,1500,5.2935,3.529,2.6,6.5,0,,,Búsqueda por igualdad + traer la fila. El índice agrupado ya tiene el registro en su hoja; el no agrupado y el hash pagan una lectura por RID en el Heap File.
+50000,bplus_clustered,range_search,True,300,1104.5191,3681.7303333333334,3398.5,4817.6,150300,,,Solo el índice. El B+ agrupado devuelve registros (con copia defensiva); el no agrupado devuelve RIDs.
+50000,bplus_clustered,range_search_materialized,True,300,1231.2888,4104.296,3735.65,5614.0,150300,,,Range scan + recuperar cada fila desde el Heap File: es la comparación real. El B+ agrupado tiene el registro en su hoja (no lee nada extra); el no agrupado paga una lectura por RID.
+50000,bplus_clustered,range_search_inmemory,True,300,1086.668,3622.2266666666665,3380.45,4816.4,150300,,,"CONTRASTE METODOLÓGICO: recupera la fila desde un dict en memoria en lugar del Heap File. Con esta medición el B+ agrupado parece perder, porque mover un RID es más barato que copiar el registro. No es la comparación real."
+50000,bplus_clustered,range_search_raw_index,True,300,112.3394,374.4646666666667,353.2,567.4,150300,,,Recorrido de las hojas sin la copia defensiva del B+ agrupado: aísla el costo del algoritmo (en el B+ no agrupado coincide con 'range_search').
+50000,bplus_clustered,ordered_scan,True,3,1349.4824,449827.4666666667,393177.0,572037.5,150000,,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización (copia defensiva) de registros.
+50000,bplus_clustered,insert,True,200,4.5,22.5,21.2,29.5,,,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización (copia defensiva) de registros.
+50000,bplus_clustered,delete,True,200,3.6997,18.4985,17.25,26.1,,,,Las hojas almacenan registros completos; exact/range/scan incluyen materialización (copia defensiva) de registros.
+50000,bplus_unclustered,build,True,50000,2579.5998,859866.6,857005.4,871562.0,,,,Las hojas almacenan RIDs; la métrica 'range_search' no incluye recuperar el registro y 'range_search_materialized' sí (una búsqueda por RID).
+50000,bplus_unclustered,serialized_size,True,1,,,,,,1265838,0,"size_bytes = tamaño de pickle del índice (aproximación portable, sobreestima dicts/strings). El índice solo guarda clave + RID, no registros completos."
+50000,bplus_unclustered,exact_hit,True,1500,2.9533,1.9688666666666665,1.6,3.2,1500,,,Las hojas almacenan RIDs; la métrica 'range_search' no incluye recuperar el registro y 'range_search_materialized' sí (una búsqueda por RID).
+50000,bplus_unclustered,exact_hit_materialized,True,1500,202.6606,135.10706666666667,110.0,208.8,1500,,,Búsqueda por igualdad + traer la fila. El índice agrupado ya tiene el registro en su hoja; el no agrupado y el hash pagan una lectura por RID en el Heap File.
+50000,bplus_unclustered,exact_miss,True,1500,2.1691,1.4460666666666666,1.2,2.5,0,,,Las hojas almacenan RIDs; la métrica 'range_search' no incluye recuperar el registro y 'range_search_materialized' sí (una búsqueda por RID).
+50000,bplus_unclustered,exact_miss_materialized,True,1500,1.7546,1.1697333333333333,1.1,1.6,0,,,Búsqueda por igualdad + traer la fila. El índice agrupado ya tiene el registro en su hoja; el no agrupado y el hash pagan una lectura por RID en el Heap File.
+50000,bplus_unclustered,range_search,True,300,114.2318,380.7726666666667,361.75,556.6,150300,,,Solo el índice. El B+ agrupado devuelve registros (con copia defensiva); el no agrupado devuelve RIDs.
+50000,bplus_unclustered,range_search_materialized,True,300,18402.3988,61341.329333333335,59703.0,73005.1,150300,,,Range scan + recuperar cada fila desde el Heap File: es la comparación real. El B+ agrupado tiene el registro en su hoja (no lee nada extra); el no agrupado paga una lectura por RID.
+50000,bplus_unclustered,range_search_inmemory,True,300,301.3257,1004.419,940.5,1401.2,150300,,,"CONTRASTE METODOLÓGICO: recupera la fila desde un dict en memoria en lugar del Heap File. Con esta medición el B+ agrupado parece perder, porque mover un RID es más barato que copiar el registro. No es la comparación real."
+50000,bplus_unclustered,range_search_raw_index,True,300,113.9661,379.887,360.65,559.9,150300,,,Recorrido de las hojas sin la copia defensiva del B+ agrupado: aísla el costo del algoritmo (en el B+ no agrupado coincide con 'range_search').
+50000,bplus_unclustered,ordered_scan,True,3,182.1419,60713.96666666667,60340.0,67148.9,150000,,,Las hojas almacenan RIDs; la métrica 'range_search' no incluye recuperar el registro y 'range_search_materialized' sí (una búsqueda por RID).
+50000,bplus_unclustered,insert,True,200,3.1539,15.7695,14.9,20.9,,,,Las hojas almacenan RIDs; la métrica 'range_search' no incluye recuperar el registro y 'range_search_materialized' sí (una búsqueda por RID).
+50000,bplus_unclustered,delete,True,200,5.6096,28.048,24.65,49.6,,,,Las hojas almacenan RIDs; la métrica 'range_search' no incluye recuperar el registro y 'range_search_materialized' sí (una búsqueda por RID).
+50000,extendible_hash,build,True,50000,943.5207,314506.9,229345.6,493437.1,,,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
+50000,extendible_hash,serialized_size,True,1,,,,,,1234544,0,"size_bytes = tamaño de pickle del índice (aproximación portable, sobreestima dicts/strings). El índice solo guarda clave + RID, no registros completos."
+50000,extendible_hash,exact_hit,True,1500,2.1511,1.4340666666666666,1.1,2.5,1500,,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
+50000,extendible_hash,exact_hit_materialized,True,1500,191.0042,127.33613333333334,107.3,247.4,1500,,,Búsqueda por igualdad + traer la fila. El índice agrupado ya tiene el registro en su hoja; el no agrupado y el hash pagan una lectura por RID en el Heap File.
+50000,extendible_hash,exact_miss,True,1500,1.6201,1.0800666666666665,1.0,1.5,0,,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
+50000,extendible_hash,exact_miss_materialized,True,1500,1.626,1.084,1.1,1.1,0,,,Búsqueda por igualdad + traer la fila. El índice agrupado ya tiene el registro en su hoja; el no agrupado y el hash pagan una lectura por RID en el Heap File.
+50000,extendible_hash,range_search,False,0,,,,,,,,No soportado nativamente por Extendible Hashing.
+50000,extendible_hash,range_search_materialized,False,0,,,,,,,,No soportado nativamente por Extendible Hashing.
+50000,extendible_hash,range_search_inmemory,False,0,,,,,,,,No soportado nativamente por Extendible Hashing.
+50000,extendible_hash,range_search_raw_index,False,0,,,,,,,,No soportado nativamente por Extendible Hashing.
+50000,extendible_hash,ordered_scan,False,0,,,,,,,,Extendible Hashing no garantiza orden. Para ORDER BY se requiere External Sort.
+50000,extendible_hash,insert,True,200,0.4468,2.234,2.2,2.6,,,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.
+50000,extendible_hash,delete,True,200,0.8225,4.1125,3.7,4.9,,,,Optimizado para igualdad exacta. Range search y ordered scan no son capacidades nativas del hash.

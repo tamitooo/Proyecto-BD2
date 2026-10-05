@@ -40,8 +40,6 @@ class HeapFile:
         self.path = path
         self.schema = schema
         self.slots_per_page = max(1, PAGE_SIZE // schema.record_size)
-        #: Bytes reales de una pagina: el mayor multiplo del tamaño de registro
-        #: que cabe en PAGE_SIZE. Los bytes sobrantes no se usan.
         self.page_bytes = self.slots_per_page * schema.record_size
         self.free_path = path + ".free"
 
@@ -53,14 +51,11 @@ class HeapFile:
                 self.free_pages = pickle.load(f)
         else:
             self.free_pages = set()
-    # ---------------------- utilidades de paginacion ----------------------
+
     def _num_paginas(self):
         size = os.path.getsize(self.path)
         if not self.page_bytes:
             return 0
-        # Se redondea hacia arriba: el archivo siempre mide un numero entero de
-        # paginas (replace_all rellena la ultima), pero una pagina parcial nunca
-        # debe quedar invisible para el escaneo.
         return -(-size // self.page_bytes)
 
     def _offset(self, page, slot):
@@ -82,7 +77,6 @@ class HeapFile:
         f.write(self.schema.pack(values, flag=flag))
 
     def _crear_pagina_nueva(self, f):
-        """Agrega una pagina vacia al final del archivo y retorna su numero."""
         num_pag = self._num_paginas()
         f.seek(0, os.SEEK_END)
         vacio = self.schema.pack(
@@ -109,11 +103,8 @@ class HeapFile:
                 return True
         return False
 
-    # ---------------------- operaciones CRUD ----------------------
     def insert(self, values):
-        """Inserta un registro reusando espacio libre si existe. Retorna el RID."""
         with open(self.path, "r+b") as f:
-            # 1) buscar una pagina candidata en el free-list
             for page in list(self.free_pages):
                 for slot in range(self.slots_per_page):
                     flag, _ = self._leer_slot(f, page, slot)
@@ -121,15 +112,12 @@ class HeapFile:
                         continue
                     if flag != self.schema.FLAG_USED:
                         self._escribir_slot(f, page, slot, values, self.schema.FLAG_USED)
-                        # si ya no quedan slots libres en esa pagina, la sacamos del free-list
                         if not self._pagina_tiene_libres(f, page, excepto=slot):
                             self.free_pages.discard(page)
                         self._guardar_free_list()
                         return RID(page, slot)
-                # esta pagina ya no tenia espacio -> se saca del free-list
                 self.free_pages.discard(page)
 
-            # 2) no hubo espacio libre: crear pagina nueva
             page = self._crear_pagina_nueva(f)
             self._escribir_slot(f, page, 0, values, self.schema.FLAG_USED)
             if self.slots_per_page == 1:
@@ -138,7 +126,6 @@ class HeapFile:
             return RID(page, 0)
 
     def read(self, rid):
-        """Lee un registro dado su RID. Retorna None si esta borrado o vacio."""
         with open(self.path, "rb") as f:
             flag, values = self._leer_slot(f, rid.page, rid.slot)
         if flag != self.schema.FLAG_USED:
@@ -146,7 +133,6 @@ class HeapFile:
         return values
 
     def delete(self, rid):
-        """Marca el slot como tombstone (eliminacion logica) y lo libera para reuso."""
         with open(self.path, "r+b") as f:
             flag, values = self._leer_slot(f, rid.page, rid.slot)
             if flag != self.schema.FLAG_USED:
@@ -157,7 +143,6 @@ class HeapFile:
         return True
 
     def update(self, rid, values):
-        """Actualiza el contenido de un slot ocupado."""
         with open(self.path, "r+b") as f:
             flag, _ = self._leer_slot(f, rid.page, rid.slot)
             if flag != self.schema.FLAG_USED:
@@ -166,7 +151,6 @@ class HeapFile:
         return True
 
     def scan(self):
-        """Generador: recorre todos los registros vigentes (flag=USED)."""
         n_paginas = self._num_paginas()
         with open(self.path, "rb") as f:
             for page in range(n_paginas):
@@ -176,13 +160,6 @@ class HeapFile:
                         yield RID(page, slot), values
 
     def replace_all(self, rows):
-        """Reescribe el archivo completo con ``rows`` (rollback de transaccion).
-
-        La ultima pagina se rellena con slots vacios para que el archivo mida un
-        numero entero de paginas y el escaneo vuelva a ver todas las filas. La
-        lista de paginas con espacio libre se recalcula desde cero porque al
-        truncar el archivo los numeros de pagina anteriores dejan de existir.
-        """
         rows = list(rows)
         with open(self.path, "wb") as f:
             page = -1
@@ -196,22 +173,17 @@ class HeapFile:
                 restantes = len(rows) % self.slots_per_page
                 if restantes:
                     vacio = self.schema.pack(
-                        {
-                            column: self._valor_por_defecto(column)
-                            for column in self.schema.col_names()
-                        },
+                        {column: self._valor_por_defecto(column) for column in self.schema.col_names()},
                         flag=self.schema.FLAG_EMPTY,
                     )
                     for _ in range(self.slots_per_page - restantes):
                         f.write(vacio)
 
         self.free_pages = set()
-        if rows:
-            if len(rows) % self.slots_per_page:
-                self.free_pages.add(page)
+        if rows and len(rows) % self.slots_per_page:
+            self.free_pages.add(page)
         self._guardar_free_list()
         return len(rows)
-
 
     def espacio_utilizado_bytes(self):
         return os.path.getsize(self.path)

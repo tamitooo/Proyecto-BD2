@@ -367,6 +367,13 @@ Los 4 paneles exigidos por el enunciado (2.1.5):
 El motor **no requiere ninguna dependencia externa**: `pytest`, `matplotlib`, `fastapi` y
 `uvicorn` solo son necesarios para pruebas, gráficas y el API.
 
+**Dependencias opcionales** (el proyecto funciona sin ellas):
+
+| Dependencia | Para qué | Si falta |
+|---|---|---|
+| `psycopg2-binary` (Python) | Que el benchmark espacial se conecte a PostgreSQL | El benchmark mide secuencial y R-Tree y marca PostgreSQL como *no disponible* |
+| **PostGIS** (extensión de PostgreSQL, **no** es un paquete de Python) | Reproducir la comparativa contra el GiST de PostgreSQL | Igual: cae al modo `earthdistance`, o marca PostgreSQL como *no disponible* |
+
 ### 8.2 Instalación
 
 ```bash
@@ -387,6 +394,54 @@ cd frontend
 npm install
 cd ..
 ```
+
+> **Si ya tenías el entorno creado de antes**, vuelve a ejecutar
+> `pip install -r requirements.txt`: se añadieron `python-multipart` (lo exige la subida
+> del CSV del panel de archivos) y `psycopg2-binary` (benchmark espacial). Sin
+> `python-multipart` el API **no arranca**, porque FastAPI lo necesita para leer el
+> archivo que se sube.
+
+### 8.2.1 PostGIS (opcional, solo para la comparativa espacial)
+
+La Parte 2 compara el R-Tree propio contra el **GiST de PostgreSQL**, y para eso la
+medición de referencia usa **PostGIS**. **No hace falta para usar el motor**: solo si
+quieres reproducir esa comparativa completa.
+
+PostGIS **no es un paquete de Python**, así que no aparece en `requirements.txt`: es una
+extensión del **servidor** PostgreSQL y se instala aparte.
+
+```bash
+# 1) Instalar PostGIS para tu versión de PostgreSQL
+#    Windows: paquete oficial en https://download.osgeo.org/postgis/windows/
+#             (elegir la carpeta pg17, pg16, ... según tu versión) y ejecutar el .exe
+#    Debian/Ubuntu: sudo apt install postgresql-17-postgis
+#    macOS (Homebrew): brew install postgis
+
+# 2) Activar la extensión en la base de datos
+psql -U postgres -c "CREATE EXTENSION postgis;"
+
+# 3) Comprobar que quedó activa
+psql -U postgres -c "SELECT postgis_full_version();"
+
+# 4) Ejecutar la comparativa contra PostGIS
+python -m benchmarks.benchmark_spatial --sizes 1000 10000 100000 --pg-mode postgis
+```
+
+Los pasos exactos que se siguieron en este proyecto (con la verificación del MD5 del
+instalador y el detalle de por qué `geom::geography` impide que PostgreSQL use el índice)
+están en [`docs/parte2_espacial.md`](docs/parte2_espacial.md) §6.
+
+**Sin PostGIS el benchmark funciona igual**, no se rompe:
+
+| Situación | Qué hace el benchmark |
+|---|---|
+| PostGIS instalado (`--pg-mode postgis`) | Compara contra GiST con `geometry(Point,4326)`, `ST_DWithin` y `<->` |
+| Sin PostGIS, con `--pg-mode earthdistance` | Compara contra GiST nativo con `cube` + `earthdistance` |
+| Sin PostGIS, sin argumentos (`--pg-mode auto`) | **Prefiere PostGIS** y cae a `earthdistance` si no está |
+| Sin PostgreSQL o sin `psycopg2` | Mide secuencial y R-Tree, y marca PostgreSQL como *no disponible* con el motivo |
+
+El informe JSON de resultados deja constancia de lo que se midió
+(`"gist_backend"` y `"postgis_available"`), así que no hay duda de qué baseline se usó.
 
 ### 8.3 Ejecución
 
@@ -422,6 +477,10 @@ python -m transactions.demo_concurrencia             # transacciones y race cond
 python benchmarks/benchmark_heap_vs_sequential.py --sizes 1000 10000 100000
 python -m benchmarks.benchmark_indexes --sizes 1000 10000 100000
 python -m benchmarks.generate_charts                 # PNG en benchmark_results/plots/
+
+# Parte 2 · comparativa espacial (necesita PostgreSQL; ver §8.2.1)
+python -m benchmarks.benchmark_spatial --sizes 1000 10000 100000 --pg-mode postgis
+python -m benchmarks.generate_spatial_charts         # PNG espaciales
 ```
 
 **Pruebas:**
@@ -790,7 +849,8 @@ disponible (44× más rápido que el escaneo sin dependencias externas).
 > 64.8 ms frente a 9.2 ms. El benchmark usa la forma indexable
 > (`geom && ST_Expand(...)` + `ST_DWithin`, y `<->` sobre la columna indexada), que es
 > el patrón documentado. El modo `--pg-mode earthdistance` queda como alternativa para
-> máquinas sin PostGIS.
+> máquinas sin PostGIS. **Para instalar PostGIS y reproducir estas mediciones, ver
+> [§8.2.1](#821-postgis-opcional-solo-para-la-comparativa-espacial).**
 
 ### 12.4 Gráficas
 

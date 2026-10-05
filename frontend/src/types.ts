@@ -8,8 +8,10 @@ export interface SchemaInfo {
 export interface IndexInfo {
   name: string;
   column: string;
-  kind: string;
+  kind: string;      // hash | bplus_clustered | bplus_unclustered | rtree
   unique: boolean;
+  /** Sólo en el R-Tree: el par (latitud, longitud) que indexa. */
+  lat_column?: string;
   lon_column?: string;
 }
 
@@ -21,13 +23,15 @@ export interface StorageFile {
 
 export interface TableInfo {
   name: string;
-  storage_kind: string;
+  storage_kind: string;   // heap | sequential
   schema: SchemaInfo;
   indexes: IndexInfo[];
   files: StorageFile[];
   row_count: number;
   record_size: number;
-  source?: string;
+  /** Cómo se creó la tabla: demo, manual (formulario) o csv. */
+  source?: 'demo' | 'manual' | 'csv' | string;
+  /** Archivo del que salió el CSV, si la tabla se creó importando uno. */
   original_filename?: string | null;
 }
 
@@ -43,6 +47,20 @@ export interface CreateTableRequest {
   columns: CreateTableColumn[];
 }
 
+export interface CreateTableResponse {
+  table: TableInfo;
+}
+
+export interface CsvImportResult {
+  table: TableInfo;
+  imported_rows: number;
+  inferred_schema?: {
+    columnas: [string, string][];
+    primary_key: string;
+  };
+  original_filename?: string | null;
+}
+
 export interface PlanStep {
   operator: string;
   table?: string | null;
@@ -53,23 +71,21 @@ export interface PlanStep {
 
 export interface RuntimeStep {
   operator: string;
-  elapsed_ms?: number | null;
-  rows_in?: number | null;
-  rows_out?: number | null;
+  elapsed_ms?: number;
+  rows_in?: number;
+  rows_out?: number;
   table?: string;
   index?: string | null;
-  [key: string]: unknown;
 }
 
 export interface ExecutionPlan {
-  table?: string | null;
-  planner_type?: string;
-  access_path?: string;
-  used_indexes?: string[];
-  steps?: PlanStep[];
-  runtime_steps?: RuntimeStep[];
+  table: string;
+  planner_type: string;
+  access_path: string;
+  used_indexes: string[];
+  steps: PlanStep[];
+  runtime_steps: RuntimeStep[];
   total_execution_time_ms?: number;
-  [key: string]: unknown;
 }
 
 export interface QueryResult {
@@ -83,11 +99,17 @@ export interface QueryResult {
   error: string | null;
 }
 
+/* ------------------------------------------------------------------ *
+ * Parte 2: base de datos espacial (R-Tree, rango, k-NN, polígonos)
+ * ------------------------------------------------------------------ */
+
+/** Un punto 2D devuelto por /api/spatial/points o /api/spatial/query. */
 export interface SpatialPoint {
   rid: string;
   lat: number;
   lon: number;
   label: string | null;
+  /** Solo lo rellena /api/spatial/query (distancia al punto de consulta). */
   distance_m: number | null;
   row: Record<string, CellValue>;
 }
@@ -99,6 +121,7 @@ export interface SpatialBounds {
   max_lon: number;
 }
 
+/** GET /api/spatial/points/{table} */
 export interface SpatialPoints {
   table: string;
   lat_column: string;
@@ -110,8 +133,15 @@ export interface SpatialPoints {
 }
 
 export type SpatialKind = 'range' | 'knn' | 'polygon';
+
+/** Punto geográfico del frontend (mi_ubicacion, vértices del polígono). */
+export interface LatLon {
+  lat: number;
+  lon: number;
+}
 export type SpatialMetric = 'euclidean' | 'haversine';
 
+/** Cuerpo de POST /api/spatial/query */
 export interface SpatialQueryRequest {
   table: string;
   kind: SpatialKind;
@@ -119,10 +149,12 @@ export interface SpatialQueryRequest {
   lon: number;
   radius_m?: number;
   k?: number;
-  metric: SpatialMetric;
+  metric?: SpatialMetric;
+  /** Vértices [lat, lon] del polígono de intersección (opcional). */
   polygon?: [number, number][];
 }
 
+/** Respuesta de POST /api/spatial/query. */
 export interface SpatialQueryResult {
   success: boolean;
   kind: SpatialKind;

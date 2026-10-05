@@ -1,1 +1,0 @@
-{"root":["./src/app.tsx","./src/api.ts","./src/main.tsx","./src/types.ts","./src/panels/filespanel.tsx","./src/panels/mappanel.tsx","./src/panels/planpanel.tsx","./src/panels/querypanel.tsx","./src/panels/resultspanel.tsx","./src/panels/tablemanager.tsx"],"version":"6.0.3"}

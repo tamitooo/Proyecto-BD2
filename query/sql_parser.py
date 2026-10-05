@@ -1,342 +1,1644 @@
-from __future__ import annotations
 import re
 from dataclasses import dataclass
-from typing import Any, List, Optional, Tuple
-from query.query_planner import DistanceExpression, JoinSpec, OrderBy, PolygonPredicate, Predicate, QuerySpec
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-_ID=r"[A-Za-z_][A-Za-z0-9_]*"; _QID=rf"{_ID}(?:\.{_ID})?"
-@dataclass(frozen=True)
-class InsertStatement: table:str; values:Tuple[Any,...]
-@dataclass(frozen=True)
-class DeleteStatement: table:str; predicates:Tuple[Predicate,...]; or_groups:Tuple[Tuple[Predicate,...],...]=()
-@dataclass(frozen=True)
-class UpdateStatement: table:str; assignments:Tuple[Tuple[str,Any],...]; predicates:Tuple[Predicate,...]=(); or_groups:Tuple[Tuple[Predicate,...],...]=()
-@dataclass(frozen=True)
-class CreateTableStatement: table:str; columns:Tuple[Tuple[str,str],...]; primary_key:str; storage_kind:str="heap"; if_not_exists:bool=False
-@dataclass(frozen=True)
-class DropTableStatement: table:str; if_exists:bool=False
-@dataclass(frozen=True)
-class CreateIndexStatement: table:str; column:str; name:Optional[str]=None; unique:bool=False; kind:str="bplus_unclustered"; if_not_exists:bool=False; column2:Optional[str]=None
-@dataclass(frozen=True)
-class DropIndexStatement: name:str; table:Optional[str]=None; if_exists:bool=False
-@dataclass(frozen=True)
-class TransactionStatement: action:str
-@dataclass(frozen=True)
-class ExplainStatement: statement:Any; analyze:bool=False
-@dataclass(frozen=True)
-class SetPointStatement: name:str; point:Tuple[float,float]
-@dataclass(frozen=True)
-class SelectStatement: columns:Tuple[str,...]; query_spec:QuerySpec; limit:Optional[int]=None
-class SQLParseError(Exception): pass
+from query.query_planner import (
+    DistanceExpression,
+    JoinSpec,
+    OrderBy,
+    PolygonPredicate,
+    Predicate,
+    QuerySpec,
+)
 
-def strip_sql_comments(sql):
-    out=[]; i=0; quote=None
-    while i<len(sql):
-        ch=sql[i]
-        if quote:
-            out.append(ch)
-            if ch==quote:
-                if i+1<len(sql) and sql[i+1]==quote: out.append(sql[i+1]); i+=2; continue
-                quote=None
-            i+=1; continue
-        if ch in "'\"": quote=ch; out.append(ch); i+=1; continue
-        if sql.startswith("--",i):
-            j=sql.find("\n",i); 
-            if j<0: break
-            out.append("\n"); i=j+1; continue
-        if sql.startswith("/*",i):
-            j=sql.find("*/",i+2)
-            if j<0: raise SQLParseError("comentario /* sin cerrar con */")
-            out.append(" "); i=j+2; continue
-        out.append(ch); i+=1
-    return "".join(out)
 
-def split_sql_statements(sql):
-    sql=strip_sql_comments(sql); out=[]; start=0; depth=0; quote=None; i=0
-    while i<len(sql):
-        c=sql[i]
-        if quote:
-            if c==quote:
-                if i+1<len(sql) and sql[i+1]==quote:i+=2;continue
-                quote=None
-        elif c in "'\"": quote=c
-        elif c=="(":depth+=1
-        elif c==")":depth-=1
-        elif c==";" and depth==0:
-            if sql[start:i].strip():out.append(sql[start:i].strip())
-            start=i+1
-        i+=1
-    if sql[start:].strip():out.append(sql[start:].strip())
-    return out
+_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_QUALIFIED_IDENTIFIER_RE = re.compile(
+    r"^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?$"
+)
+_AGGREGATE_RE = re.compile(
+    r"^(COUNT|SUM|AVG|MIN|MAX)\s*\(\s*(\*|[A-Za-z_][A-Za-z0-9_]*)\s*\)"
+    r"(?:\s+AS\s+[A-Za-z_][A-Za-z0-9_]*)?$",
+    re.IGNORECASE,
+)
+_JOIN_HEAD_RE = re.compile(
+    r"^\s*(?:(INNER|LEFT|RIGHT|FULL)\s+)?JOIN\s+"
+    r"([A-Za-z_][A-Za-z0-9_]*)\s+ON\s+",
+    re.IGNORECASE,
+)
+_JOIN_MARKER_RE = re.compile(
+    r"(?<![A-Za-z0-9_])(?:(?:INNER|LEFT|RIGHT|FULL)\s+)?JOIN(?![A-Za-z0-9_])",
+    re.IGNORECASE,
+)
+
+
+@dataclass(frozen=True)
+class InsertStatement:
+    table: str
+    values: Tuple[Any, ...]
+
+
+@dataclass(frozen=True)
+class DeleteStatement:
+    table: str
+    predicates: Tuple[Predicate, ...]
+    #: Cada grupo es un AND; la fila cumple si cumple CUALQUIER grupo (OR).
+    or_groups: Tuple[Tuple[Predicate, ...], ...] = ()
+
+
+@dataclass(frozen=True)
+class UpdateStatement:
+    table: str
+    assignments: Tuple[Tuple[str, Any], ...]
+    predicates: Tuple[Predicate, ...] = ()
+    or_groups: Tuple[Tuple[Predicate, ...], ...] = ()
+
+
+@dataclass(frozen=True)
+class CreateTableStatement:
+    table: str
+    columns: Tuple[Tuple[str, str], ...]
+    primary_key: str
+    storage_kind: str = "heap"
+    if_not_exists: bool = False
+
+
+@dataclass(frozen=True)
+class DropTableStatement:
+    table: str
+    if_exists: bool = False
+
+
+@dataclass(frozen=True)
+class CreateIndexStatement:
+    """CREATE [UNIQUE] INDEX [nombre] ON tabla (columna[, columna2]) [USING tecnica].
+
+    ``column2`` sólo se usa en los índices espaciales
+    (``USING RTREE``), donde se declaran ``(latitud, longitud)``.
+    """
+
+    table: str
+    column: str
+    name: Optional[str] = None
+    unique: bool = False
+    kind: str = "bplus_unclustered"
+    if_not_exists: bool = False
+    column2: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class DropIndexStatement:
+    """DROP INDEX nombre [ON tabla]."""
+
+    name: str
+    table: Optional[str] = None
+    if_exists: bool = False
+
+
+@dataclass(frozen=True)
+class TransactionStatement:
+    """BEGIN / END / COMMIT / ROLLBACK: control de transacciones del motor."""
+
+    action: str  #: "begin" | "commit" | "rollback" | "status"
+
+
+@dataclass(frozen=True)
+class ExplainStatement:
+    """EXPLAIN [ANALYZE] <sentencia>: plan lógico y, si ANALYZE, traza real."""
+
+    statement: Any
+    analyze: bool = False
+
+
+@dataclass(frozen=True)
+class SetVariableStatement:
+    """``SET [@]nombre = POINT(lat, lon)``: variable de sesión espacial.
+
+    Permite escribir la consulta k-NN del enunciado tal cual:
+    ``ORDER BY distancia(ubicacion, mi_ubicacion) LIMIT 10``, donde
+    ``mi_ubicacion`` se define antes con ``SET mi_ubicacion = POINT(...)`` (o la
+    envía el panel de mapa al hacer clic).
+    """
+
+    name: str
+    point: Tuple[float, float]
+
+
+@dataclass(frozen=True)
+class SelectStatement:
+    columns: Tuple[str, ...]
+    query_spec: QuerySpec
+    limit: Optional[int] = None
+
+
+class SQLParseError(Exception):
+    """Raised when a statement is outside the SQL subset supported by the project."""
+
+
+def strip_sql_comments(sql: str) -> str:
+    """Quita los comentarios ``--`` y ``/* */`` sin tocar los literales.
+
+    Es necesario para poder pegar un script como el de la cátedra, que empieza
+    con comentarios y separa las sentencias con ``;``. Los comentarios dentro de
+    comillas simples o dobles se conservan como parte del texto.
+    """
+    output: List[str] = []
+    index = 0
+    length = len(sql)
+    quote: Optional[str] = None
+
+    while index < length:
+        character = sql[index]
+
+        if quote is not None:
+            output.append(character)
+            if character == quote:
+                if index + 1 < length and sql[index + 1] == quote:
+                    output.append(sql[index + 1])
+                    index += 2
+                    continue
+                quote = None
+            index += 1
+            continue
+
+        if character in {"'", '"'}:
+            quote = character
+            output.append(character)
+            index += 1
+            continue
+
+        if character == "-" and sql.startswith("--", index):
+            newline = sql.find("\n", index)
+            if newline == -1:
+                break
+            output.append("\n")
+            index = newline + 1
+            continue
+
+        if character == "/" and sql.startswith("/*", index):
+            closing = sql.find("*/", index + 2)
+            if closing == -1:
+                raise SQLParseError("comentario /* sin cerrar con */")
+            output.append(" ")
+            index = closing + 2
+            continue
+
+        output.append(character)
+        index += 1
+
+    return "".join(output)
+
+
+def split_sql_statements(sql: str) -> List[str]:
+    """Divide un script en sentencias por los ``;`` de nivel superior."""
+    statements: List[str] = []
+    current: List[str] = []
+    quote: Optional[str] = None
+    depth = 0
+    index = 0
+
+    while index < len(sql):
+        character = sql[index]
+
+        if quote is not None:
+            current.append(character)
+            if character == quote:
+                if index + 1 < len(sql) and sql[index + 1] == quote:
+                    current.append(sql[index + 1])
+                    index += 2
+                    continue
+                quote = None
+            index += 1
+            continue
+
+        if character in {"'", '"'}:
+            quote = character
+            current.append(character)
+        elif character == "(":
+            depth += 1
+            current.append(character)
+        elif character == ")":
+            depth = max(0, depth - 1)
+            current.append(character)
+        elif character == ";" and depth == 0:
+            statements.append("".join(current))
+            current = []
+        else:
+            current.append(character)
+
+        index += 1
+
+    statements.append("".join(current))
+    return [statement.strip() for statement in statements if statement.strip()]
+
 
 class SQLParser:
-    _KINDS={"HASH":"hash","EXTENDIBLE_HASH":"hash","BPLUS":"bplus_unclustered","BPLUS_UNCLUSTERED":"bplus_unclustered","UNCLUSTERED":"bplus_unclustered","BPLUS_CLUSTERED":"bplus_clustered","CLUSTERED":"bplus_clustered","RTREE":"rtree","R_TREE":"rtree","GIST":"rtree"}
-    def parse(self,sql):
-        if not isinstance(sql,str):raise SQLParseError("SQL statement must be a string")
-        parts=split_sql_statements(sql.lstrip("\ufeff"));
-        if not parts:raise SQLParseError("Empty SQL statement")
-        s=parts[0].rstrip(";").strip(); first=s.split(None,1)[0].upper()
-        if first=="SELECT":return self._select(s)
-        if first=="INSERT":return self._insert(s)
-        if first=="DELETE":return self._delete(s)
-        if first=="UPDATE":return self._update(s)
-        if first=="CREATE": return self._create_index(s) if re.match(r"CREATE\s+(?:UNIQUE\s+)?INDEX\b",s,re.I) else self._create_table(s)
-        if first=="DROP": return self._drop_index(s) if re.match(r"DROP\s+INDEX\b",s,re.I) else self._drop_table(s)
-        if first=="EXPLAIN":return self._explain(s)
-        if first=="SET":return self._set_point(s)
-        if first in {"BEGIN","START","END","COMMIT","ROLLBACK"}:return self._transaction(s)
-        raise SQLParseError(f"Unsupported SQL command: {first}")
-    @staticmethod
-    def _scan_top(text,keywords):
-        found=[]; depth=0; quote=None; i=0
-        kws=sorted(keywords,key=len,reverse=True)
-        while i<len(text):
-            c=text[i]
-            if quote:
-                if c==quote:
-                    if i+1<len(text) and text[i+1]==quote:i+=2;continue
-                    quote=None
-                i+=1;continue
-            if c in "'\"":quote=c;i+=1;continue
-            if c=="(":depth+=1;i+=1;continue
-            if c==")":depth-=1;i+=1;continue
-            if depth==0:
-                for kw in kws:
-                    if text[i:i+len(kw)].upper()==kw and (i==0 or not(text[i-1].isalnum() or text[i-1]=='_')) and (i+len(kw)==len(text) or not(text[i+len(kw)].isalnum() or text[i+len(kw)]=='_')):
-                        found.append((i,i+len(kw),kw)); i+=len(kw); break
-                else:i+=1
-            else:i+=1
-        return found
-    @staticmethod
-    def _split(text,sep=','):
-        out=[];start=0;depth=0;quote=None;i=0
-        while i<len(text):
-            c=text[i]
-            if quote:
-                if c==quote:
-                    if i+1<len(text) and text[i+1]==quote:i+=2;continue
-                    quote=None
-            elif c in "'\"":quote=c
-            elif c=='(':depth+=1
-            elif c==')':depth-=1
-            elif c==sep and depth==0:out.append(text[start:i].strip());start=i+1
-            i+=1
-        out.append(text[start:].strip()); return [x for x in out if x]
-    def _select(self,s):
-        body=re.sub(r"^SELECT\s+","",s,flags=re.I); marks=self._scan_top(body,["FROM"])
-        if not marks:raise SQLParseError("SELECT requires FROM")
-        fs,fe,_=marks[0]; columns=tuple(self._split(body[:fs])); tail=body[fe:].strip(); m=re.match(rf"({_ID})\b",tail)
-        if not m:raise SQLParseError("FROM requires table")
-        table=m.group(1); rest=tail[m.end():]
-        marks=self._scan_top(rest,["WHERE","GROUP BY","ORDER BY","LIMIT"]); marks.sort()
-        join_text=rest[:marks[0][0]].strip() if marks else rest.strip(); clauses={}
-        for n,(a,b,k) in enumerate(marks):clauses[k]=rest[b:(marks[n+1][0] if n+1<len(marks) else len(rest))].strip()
-        joins=self._joins(join_text); groups=self._where_groups(clauses["WHERE"]) if "WHERE" in clauses else (); preds=tuple(p for g in groups for p in g)
-        group=tuple(x.split('.')[-1] for x in self._split(clauses.get("GROUP BY",""))) if clauses.get("GROUP BY") else ()
-        order=self._order(clauses.get("ORDER BY")); limit=int(clauses["LIMIT"]) if clauses.get("LIMIT") else None
-        return SelectStatement(columns,QuerySpec(table,preds,order,group,joins,groups if len(groups)>1 else ()),limit)
-    def _joins(self,text):
-        out=[]; rem=text.strip()
-        while rem:
-            h=re.match(rf"\s*(?:(INNER|LEFT|RIGHT|FULL)\s+)?JOIN\s+({_ID})\s+ON\s+",rem,re.I)
-            if not h:raise SQLParseError(f"Unsupported text after FROM: {rem}")
-            jt=(h.group(1) or "inner").lower(); t=h.group(2); after=rem[h.end():]; markers=self._scan_top(after,["JOIN","INNER JOIN","LEFT JOIN","RIGHT JOIN","FULL JOIN"])
-            cond=after[:markers[0][0]].strip() if markers else after.strip(); rem=after[markers[0][0]:].strip() if markers else ""
-            m=re.fullmatch(rf"({_QID})\s*=\s*({_QID})",cond,re.I)
-            if not m:raise SQLParseError("JOIN ON only supports equality")
-            l,r=m.groups(); lc=l.split('.')[-1]; rc=r.split('.')[-1]
-            if l.split('.')[0]==t and '.' in l:lc,rc=rc,lc
-            out.append(JoinSpec(t,lc,rc,jt,"="))
-        return tuple(out)
-    def _order(self,raw):
-        if not raw:return ()
-        out=[]
-        for item in self._split(raw):
-            d=self._distance_expr(item)
-            if d:
-                expr,end=d; suffix=item[end:].strip().upper(); out.append(OrderBy(expr.column,suffix=="DESC",expr)); continue
-            m=re.fullmatch(rf"({_QID})(?:\s+(ASC|DESC))?",item,re.I)
-            if not m:raise SQLParseError(f"Invalid ORDER BY: {item}")
-            out.append(OrderBy(m.group(1).split('.')[-1],(m.group(2) or "ASC").upper()=="DESC"))
-        return tuple(out)
-    def _insert(self,s):
-        m=re.fullmatch(rf"INSERT\s+INTO\s+({_ID})\s+VALUES\s*\((.*)\)\s*",s,re.I|re.S)
-        if not m:raise SQLParseError("Syntax error in INSERT")
-        return InsertStatement(m.group(1),tuple(self._literal(x) for x in self._split(m.group(2))))
-    def _delete(self,s):
-        m=re.fullmatch(rf"DELETE\s+FROM\s+({_ID})(?:\s+WHERE\s+(.+))?",s,re.I|re.S)
-        if not m:raise SQLParseError("Syntax error in DELETE")
-        g=self._where_groups(m.group(2)) if m.group(2) else (); return DeleteStatement(m.group(1),tuple(p for x in g for p in x),g if len(g)>1 else ())
-    def _update(self,s):
-        m=re.match(rf"UPDATE\s+({_ID})\s+SET\s+",s,re.I)
-        if not m:raise SQLParseError("Syntax error in UPDATE")
-        rest=s[m.end():]; marks=self._scan_top(rest,["WHERE"]); assigns=rest[:marks[0][0]] if marks else rest; where=rest[marks[0][1]:] if marks else None
-        a=[]
-        for item in self._split(assigns):
-            mm=re.fullmatch(rf"({_ID})\s*=\s*(.+)",item,re.S)
-            if not mm:raise SQLParseError(f"Invalid assignment: {item}")
-            a.append((mm.group(1),self._literal(mm.group(2))))
-        g=self._where_groups(where) if where else (); return UpdateStatement(m.group(1),tuple(a),tuple(p for x in g for p in x),g if len(g)>1 else ())
-    def _create_table(self,s):
-        m=re.match(rf"CREATE\s+TABLE\s+(IF\s+NOT\s+EXISTS\s+)?({_ID})\s*\(",s,re.I)
-        if not m:raise SQLParseError("CREATE TABLE syntax")
-        openi=m.end()-1; close=self._match_paren(s,openi); body=s[openi+1:close]; tail=s[close+1:].strip(); kind="heap"
+    """Small, dependency-free parser for the SQL subset required by BD2.
+
+    Supported statements:
+
+    * SELECT columns FROM table [JOIN ... ON ...]
+      [WHERE p1 AND p2 ...] [GROUP BY ...] [ORDER BY ...] [LIMIT n]
+    * INSERT INTO table VALUES (...)
+    * UPDATE table SET col = valor, ... [WHERE ...]
+    * DELETE FROM table [WHERE ...]
+    * CREATE TABLE nombre (col TIPO [PRIMARY KEY], ...) [USING HEAP|SEQUENTIAL]
+    * CREATE [UNIQUE] INDEX [nombre] ON tabla (columna)
+      [USING HASH|BPLUS_CLUSTERED|BPLUS_UNCLUSTERED]
+    * DROP TABLE nombre
+    * DROP INDEX nombre [ON tabla]
+    * BEGIN TRANSACTION | END TRANSACTION | COMMIT | ROLLBACK
+    * EXPLAIN [ANALYZE] <sentencia>
+
+    En ``WHERE`` se admite ``AND`` y ``OR`` (sin paréntesis). El parser
+    intencionalmente no implementa el estándar SQL completo: su trabajo es
+    construir de forma fiable los objetos QuerySpec / AST del proyecto, siendo
+    consciente de comillas, comas y paréntesis dentro de literales.
+    """
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    KEYWORDS = {
+        "SELECT", "INSERT", "UPDATE", "DELETE", "CREATE", "DROP", "EXPLAIN",
+        "FROM", "WHERE", "GROUP", "ORDER", "BY", "JOIN", "INNER", "LEFT",
+        "RIGHT", "FULL", "ON", "LIMIT", "VALUES", "SET", "TABLE", "INTO",
+        "AND", "OR", "BETWEEN", "AS", "USING", "HEAP", "SEQUENTIAL",
+        "INDEX", "UNIQUE", "HASH", "BPLUS_CLUSTERED", "BPLUS_UNCLUSTERED",
+        "BEGIN", "END", "TRANSACTION", "COMMIT", "ROLLBACK", "IF", "EXISTS",
+        "NOT", "WORK",
+    }
+
+    def __init__(self, variables: Optional[Dict[str, Tuple[float, float]]] = None):
+        #: Variables de sesión (``SET mi_ubicacion = POINT(...)``), por nombre
+        #: en minúsculas. El ejecutor comparte este mismo diccionario.
+        self.variables: Dict[str, Tuple[float, float]] = (
+            variables if variables is not None else {}
+        )
+
+    def parse(self, sql: str) -> Union[
+        SelectStatement,
+        InsertStatement,
+        DeleteStatement,
+        UpdateStatement,
+        CreateTableStatement,
+        CreateIndexStatement,
+        DropTableStatement,
+        DropIndexStatement,
+        TransactionStatement,
+        ExplainStatement,
+    ]:
+        if not isinstance(sql, str):
+            raise SQLParseError("SQL statement must be a string")
+
+        # Un script pegado desde un archivo puede traer BOM, comentarios y
+        # varias sentencias separadas por ';'. El motor ejecuta una sentencia
+        # por llamada, así que se toma la primera y se ignoran comentarios.
+        clean_sql = sql.lstrip("\ufeff").strip()
+        clean_sql = strip_sql_comments(clean_sql).strip()
+        while clean_sql.endswith(";"):
+            clean_sql = clean_sql[:-1].rstrip()
+
+        if ";" in clean_sql:
+            sentencias = split_sql_statements(clean_sql)
+            if not sentencias:
+                raise SQLParseError("Empty SQL statement")
+            clean_sql = sentencias[0]
+
+        if not clean_sql:
+            raise SQLParseError("Empty SQL statement")
+
+        self._validate_balanced(clean_sql)
+        first_word = clean_sql.split(None, 1)[0].upper()
+
+        if first_word == "SELECT":
+            return self._parse_select(clean_sql)
+        if first_word == "INSERT":
+            return self._parse_insert(clean_sql)
+        if first_word == "UPDATE":
+            return self._parse_update(clean_sql)
+        if first_word == "DELETE":
+            return self._parse_delete(clean_sql)
+        if first_word == "CREATE":
+            if re.match(r"CREATE\s+(UNIQUE\s+)?INDEX\b", clean_sql, re.IGNORECASE):
+                return self._parse_create_index(clean_sql)
+            return self._parse_create_table(clean_sql)
+        if first_word == "DROP":
+            if re.match(r"DROP\s+INDEX\b", clean_sql, re.IGNORECASE):
+                return self._parse_drop_index(clean_sql)
+            return self._parse_drop_table(clean_sql)
+        if first_word == "EXPLAIN":
+            return self._parse_explain(clean_sql)
+        if first_word in {"BEGIN", "END", "COMMIT", "ROLLBACK", "START"}:
+            return self._parse_transaction(clean_sql)
+        if first_word == "SET":
+            return self._parse_set_variable(clean_sql)
+
+        raise SQLParseError(f"Unsupported SQL command: {first_word}")
+
+    # ------------------------------------------------------------------
+    # SET variable = POINT(lat, lon)  (Parte 2)
+    # ------------------------------------------------------------------
+
+    _SET_RE = re.compile(
+        r"^SET\s+@?([A-Za-z_][A-Za-z0-9_]*)\s*(?:=|:=|TO)\s*(.+)$",
+        re.IGNORECASE | re.DOTALL,
+    )
+
+    def _parse_set_variable(self, sql: str) -> "SetVariableStatement":
+        match = self._SET_RE.match(sql.strip())
+        if not match:
+            raise SQLParseError(
+                "SET espera: SET nombre = POINT(latitud, longitud)"
+            )
+        name, raw_value = match.group(1), match.group(2).strip()
+        point = self._parse_point_literal(raw_value)
+        if point is None:
+            raise SQLParseError(
+                f"SET {name}: el valor debe ser POINT(latitud, longitud), "
+                f"no '{raw_value}'"
+            )
+        return SetVariableStatement(name=name.lower(), point=point)
+
+    def _parse_point_literal(self, raw: str) -> Optional[Tuple[float, float]]:
+        """``POINT(lat, lon)`` completo -> ``(lat, lon)``; ``None`` si no lo es."""
+        match = self._POINT_RE.fullmatch(raw.strip())
+        if not match:
+            return None
+        lat = self._coerce_literal(match.group(1))
+        lon = self._coerce_literal(match.group(2))
+        if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
+            raise SQLParseError("POINT(lat, lon): las coordenadas deben ser numéricas")
+        if not (-90.0 <= float(lat) <= 90.0) or not (-180.0 <= float(lon) <= 180.0):
+            raise SQLParseError(
+                f"POINT({lat}, {lon}): fuera de rango; el orden es "
+                "POINT(latitud, longitud)"
+            )
+        return float(lat), float(lon)
+
+    # ------------------------------------------------------------------
+    # SELECT
+    # ------------------------------------------------------------------
+
+    def _parse_select(self, sql: str) -> SelectStatement:
+        body = re.sub(r"^SELECT\b", "", sql, count=1, flags=re.IGNORECASE).lstrip()
+        from_match = self._find_top_level_keyword(body, "FROM")
+        if from_match is None:
+            raise SQLParseError("SELECT requires a FROM clause")
+
+        from_start, from_end = from_match
+        select_raw = body[:from_start].strip()
+        if not select_raw:
+            raise SQLParseError("SELECT requires at least one selected column")
+
+        columns = tuple(self._split_top_level(select_raw, ","))
+        self._validate_select_columns(columns)
+
+        from_tail = body[from_end:].lstrip()
+        table_match = re.match(r"([A-Za-z_][A-Za-z0-9_]*)\b", from_tail)
+        if not table_match:
+            raise SQLParseError("FROM requires a valid table name")
+
+        table = table_match.group(1)
+        remainder = from_tail[table_match.end():]
+        join_text, clauses = self._extract_select_clauses(remainder)
+
+        joins = tuple(self._parse_joins(join_text))
+
+        predicates: Tuple[Predicate, ...] = ()
+        predicate_groups: Tuple[Tuple[Predicate, ...], ...] = ()
+        if "WHERE" in clauses:
+            predicate_groups = self._parse_where_groups(clauses["WHERE"])
+            predicates = tuple(
+                predicate
+                for group in predicate_groups
+                for predicate in group
+            )
+
+        group_by = self._parse_group_by(clauses.get("GROUP BY"))
+        order_by = self._parse_order_by(clauses.get("ORDER BY"))
+        limit = self._parse_limit(clauses.get("LIMIT"))
+
+        return SelectStatement(
+            columns=columns,
+            limit=limit,
+            query_spec=QuerySpec(
+                table=table,
+                predicates=predicates,
+                order_by=order_by,
+                group_by=group_by,
+                joins=joins,
+                or_groups=(
+                    predicate_groups if len(predicate_groups) > 1 else ()
+                ),
+            ),
+        )
+
+    def _extract_select_clauses(self, text: str) -> Tuple[str, Dict[str, str]]:
+        """Split JOIN text from WHERE/GROUP BY/ORDER BY at top level.
+
+        Clause keywords inside quoted strings or parenthesized expressions are
+        deliberately ignored.
+        """
+
+        markers = []
+        for name in ("WHERE", "GROUP BY", "ORDER BY", "LIMIT"):
+            matches = self._find_all_top_level_keywords(text, name)
+            if len(matches) > 1:
+                raise SQLParseError(f"Duplicate {name} clause")
+            if matches:
+                start, end = matches[0]
+                markers.append((start, end, name))
+
+        markers.sort(key=lambda item: item[0])
+        expected_order = {"WHERE": 0, "GROUP BY": 1, "ORDER BY": 2, "LIMIT": 3}
+        order = [expected_order[name] for _, _, name in markers]
+        if order != sorted(order):
+            raise SQLParseError(
+                "SELECT clauses must appear as WHERE, GROUP BY, ORDER BY, LIMIT"
+            )
+
+        if not markers:
+            return text.strip(), {}
+
+        join_text = text[: markers[0][0]].strip()
+        clauses: Dict[str, str] = {}
+
+        for index, (_, end, name) in enumerate(markers):
+            next_start = markers[index + 1][0] if index + 1 < len(markers) else len(text)
+            value = text[end:next_start].strip()
+            if not value:
+                raise SQLParseError(f"{name} clause cannot be empty")
+            clauses[name] = value
+
+        return join_text, clauses
+
+    def _parse_joins(self, text: str) -> List[JoinSpec]:
+        joins: List[JoinSpec] = []
+        remaining = text.strip()
+
+        while remaining:
+            head = _JOIN_HEAD_RE.match(remaining)
+            if not head:
+                raise SQLParseError(f"Unsupported text after FROM clause: {remaining}")
+
+            join_type = (head.group(1) or "inner").lower()
+            join_table = head.group(2)
+            condition_and_rest = remaining[head.end():]
+
+            next_join = self._find_top_level_regex(condition_and_rest, _JOIN_MARKER_RE)
+            if next_join is None:
+                on_clause = condition_and_rest.strip()
+                remaining = ""
+            else:
+                on_clause = condition_and_rest[: next_join[0]].strip()
+                remaining = condition_and_rest[next_join[0]:].strip()
+
+            on_match = re.fullmatch(
+                r"([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)"
+                r"\s*=\s*"
+                r"([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)",
+                on_clause,
+                flags=re.IGNORECASE,
+            )
+            if not on_match:
+                raise SQLParseError(
+                    "JOIN ON currently supports only equality between columns: "
+                    f"{on_clause}"
+                )
+
+            left_ref, right_ref = on_match.groups()
+            left_table, left_col = self._split_column_ref(left_ref)
+            right_table, right_col = self._split_column_ref(right_ref)
+
+            # ExternalHashing expects the left key to belong to the rows
+            # already produced and the right key to belong to the joined table.
+            # If qualifiers make the reversed form explicit, normalize it.
+            if left_table == join_table and right_table != join_table:
+                left_col, right_col = right_col, left_col
+
+            joins.append(
+                JoinSpec(
+                    table=join_table,
+                    left_column=left_col,
+                    right_column=right_col,
+                    join_type=join_type,
+                    operator="=",
+                )
+            )
+
+        return joins
+
+    def _parse_group_by(self, raw: str | None) -> Tuple[str, ...]:
+        if raw is None:
+            return ()
+
+        columns = self._split_top_level(raw, ",")
+        result = []
+        for column in columns:
+            if not _QUALIFIED_IDENTIFIER_RE.fullmatch(column):
+                raise SQLParseError(f"Invalid GROUP BY column: {column}")
+            result.append(column.split(".")[-1])
+        return tuple(result)
+
+    def _parse_order_by(self, raw: str | None) -> Tuple[OrderBy, ...]:
+        if raw is None:
+            return ()
+
+        result = []
+        for item in self._split_top_level(raw, ","):
+            # ORDER BY distancia(col, POINT(...)) [ASC|DESC] -> k-NN
+            espacial = self._try_parse_order_by_distance(item)
+            if espacial is not None:
+                distance, descending = espacial
+                result.append(
+                    OrderBy(
+                        column=distance.column,
+                        descending=descending,
+                        distance=distance,
+                    )
+                )
+                continue
+
+            match = re.fullmatch(
+                r"([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)"
+                r"(?:\s+(ASC|DESC))?",
+                item,
+                flags=re.IGNORECASE,
+            )
+            if not match:
+                raise SQLParseError(f"Invalid ORDER BY expression: {item}")
+
+            column, direction = match.groups()
+            result.append(
+                OrderBy(
+                    column=column.split(".")[-1],
+                    descending=(direction or "ASC").upper() == "DESC",
+                )
+            )
+
+        return tuple(result)
+
+    # ------------------------------------------------------------------
+    # INSERT / DELETE
+    # ------------------------------------------------------------------
+
+    def _parse_insert(self, sql: str) -> InsertStatement:
+        match = re.fullmatch(
+            r"INSERT\s+INTO\s+([A-Za-z_][A-Za-z0-9_]*)\s+VALUES\s*\((.*)\)\s*",
+            sql,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        if not match:
+            raise SQLParseError(f"Syntax error in INSERT statement: {sql}")
+
+        table = match.group(1)
+        raw_values = match.group(2).strip()
+        if not raw_values:
+            raise SQLParseError("INSERT VALUES cannot be empty")
+
+        values = tuple(
+            self._coerce_literal(value)
+            for value in self._split_top_level(raw_values, ",")
+        )
+        return InsertStatement(table=table, values=values)
+
+    def _parse_delete(self, sql: str) -> DeleteStatement:
+        match = re.fullmatch(
+            r"DELETE\s+FROM\s+([A-Za-z_][A-Za-z0-9_]*)"
+            r"(?:\s+WHERE\s+(.+))?\s*",
+            sql,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        if not match:
+            raise SQLParseError(f"Syntax error in DELETE statement: {sql}")
+
+        table = match.group(1)
+        raw_where = match.group(2)
+        groups = self._parse_where_groups(raw_where) if raw_where else ()
+        predicates = tuple(p for group in groups for p in group)
+        return DeleteStatement(
+            table=table,
+            predicates=predicates,
+            or_groups=groups if len(groups) > 1 else (),
+        )
+
+    # ------------------------------------------------------------------
+    # UPDATE
+    # ------------------------------------------------------------------
+
+    def _parse_update(self, sql: str) -> UpdateStatement:
+        head = re.match(
+            r"UPDATE\s+([A-Za-z_][A-Za-z0-9_]*)\s+SET\s+",
+            sql,
+            flags=re.IGNORECASE,
+        )
+        if not head:
+            raise SQLParseError(f"Syntax error in UPDATE statement: {sql}")
+
+        table = head.group(1)
+        remainder = sql[head.end():]
+        where_match = self._find_top_level_keyword(remainder, "WHERE")
+
+        if where_match is None:
+            assignments_text = remainder
+            raw_where = None
+        else:
+            where_start, where_end = where_match
+            assignments_text = remainder[:where_start]
+            raw_where = remainder[where_end:]
+
+        if not assignments_text.strip():
+            raise SQLParseError("UPDATE requires at least one assignment")
+
+        assignments = []
+        for item in self._split_top_level(assignments_text, ","):
+            match = re.fullmatch(
+                r"([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+)",
+                item,
+                flags=re.IGNORECASE | re.DOTALL,
+            )
+            if not match:
+                raise SQLParseError(f"Invalid assignment in UPDATE: {item}")
+            assignments.append(
+                (match.group(1), self._coerce_literal(match.group(2)))
+            )
+
+        groups = self._parse_where_groups(raw_where) if raw_where else ()
+        predicates = tuple(p for group in groups for p in group)
+
+        return UpdateStatement(
+            table=table,
+            assignments=tuple(assignments),
+            predicates=predicates,
+            or_groups=groups if len(groups) > 1 else (),
+        )
+
+    # ------------------------------------------------------------------
+    # CREATE TABLE / DROP TABLE
+    # ------------------------------------------------------------------
+
+    _CREATE_HEAD_RE = re.compile(
+        r"CREATE\s+TABLE\s+(IF\s+NOT\s+EXISTS\s+)?"
+        r"([A-Za-z_][A-Za-z0-9_]*)\s*\(",
+        re.IGNORECASE,
+    )
+
+    def _parse_create_table(self, sql: str) -> CreateTableStatement:
+        head = self._CREATE_HEAD_RE.match(sql)
+        if not head:
+            raise SQLParseError(
+                "Syntax error: se esperaba CREATE TABLE nombre (columna TIPO, ...)"
+            )
+
+        if_not_exists = bool(head.group(1))
+        table = head.group(2)
+
+        open_index = head.end() - 1
+        close_index = self._find_matching_paren(sql, open_index)
+        if close_index is None:
+            raise SQLParseError("CREATE TABLE: falta el paréntesis de cierre")
+
+        body = sql[open_index + 1:close_index]
+        tail = sql[close_index + 1:].strip()
+
+        storage_kind = "heap"
         if tail:
-            u=re.fullmatch(r"USING\s+(HEAP|SEQUENTIAL)",tail,re.I)
-            if not u:raise SQLParseError("usa USING HEAP o USING SEQUENTIAL")
-            kind=u.group(1).lower()
-        cols=[]; pk=None
-        for item in self._split(body):
-            pkm=re.fullmatch(rf"PRIMARY\s+KEY\s*\(\s*({_ID})\s*\)",item,re.I)
-            if pkm:pk=pkm.group(1);continue
-            dm=re.fullmatch(rf"({_ID})\s+([A-Za-z]+(?:\s*\(\s*\d+(?:\s*,\s*\d+)?\s*\))?)(.*)",item,re.I|re.S)
-            if not dm:raise SQLParseError(f"Definición inválida: {item}")
-            name=dm.group(1);typ=self._type(dm.group(2));cols.append((name,typ));
-            if re.search(r"PRIMARY\s+KEY",dm.group(3),re.I):pk=name
-        if not cols:raise SQLParseError("CREATE TABLE sin columnas")
-        pk=pk or cols[0][0]
-        return CreateTableStatement(m.group(2),tuple(cols),pk,kind,bool(m.group(1)))
-    def _drop_table(self,s):
-        m=re.fullmatch(rf"DROP\s+TABLE\s+(IF\s+EXISTS\s+)?({_ID})",s,re.I)
-        if not m:raise SQLParseError("DROP TABLE syntax")
-        return DropTableStatement(m.group(2),bool(m.group(1)))
-    def _create_index(self,s):
-        m=re.match(rf"CREATE\s+(?:(UNIQUE)\s+)?INDEX\s+(?:(IF\s+NOT\s+EXISTS)\s+)?(?:({_ID})\s+)?ON\s+({_ID})\s*",s,re.I)
-        if not m:raise SQLParseError("CREATE INDEX syntax")
-        rest=s[m.end():].strip(); close=self._match_paren(rest,0) if rest.startswith('(') else None
-        if close is None:raise SQLParseError("CREATE INDEX requiere (columna)")
-        cols=self._split(rest[1:close]); tail=rest[close+1:].strip(); kind="bplus_unclustered"
+            using = re.fullmatch(
+                r"USING\s+(HEAP|SEQUENTIAL)",
+                tail,
+                flags=re.IGNORECASE,
+            )
+            if not using:
+                raise SQLParseError(
+                    f"CREATE TABLE: sufijo no soportado '{tail}' "
+                    "(usa USING HEAP o USING SEQUENTIAL)"
+                )
+            storage_kind = using.group(1).lower()
+
+        items = self._split_top_level(body, ",") if body.strip() else []
+        if not items:
+            raise SQLParseError("CREATE TABLE requiere al menos una columna")
+
+        columns: List[Tuple[str, str]] = []
+        primary_key: Optional[str] = None
+
+        for item in items:
+            item = item.strip()
+
+            if re.match(r"^PRIMARY\s+KEY\b", item, re.IGNORECASE):
+                match = re.search(r"\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)", item)
+                if not match:
+                    raise SQLParseError(
+                        "PRIMARY KEY de tabla requiere PRIMARY KEY (columna)"
+                    )
+                primary_key = match.group(1)
+                continue
+
+            definition = re.fullmatch(
+                r"([A-Za-z_][A-Za-z0-9_]*)\s+"
+                r"([A-Za-z]+(?:\s*\(\s*\d+(?:\s*,\s*\d+)?\s*\))?)"
+                r"(.*)",
+                item,
+                flags=re.DOTALL,
+            )
+            if not definition:
+                raise SQLParseError(f"Definición de columna inválida: {item}")
+
+            name = definition.group(1)
+            tipo = self._normalize_type(definition.group(2))
+            rest = definition.group(3)
+
+            columns.append((name, tipo))
+
+            if re.search(r"PRIMARY\s+KEY", rest, re.IGNORECASE):
+                primary_key = name
+
+        if not columns:
+            raise SQLParseError("CREATE TABLE requiere al menos una columna")
+
+        names = [name for name, _ in columns]
+        if len(set(names)) != len(names):
+            raise SQLParseError("CREATE TABLE: nombres de columna repetidos")
+
+        if primary_key is None:
+            # Sin PRIMARY KEY explícita se usa la primera columna (documentado).
+            primary_key = names[0]
+        elif primary_key not in names:
+            raise SQLParseError(
+                f"CREATE TABLE: la PRIMARY KEY '{primary_key}' no es una columna"
+            )
+
+        return CreateTableStatement(
+            table=table,
+            columns=tuple(columns),
+            primary_key=primary_key,
+            storage_kind=storage_kind,
+            if_not_exists=if_not_exists,
+        )
+
+    def _parse_drop_table(self, sql: str) -> DropTableStatement:
+        match = re.fullmatch(
+            r"DROP\s+TABLE\s+(IF\s+EXISTS\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*",
+            sql,
+            flags=re.IGNORECASE,
+        )
+        if not match:
+            raise SQLParseError("Syntax error: se esperaba DROP TABLE nombre")
+        return DropTableStatement(
+            table=match.group(2),
+            if_exists=bool(match.group(1)),
+        )
+
+    # ------------------------------------------------------------------
+    # CREATE INDEX / DROP INDEX
+    # ------------------------------------------------------------------
+
+    _INDEX_KINDS = {
+        "HASH": "hash",
+        "EXTENDIBLE_HASH": "hash",
+        "HASH_INDEX": "hash",
+        "BPLUS": "bplus_unclustered",
+        "BPLUS_CLUSTERED": "bplus_clustered",
+        "CLUSTERED": "bplus_clustered",
+        "BPLUS_UNCLUSTERED": "bplus_unclustered",
+        "UNCLUSTERED": "bplus_unclustered",
+        # Espacial (Parte 2): se declara con (latitud, longitud).
+        "RTREE": "rtree",
+        "R_TREE": "rtree",
+        "RTREE_INDEX": "rtree",
+        "GIST": "rtree",
+    }
+
+    _CREATE_INDEX_HEAD_RE = re.compile(
+        r"CREATE\s+(?:(UNIQUE)\s+)?INDEX\s+"
+        r"(?:(IF\s+NOT\s+EXISTS)\s+)?"
+        r"(?:([A-Za-z_][A-Za-z0-9_]*)\s+)?"
+        r"ON\s+([A-Za-z_][A-Za-z0-9_]*)\s*",
+        re.IGNORECASE,
+    )
+
+    def _parse_create_index(self, sql: str) -> CreateIndexStatement:
+        head = self._CREATE_INDEX_HEAD_RE.match(sql)
+        if not head:
+            raise SQLParseError(
+                "Syntax error: se esperaba "
+                "CREATE [UNIQUE] INDEX [nombre] ON tabla (columna) "
+                "[USING HASH|BPLUS_CLUSTERED|BPLUS_UNCLUSTERED]"
+            )
+
+        unique = bool(head.group(1))
+        if_not_exists = bool(head.group(2))
+        name = head.group(3)
+        table = head.group(4)
+
+        rest = sql[head.end():].strip()
+        if not rest.startswith("("):
+            raise SQLParseError(
+                "CREATE INDEX requiere la columna entre paréntesis: (columna)"
+            )
+
+        close_index = rest.find(")")
+        if close_index == -1:
+            raise SQLParseError("CREATE INDEX: falta el paréntesis de cierre")
+
+        raw_columns = [
+            item.strip() for item in self._split_top_level(rest[1:close_index], ",")
+            if item.strip()
+        ]
+        if not raw_columns:
+            raise SQLParseError("CREATE INDEX: falta la columna entre paréntesis")
+        for item in raw_columns:
+            if not _IDENTIFIER_RE.fullmatch(item):
+                raise SQLParseError(
+                    f"CREATE INDEX: columna inválida '{item}'"
+                )
+        if len(raw_columns) > 2:
+            raise SQLParseError(
+                "CREATE INDEX admite a lo sumo dos columnas "
+                "(latitud, longitud) para los índices espaciales"
+            )
+
+        column = raw_columns[0]
+        column2 = raw_columns[1] if len(raw_columns) == 2 else None
+
+        tail = rest[close_index + 1:].strip()
+        kind = "bplus_unclustered"
         if tail:
-            u=re.fullmatch(r"USING\s+([A-Za-z_][A-Za-z0-9_]*)",tail,re.I)
-            if not u or u.group(1).upper() not in self._KINDS:raise SQLParseError("técnica de índice desconocida")
-            kind=self._KINDS[u.group(1).upper()]
-        if kind=="rtree" and len(cols)!=2:raise SQLParseError("RTREE necesita (lat, lon)")
-        if kind!="rtree" and len(cols)!=1:raise SQLParseError("índice no espacial usa una columna")
-        return CreateIndexStatement(m.group(4),cols[0],m.group(3),bool(m.group(1)),kind,bool(m.group(2)),cols[1] if len(cols)>1 else None)
-    def _drop_index(self,s):
-        m=re.fullmatch(rf"DROP\s+INDEX\s+(IF\s+EXISTS\s+)?({_ID})(?:\s+ON\s+({_ID}))?",s,re.I)
-        if not m:raise SQLParseError("DROP INDEX syntax")
-        return DropIndexStatement(m.group(2),m.group(3),bool(m.group(1)))
-    def _transaction(self,s):
-        t=re.sub(r"\s+"," ",s.strip()).upper(); t=t.replace(" WORK","")
-        if t in {"BEGIN","BEGIN TRANSACTION","START","START TRANSACTION"}:return TransactionStatement("begin")
-        if t in {"END","END TRANSACTION","COMMIT","COMMIT TRANSACTION"}:return TransactionStatement("commit")
-        if t in {"ROLLBACK","ROLLBACK TRANSACTION"}:return TransactionStatement("rollback")
-        raise SQLParseError("sentencia de transacción no soportada")
-    def _set_point(self,s):
-        m=re.fullmatch(rf"SET\s+({_ID})\s*=\s*POINT\s*\(\s*([^,]+),\s*([^\)]+)\s*\)",s,re.I)
-        if not m:raise SQLParseError("SET de punto usa: SET nombre = POINT(lat, lon)")
-        return SetPointStatement(m.group(1), (float(self._literal(m.group(2))), float(self._literal(m.group(3)))))
-    def _explain(self,s):
-        m=re.match(r"EXPLAIN\s+(ANALYZE\s+)?",s,re.I); inner=s[m.end():].strip()
-        if not inner:raise SQLParseError("EXPLAIN requiere sentencia")
-        return ExplainStatement(self.parse(inner),bool(m.group(1)))
-    def _where_groups(self,raw):
-        if not raw:return ()
-        marks=self._scan_top(raw,["OR"]); parts=[];start=0
-        for a,b,_ in marks:parts.append(raw[start:a].strip());start=b
-        parts.append(raw[start:].strip()); return tuple(tuple(self._where(p)) for p in parts)
-    def _where(self,text):
-        # split AND, but protect BETWEEN's AND by scanning sequentially
-        out=[]; pos=0
-        while pos<len(text):
-            pos=self._ws(text,pos)
-            poly=self._polygon(text,pos)
-            if poly: out.append(poly[0]); pos=poly[1]; pos=self._consume_and(text,pos); continue
-            dist=self._distance_expr(text[pos:])
-            if dist:
-                expr,end=dist; pos+=end; pos=self._ws(text,pos); om=re.match(r"(<=|<)",text[pos:])
-                if not om:raise SQLParseError("distancia admite < o <=")
-                op=om.group(1);pos+=om.end(); endand=self._next_kw(text,"AND",pos); raw=text[pos:endand[0] if endand else len(text)].strip(); out.append(Predicate(expr.column,op,float(self._literal(raw)),expr));pos=endand[1] if endand else len(text);continue
-            cm=re.match(_QID,text[pos:])
-            if not cm:raise SQLParseError(f"WHERE inválido cerca de {text[pos:]}")
-            col=cm.group(0).split('.')[-1];pos+=cm.end();pos=self._ws(text,pos)
-            bm=re.match(r"BETWEEN\b",text[pos:],re.I)
-            if bm:
-                pos+=bm.end(); aand=self._next_kw(text,"AND",pos)
-                if not aand:raise SQLParseError("BETWEEN requiere AND")
-                low=self._literal(text[pos:aand[0]].strip());pos=aand[1]; nxt=self._next_kw(text,"AND",pos);high=self._literal(text[pos:nxt[0] if nxt else len(text)].strip());pos=nxt[1] if nxt else len(text);out.append(Predicate(col,"between",(low,high)));continue
-            om=re.match(r"(<=|>=|!=|<>|=|<|>)",text[pos:])
-            if not om:raise SQLParseError("operador WHERE esperado")
-            op=om.group(1);pos+=om.end(); nxt=self._next_kw(text,"AND",pos);raw=text[pos:nxt[0] if nxt else len(text)].strip();out.append(Predicate(col,op,self._literal(raw)));pos=nxt[1] if nxt else len(text)
-        return out
-    def _distance_expr(self,text):
-        m=re.match(r"(?:DISTANCIA|DISTANCE)\s*\(",text,re.I)
-        if not m:return None
-        oi=text.find('(',0);ci=self._match_paren(text,oi);parts=self._split(text[oi+1:ci]);
-        if len(parts)<2:raise SQLParseError("distancia necesita columna, POINT")
-        point_token=parts[1].strip()
-        pm=re.fullmatch(r"POINT\s*\(\s*([^,]+),\s*([^\)]+)\s*\)",point_token,re.I)
-        if pm:
-            point=(float(self._literal(pm.group(1))),float(self._literal(pm.group(2))))
-        elif re.fullmatch(_ID,point_token):
-            # El ejecutor resuelve el punto nombrado (p.ej. mi_ubicacion).
-            point=(float("nan"),float("nan"))
-        else:raise SQLParseError("POINT inválido; usa POINT(lat, lon) o un punto nombrado")
-        metric="haversine"
-        if len(parts)>=3:
-            mm=parts[2].strip(" '\"").lower(); metric="euclidean" if mm in {"euclidean","euclidiana"} else "haversine" if mm in {"haversine","geodesic","geodesica","geodésica"} else None
-            if metric is None:raise SQLParseError("métrica desconocida")
-        expr=DistanceExpression(parts[0].strip().split('.')[-1],point,metric)
-        # Atributo dinámico inmutable no es posible en frozen dataclass; el nombre
-        # se transporta en una marca privada usando object.__setattr__.
-        if not pm: object.__setattr__(expr,"point_name",point_token.lower())
-        return expr,ci+1
-    def _polygon(self,text,pos):
-        m=re.match(r"(?:DENTRO_DE|WITHIN|DENTRO)\s*\(",text[pos:],re.I)
-        if not m:return None
-        oi=pos+text[pos:].find('(');ci=self._match_paren(text,oi);body=text[oi+1:ci];parts=self._split(body)
-        col=parts[0].strip().split('.')[-1]; raw=','.join(parts[1:]);pm=re.search(r"POLYGON\s*\(\s*\((.*?)\)\s*\)",raw,re.I|re.S)
-        if not pm:raise SQLParseError("POLYGON inválido")
-        ring=[]
-        for pair in pm.group(1).split(','):
-            xy=pair.split();
-            if len(xy)!=2:raise SQLParseError("vértice inválido")
-            ring.append((float(self._literal(xy[0])),float(self._literal(xy[1]))))
-        if len(ring)<3:raise SQLParseError("polígono necesita 3 vértices")
-        return PolygonPredicate(col,tuple(ring)),ci+1
+            using = re.fullmatch(
+                r"USING\s+([A-Za-z_][A-Za-z0-9_]*)",
+                tail,
+                flags=re.IGNORECASE,
+            )
+            if not using:
+                raise SQLParseError(
+                    f"CREATE INDEX: sufijo no soportado '{tail}' "
+                    "(usa USING HASH, USING BPLUS_CLUSTERED, "
+                    "USING BPLUS_UNCLUSTERED o USING RTREE)"
+                )
+            requested = using.group(1).upper()
+            if requested not in self._INDEX_KINDS:
+                raise SQLParseError(
+                    f"CREATE INDEX: técnica desconocida '{requested}' "
+                    "(usa HASH, BPLUS_CLUSTERED, BPLUS_UNCLUSTERED o RTREE)"
+                )
+            kind = self._INDEX_KINDS[requested]
+
+        if kind == "rtree" and column2 is None:
+            raise SQLParseError(
+                "un índice espacial necesita las dos columnas: "
+                "CREATE INDEX nombre ON tabla (latitud, longitud) USING RTREE"
+            )
+        if kind != "rtree" and column2 is not None:
+            raise SQLParseError(
+                f"la técnica '{kind}' indexa una sola columna; "
+                "para dos columnas usa USING RTREE"
+            )
+
+        return CreateIndexStatement(
+            table=table,
+            column=column,
+            name=name,
+            unique=unique,
+            kind=kind,
+            if_not_exists=if_not_exists,
+            column2=column2,
+        )
+
+    def _parse_drop_index(self, sql: str) -> DropIndexStatement:
+        match = re.fullmatch(
+            r"DROP\s+INDEX\s+(IF\s+EXISTS\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*"
+            r"(?:ON\s+([A-Za-z_][A-Za-z0-9_]*)\s*)?",
+            sql,
+            flags=re.IGNORECASE,
+        )
+        if not match:
+            raise SQLParseError(
+                "Syntax error: se esperaba DROP INDEX nombre [ON tabla]"
+            )
+        return DropIndexStatement(
+            name=match.group(2),
+            table=match.group(3),
+            if_exists=bool(match.group(1)),
+        )
+
+    # ------------------------------------------------------------------
+    # BEGIN / END TRANSACTION
+    # ------------------------------------------------------------------
+
+    def _parse_transaction(self, sql: str) -> TransactionStatement:
+        text = re.sub(r"\s+", " ", sql.strip()).upper()
+        text = re.sub(r"\s+(WORK|TRANSACTION)$", "", text)
+
+        actions = {
+            "BEGIN": "begin",
+            "START": "begin",
+            "START TRANSACTION": "begin",
+            "END": "commit",
+            "COMMIT": "commit",
+            "ROLLBACK": "rollback",
+        }
+
+        if text not in actions:
+            raise SQLParseError(
+                f"Syntax error: sentencia de transacción no soportada '{sql}' "
+                "(usa BEGIN TRANSACTION, END TRANSACTION, COMMIT o ROLLBACK)"
+            )
+
+        return TransactionStatement(action=actions[text])
+
+    # ------------------------------------------------------------------
+    # EXPLAIN
+    # ------------------------------------------------------------------
+
+    def _parse_explain(self, sql: str) -> ExplainStatement:
+        head = re.match(r"EXPLAIN\s+(ANALYZE\s+)?", sql, flags=re.IGNORECASE)
+        if not head:
+            raise SQLParseError("Syntax error: se esperaba EXPLAIN [ANALYZE] ...")
+
+        analyze = bool(head.group(1))
+        inner = sql[head.end():].strip()
+        if not inner:
+            raise SQLParseError("EXPLAIN requiere una sentencia")
+
+        if re.match(r"^EXPLAIN\b", inner, re.IGNORECASE):
+            raise SQLParseError("EXPLAIN anidado no está soportado")
+
+        return ExplainStatement(statement=self.parse(inner), analyze=analyze)
+
     @staticmethod
-    def _ws(t,p):
-        while p<len(t) and t[p].isspace():p+=1
-        return p
-    def _next_kw(self,t,kw,p):
-        arr=self._scan_top(t[p:],[kw]); return (p+arr[0][0],p+arr[0][1]) if arr else None
-    def _consume_and(self,t,p):
-        p=self._ws(t,p);m=re.match(r"AND\b",t[p:],re.I);return p+m.end() if m else p
-    @staticmethod
-    def _match_paren(t,oi):
-        if oi is None or oi>=len(t) or t[oi]!='(':return None
-        d=0;q=None;i=oi
-        while i<len(t):
-            c=t[i]
-            if q:
-                if c==q:
-                    if i+1<len(t) and t[i+1]==q:i+=2;continue
-                    q=None
-            elif c in "'\"":q=c
-            elif c=='(':d+=1
-            elif c==')':
-                d-=1
-                if d==0:return i
-            i+=1
+    def _normalize_type(raw: str) -> str:
+        """Traduce el tipo declarado al subconjunto del motor (INT/FLOAT/VARCHAR)."""
+        text = raw.strip().upper()
+        compact = re.sub(r"\s+", "", text)
+
+        match = re.fullmatch(r"(?:VARCHAR|CHAR|CHARACTER)\((\d+)\)", compact)
+        if match:
+            return f"VARCHAR({int(match.group(1))})"
+
+        if re.fullmatch(r"(?:DECIMAL|NUMERIC)\(\d+(?:,\d+)?\)", compact):
+            return "FLOAT"
+
+        if compact in {"INT", "INTEGER", "SMALLINT", "BIGINT", "SERIAL"}:
+            return "INT"
+
+        if compact in {
+            "FLOAT", "REAL", "DOUBLE", "DOUBLEPRECISION", "DECIMAL", "NUMERIC",
+        }:
+            return "FLOAT"
+
+        if compact in {"TEXT", "STRING", "CLOB", "VARCHAR", "CHAR", "CHARACTER"}:
+            return "VARCHAR(255)"
+
+        raise SQLParseError(
+            f"Tipo de columna no soportado: {raw} (usa INT, FLOAT o VARCHAR(n))"
+        )
+
+    @classmethod
+    def _find_matching_paren(cls, text: str, open_index: int) -> Optional[int]:
+        """Posición del ')' que cierra el '(' en `open_index`, ignorando literales."""
+        depth = 0
+        quote = None
+        index = open_index
+
+        while index < len(text):
+            char = text[index]
+            if quote is not None:
+                if char == quote:
+                    if index + 1 < len(text) and text[index + 1] == quote:
+                        index += 2
+                        continue
+                    quote = None
+                elif char == "\\" and index + 1 < len(text):
+                    index += 2
+                    continue
+                index += 1
+                continue
+
+            if char in {"'", '"'}:
+                quote = char
+            elif char == "(":
+                depth += 1
+            elif char == ")":
+                depth -= 1
+                if depth == 0:
+                    return index
+            index += 1
+
         return None
+
+    # ------------------------------------------------------------------
+    # WHERE
+    # ------------------------------------------------------------------
+
+    def _parse_limit(self, raw: Optional[str]) -> Optional[int]:
+        if raw is None:
+            return None
+
+        text = raw.strip()
+        if not re.fullmatch(r"\d+", text):
+            raise SQLParseError(
+                f"LIMIT solo admite un entero positivo (recibido: {text})"
+            )
+        return int(text)
+
+    def _parse_where_groups(
+        self,
+        where_clause: str,
+    ) -> Tuple[Tuple[Predicate, ...], ...]:
+        """Divide el WHERE por ``OR`` de nivel superior; cada grupo es un AND."""
+        clause = where_clause.strip()
+        if not clause:
+            raise SQLParseError("WHERE clause cannot be empty")
+
+        boundaries = self._find_all_top_level_keywords(clause, "OR")
+        parts: List[str] = []
+        start = 0
+        for or_start, or_end in boundaries:
+            parts.append(clause[start:or_start])
+            start = or_end
+        parts.append(clause[start:])
+
+        groups: List[Tuple[Predicate, ...]] = []
+        for part in parts:
+            part = part.strip()
+            if not part:
+                raise SQLParseError("WHERE contiene un OR sin condición")
+            groups.append(tuple(self._parse_where(part)))
+
+        return tuple(groups)
+
+    def _parse_where(self, where_clause: str) -> List[Predicate]:
+        clause = where_clause.strip()
+        if not clause:
+            raise SQLParseError("WHERE clause cannot be empty")
+
+        if self._find_top_level_keyword(clause, "OR") is not None:
+            raise SQLParseError(
+                "OR anidado (por ejemplo dentro de paréntesis) no está soportado"
+            )
+
+        predicates: List[Predicate] = []
+        position = 0
+
+        while position < len(clause):
+            position = self._skip_ws(clause, position)
+
+            # ¿El lado izquierdo es una función espacial?
+            poligono = self._try_parse_polygon(clause, position)
+            if poligono is not None:
+                predicates.append(poligono)
+                position = len(clause)
+                continue
+
+            distancia = self._try_parse_distance(clause, position)
+            if distancia is not None:
+                expression, position = distancia
+                predicates.append(
+                    self._parse_distance_comparison(clause, expression, position)
+                )
+                # Saltar el AND de nivel superior que separa del siguiente
+                # predicado (si lo hay).
+                siguiente = self._find_top_level_keyword(clause, "AND", position)
+                position = siguiente[1] if siguiente else len(clause)
+                continue
+
+            column_match = re.match(
+                r"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?",
+                clause[position:],
+            )
+            if not column_match:
+                raise SQLParseError(
+                    f"Expected a column in WHERE near: {clause[position:]}"
+                )
+
+            column_ref = column_match.group(0)
+            column = column_ref.split(".")[-1]
+            position += column_match.end()
+            position = self._skip_ws(clause, position)
+
+            between = re.match(r"BETWEEN\b", clause[position:], re.IGNORECASE)
+            if between:
+                position += between.end()
+                low_end = self._find_top_level_keyword(clause, "AND", position)
+                if low_end is None:
+                    raise SQLParseError("BETWEEN requires AND and an upper bound")
+
+                and_start, and_end = low_end
+                raw_low = clause[position:and_start].strip()
+                if not raw_low:
+                    raise SQLParseError("BETWEEN requires a lower bound")
+
+                position = and_end
+                next_and = self._find_top_level_keyword(clause, "AND", position)
+                if next_and is None:
+                    raw_high = clause[position:].strip()
+                    position = len(clause)
+                else:
+                    next_start, next_end = next_and
+                    raw_high = clause[position:next_start].strip()
+                    position = next_end
+
+                if not raw_high:
+                    raise SQLParseError("BETWEEN requires an upper bound")
+
+                predicates.append(
+                    Predicate(
+                        column=column,
+                        operator="between",
+                        value=(
+                            self._coerce_literal(raw_low),
+                            self._coerce_literal(raw_high),
+                        ),
+                    )
+                )
+                continue
+
+            op_match = re.match(r"(<=|>=|!=|<>|=|<|>)", clause[position:])
+            if not op_match:
+                raise SQLParseError(
+                    f"Expected a comparison operator after '{column_ref}'"
+                )
+
+            operator = op_match.group(1)
+            position += op_match.end()
+            next_and = self._find_top_level_keyword(clause, "AND", position)
+
+            if next_and is None:
+                raw_value = clause[position:].strip()
+                position = len(clause)
+            else:
+                next_start, next_end = next_and
+                raw_value = clause[position:next_start].strip()
+                position = next_end
+
+            if not raw_value:
+                raise SQLParseError(
+                    f"Predicate '{column_ref} {operator}' requires a value"
+                )
+
+            predicates.append(
+                Predicate(
+                    column=column,
+                    operator=operator,
+                    value=self._coerce_literal(raw_value),
+                )
+            )
+
+        return predicates
+
+    # ------------------------------------------------------------------
+    # Funciones espaciales (Parte 2)
+    # ------------------------------------------------------------------
+
+    _DISTANCE_HEAD_RE = re.compile(
+        r"DISTANCIA\s*\(|DISTANCE\s*\(",
+        re.IGNORECASE,
+    )
+    _POLYGON_HEAD_RE = re.compile(
+        r"DENTRO_DE\s*\(|WITHIN\s*\(|DENTRO\s*\(",
+        re.IGNORECASE,
+    )
+    _POLYGON_RE = re.compile(
+        r"POLYGON\s*\(\s*\((.*?)\)\s*\)",
+        re.IGNORECASE | re.DOTALL,
+    )
+    _POINT_RE = re.compile(
+        r"POINT\s*\(\s*([^,()]+?)\s*,\s*([^,()]+?)\s*\)",
+        re.IGNORECASE,
+    )
+
+    def _try_parse_distance(
+        self,
+        text: str,
+        position: int,
+    ) -> Optional[Tuple[DistanceExpression, int]]:
+        """Intenta leer ``distancia(col, POINT(lat, lon)[, METRIC])``.
+
+        Devuelve ``(expresión, posición_siguiente)`` o ``None`` si en esa
+        posición no hay una llamada a ``distancia(...)``.
+        """
+        match = self._DISTANCE_HEAD_RE.match(text, position)
+        if not match:
+            return None
+
+        open_index = text.index("(", position)
+        close_index = self._find_matching_paren(text, open_index)
+        if close_index is None:
+            raise SQLParseError("distancia(...): falta el paréntesis de cierre")
+
+        body = text[open_index + 1:close_index]
+        parts = self._split_top_level(body, ",")
+        if len(parts) < 2:
+            raise SQLParseError(
+                "distancia(...) necesita (columna, POINT(lat, lon))"
+            )
+
+        column_ref = parts[0].strip()
+        if not _QUALIFIED_IDENTIFIER_RE.fullmatch(column_ref):
+            raise SQLParseError(
+                f"distancia(...): columna inválida '{column_ref}'"
+            )
+        column = column_ref.split(".")[-1]
+
+        second = parts[1].strip()
+        point = self._parse_point_literal(second)
+        if point is None:
+            variable = second[1:] if second.startswith("@") else second
+            if not _IDENTIFIER_RE.fullmatch(variable):
+                raise SQLParseError(
+                    "distancia(...) espera POINT(latitud, longitud) o una "
+                    f"variable (p. ej. mi_ubicacion) como segundo argumento, "
+                    f"no '{second}'"
+                )
+            point = self.variables.get(variable.lower())
+            if point is None:
+                raise SQLParseError(
+                    f"la variable '{variable}' no está definida. Defínela con "
+                    f"SET {variable} = POINT(latitud, longitud) o haz clic en "
+                    "el panel de mapa para fijarla"
+                )
+        lat, lon = point
+
+        metric = "haversine"
+        if len(parts) >= 3:
+            raw_metric = parts[2].strip().strip("'\"").lower()
+            if raw_metric in {"euclidean", "euclidiana"}:
+                metric = "euclidean"
+            elif raw_metric in {"haversine", "geodesic", "geodesica", "geodésica"}:
+                metric = "haversine"
+            else:
+                raise SQLParseError(
+                    f"métrica desconocida '{parts[2].strip()}'; usa "
+                    "EUCLIDEAN o HAVERSINE"
+                )
+
+        return DistanceExpression(column, (float(lat), float(lon)), metric), close_index + 1
+
+    def _parse_distance_comparison(
+        self,
+        clause: str,
+        expression: DistanceExpression,
+        position: int,
+    ) -> Predicate:
+        """Completa un predicado espacial: ``distancia(...) < 5000``."""
+        position = self._skip_ws(clause, position)
+        op_match = re.match(r"(<=|>=|!=|<>|=|<|>)", clause[position:])
+        if not op_match:
+            raise SQLParseError(
+                "distancia(...) debe compararse con un valor "
+                "(por ejemplo < 5000)"
+            )
+
+        operator = op_match.group(1)
+        position += op_match.end()
+
+        next_and = self._find_top_level_keyword(clause, "AND", position)
+        if next_and is None:
+            raw_value = clause[position:].strip()
+        else:
+            next_start, _ = next_and
+            raw_value = clause[position:next_start].strip()
+
+        if not raw_value:
+            raise SQLParseError(
+                f"distancia(...) {operator} necesita un valor"
+            )
+
+        value = self._coerce_literal(raw_value)
+        if not isinstance(value, (int, float)):
+            raise SQLParseError(
+                f"distancia(...) {operator} espera un número, no '{raw_value}'"
+            )
+
+        if operator not in {"<", "<="}:
+            raise SQLParseError(
+                "por ahora sólo se admite distancia(...) < radio o <= radio"
+            )
+
+        return Predicate(
+            column=expression.column,
+            operator=operator,
+            value=float(value),
+            distance=expression,
+        )
+
+    def _try_parse_polygon(
+        self,
+        clause: str,
+        position: int,
+    ) -> Optional[Predicate]:
+        """Reconoce ``dentro_de(col, POLYGON((lat lon, lat lon, ...)))``."""
+        head = self._POLYGON_HEAD_RE.match(clause, position)
+        if not head:
+            return None
+
+        open_index = clause.index("(", position)
+        close_index = self._find_matching_paren(clause, open_index)
+        if close_index is None:
+            raise SQLParseError("dentro_de(...): falta el paréntesis de cierre")
+
+        body = clause[open_index + 1:close_index]
+        parts = self._split_top_level(body, ",")
+        if len(parts) < 2:
+            raise SQLParseError(
+                "dentro_de(...) necesita (columna, POLYGON((lat lon, ...)))"
+            )
+
+        column_ref = parts[0].strip()
+        if not _QUALIFIED_IDENTIFIER_RE.fullmatch(column_ref):
+            raise SQLParseError(f"dentro_de(...): columna inválida '{column_ref}'")
+
+        polygon_match = self._POLYGON_RE.search(",".join(parts[1:]))
+        if not polygon_match:
+            raise SQLParseError(
+                "dentro_de(...) espera POLYGON((lat lon, lat lon, ...)) "
+                "como segundo argumento"
+            )
+
+        vertices: List[Tuple[float, float]] = []
+        for par in polygon_match.group(1).split(","):
+            coordenadas = par.split()
+            if len(coordenadas) != 2:
+                raise SQLParseError(
+                    f"vértice inválido '{par.strip()}'; se espera 'lat lon'"
+                )
+            lat = self._coerce_literal(coordenadas[0])
+            lon = self._coerce_literal(coordenadas[1])
+            if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
+                raise SQLParseError(
+                    f"vértice no numérico: '{par.strip()}'"
+                )
+            vertices.append((float(lat), float(lon)))
+
+        if len(vertices) < 3:
+            raise SQLParseError(
+                "un polígono necesita al menos 3 vértices"
+            )
+
+        return PolygonPredicate(
+            column=column_ref.split(".")[-1],
+            ring=tuple(vertices),
+        )
+
+    def _try_parse_order_by_distance(
+        self,
+        raw: str,
+    ) -> Optional[Tuple[DistanceExpression, bool]]:
+        """Reconoce ``ORDER BY distancia(col, POINT(...)) [ASC|DESC]``."""
+        text = raw.strip()
+        expression = self._try_parse_distance(text, 0)
+        if expression is None:
+            return None
+
+        distance, position = expression
+        tail = text[position:].strip().upper()
+        if tail in {"", "ASC"}:
+            return distance, False
+        if tail == "DESC":
+            return distance, True
+        raise SQLParseError(
+            f"ORDER BY distancia(...): sufijo no soportado '{tail}'"
+        )
+
+
+    # ------------------------------------------------------------------
+    # Validation / lexical helpers
+    # ------------------------------------------------------------------
+
     @staticmethod
-    def _literal(x):
-        x=x.strip()
-        if len(x)>=2 and x[0]==x[-1] and x[0] in "'\"":return x[1:-1].replace(x[0]*2,x[0])
-        u=x.upper()
-        if u=="NULL":return None
-        if u=="TRUE":return True
-        if u=="FALSE":return False
-        if re.fullmatch(r"[+-]?\d+",x):return int(x)
-        if re.fullmatch(r"[+-]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?",x):return float(x)
-        return x
+    def _validate_select_columns(columns: Tuple[str, ...]) -> None:
+        if not columns or any(not column.strip() for column in columns):
+            raise SQLParseError("SELECT contains an empty column expression")
+
+        for expression in columns:
+            expression = expression.strip()
+            if expression == "*":
+                continue
+            if _QUALIFIED_IDENTIFIER_RE.fullmatch(expression):
+                continue
+            if _AGGREGATE_RE.fullmatch(expression):
+                continue
+            raise SQLParseError(f"Unsupported SELECT expression: {expression}")
+
     @staticmethod
-    def _type(raw):
-        c=re.sub(r"\s+","",raw.upper())
-        m=re.fullmatch(r"(?:VARCHAR|CHAR|CHARACTER)\((\d+)\)",c)
-        if m:return f"VARCHAR({int(m.group(1))})"
-        if c in {"INT","INTEGER","SMALLINT","BIGINT","SERIAL"}:return "INT"
-        if c in {"FLOAT","REAL","DOUBLE","DOUBLEPRECISION","DECIMAL","NUMERIC"} or re.fullmatch(r"(?:DECIMAL|NUMERIC)\(\d+(?:,\d+)?\)",c):return "FLOAT"
-        if c in {"TEXT","STRING","CLOB","VARCHAR","CHAR","CHARACTER"}:return "VARCHAR(255)"
-        raise SQLParseError(f"Tipo no soportado: {raw}")
+    def _split_column_ref(ref: str) -> Tuple[str | None, str]:
+        if "." not in ref:
+            return None, ref
+        table, column = ref.split(".", 1)
+        return table, column
+
+    @staticmethod
+    def _skip_ws(text: str, position: int) -> int:
+        while position < len(text) and text[position].isspace():
+            position += 1
+        return position
+
+    @classmethod
+    def _split_top_level(cls, text: str, separator: str) -> List[str]:
+        """Split by a one-character separator outside quotes/parentheses."""
+        if len(separator) != 1:
+            raise ValueError("separator must be one character")
+
+        cls._validate_balanced(text)
+        parts: List[str] = []
+        start = 0
+        quote = None
+        depth = 0
+        index = 0
+
+        while index < len(text):
+            ch = text[index]
+            if quote is not None:
+                if ch == quote:
+                    # SQL escaping: 'Badi''s row' / "a ""quoted"" value"
+                    if index + 1 < len(text) and text[index + 1] == quote:
+                        index += 2
+                        continue
+                    quote = None
+                elif ch == "\\" and index + 1 < len(text):
+                    # Also tolerate conventional backslash escaping.
+                    index += 2
+                    continue
+                index += 1
+                continue
+
+            if ch in {"'", '"'}:
+                quote = ch
+            elif ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+            elif ch == separator and depth == 0:
+                part = text[start:index].strip()
+                if not part:
+                    raise SQLParseError("Empty item in comma-separated list")
+                parts.append(part)
+                start = index + 1
+            index += 1
+
+        final = text[start:].strip()
+        if not final:
+            raise SQLParseError("Empty item in comma-separated list")
+        parts.append(final)
+        return parts
+
+    @classmethod
+    def _find_top_level_keyword(
+        cls,
+        text: str,
+        keyword: str,
+        start: int = 0,
+    ) -> Tuple[int, int] | None:
+        matches = cls._find_all_top_level_keywords(text, keyword, start)
+        return matches[0] if matches else None
+
+    @classmethod
+    def _find_all_top_level_keywords(
+        cls,
+        text: str,
+        keyword: str,
+        start: int = 0,
+    ) -> List[Tuple[int, int]]:
+        words = keyword.split()
+        pattern = re.compile(
+            r"(?<![A-Za-z0-9_])"
+            + r"\s+".join(re.escape(word) for word in words)
+            + r"(?![A-Za-z0-9_])",
+            re.IGNORECASE,
+        )
+        return cls._find_all_top_level_regex(text, pattern, start)
+
+    @classmethod
+    def _find_top_level_regex(
+        cls,
+        text: str,
+        pattern: re.Pattern,
+        start: int = 0,
+    ) -> Tuple[int, int] | None:
+        matches = cls._find_all_top_level_regex(text, pattern, start)
+        return matches[0] if matches else None
+
+    @classmethod
+    def _find_all_top_level_regex(
+        cls,
+        text: str,
+        pattern: re.Pattern,
+        start: int = 0,
+    ) -> List[Tuple[int, int]]:
+        results: List[Tuple[int, int]] = []
+        quote = None
+        depth = 0
+        index = 0
+
+        while index < len(text):
+            ch = text[index]
+            if quote is not None:
+                if ch == quote:
+                    if index + 1 < len(text) and text[index + 1] == quote:
+                        index += 2
+                        continue
+                    quote = None
+                elif ch == "\\" and index + 1 < len(text):
+                    index += 2
+                    continue
+                index += 1
+                continue
+
+            if ch in {"'", '"'}:
+                quote = ch
+                index += 1
+                continue
+            if ch == "(":
+                depth += 1
+                index += 1
+                continue
+            if ch == ")":
+                depth -= 1
+                index += 1
+                continue
+
+            if depth == 0 and index >= start:
+                match = pattern.match(text, index)
+                if match:
+                    results.append((match.start(), match.end()))
+                    index = match.end()
+                    continue
+
+            index += 1
+
+        return results
+
+    @staticmethod
+    def _validate_balanced(text: str) -> None:
+        quote = None
+        depth = 0
+        index = 0
+
+        while index < len(text):
+            ch = text[index]
+            if quote is not None:
+                if ch == quote:
+                    if index + 1 < len(text) and text[index + 1] == quote:
+                        index += 2
+                        continue
+                    quote = None
+                elif ch == "\\" and index + 1 < len(text):
+                    index += 2
+                    continue
+                index += 1
+                continue
+
+            if ch in {"'", '"'}:
+                quote = ch
+            elif ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+                if depth < 0:
+                    raise SQLParseError("Unbalanced parentheses")
+            index += 1
+
+        if quote is not None:
+            raise SQLParseError("Unterminated quoted string")
+        if depth != 0:
+            raise SQLParseError("Unbalanced parentheses")
+
+    @staticmethod
+    def _coerce_literal(literal: str) -> Any:
+        literal = literal.strip()
+        if not literal:
+            raise SQLParseError("Empty literal")
+
+        # Quoted strings. SQL escapes a quote by doubling it.
+        if (literal.startswith("'") and literal.endswith("'")) or (
+            literal.startswith('"') and literal.endswith('"')
+        ):
+            quote = literal[0]
+            inner = literal[1:-1]
+            inner = inner.replace(quote + quote, quote)
+            inner = inner.replace("\\" + quote, quote)
+            return inner
+
+        upper = literal.upper()
+        if upper == "NULL":
+            return None
+        if upper == "TRUE":
+            return True
+        if upper == "FALSE":
+            return False
+
+        if re.fullmatch(r"[+-]?\d+", literal):
+            return int(literal)
+
+        if re.fullmatch(
+            r"[+-]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?",
+            literal,
+        ):
+            return float(literal)
+
+        # Keep bare words for backwards compatibility with the original
+        # parser. Schema/executor validation remains responsible for deciding
+        # whether a value is acceptable for a particular column.
+        return literal

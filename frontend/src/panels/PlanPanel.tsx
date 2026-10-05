@@ -1,33 +1,100 @@
+//issue 23
 import type { ExecutionPlan } from '../types';
 
-export default function PlanPanel({ plan }: { plan: ExecutionPlan | null }) {
-  if (!plan) return <div className="panel"><h2 className="panel__title">Plan de ejecución</h2><p className="panel__hint">Ejecuta una consulta para ver el plan.</p></div>;
-  const steps = plan.steps ?? [];
-  const indexes = plan.used_indexes ?? [];
-  const runtime = plan.runtime_steps ?? [];
+interface Props {
+  plan: ExecutionPlan | null;
+}
+
+export default function PlanPanel({ plan }: Props) {
+  if (!plan) {
+    return (
+      <div className="panel">
+        <h2 className="panel__title">Panel de plan de ejecución</h2>
+        <p className="panel__hint">
+          Ejecuta un SELECT para ver qué ruta de acceso eligió el optimizador y en qué orden
+          trabajaron los operadores.
+        </p>
+      </div>
+    );
+  }
+
+  const total = plan.total_execution_time_ms ?? 0;
+  // INSERT/UPDATE/DELETE y el DDL no envían pasos lógicos (steps: []): el
+  // mensaje no puede afirmar que hubo un escaneo secuencial.
+  const hasLogicalPlan = plan.steps.length > 0;
+  const isDdl = plan.planner_type === 'ddl';
+
   return (
     <div className="panel">
-      <h2 className="panel__title">Plan de ejecución</h2>
-      <dl className="kv kv--single">
-        <div><dt>Ruta de acceso</dt><dd className="mono">{plan.access_path ?? '—'}</dd></div>
-        <div><dt>Planner</dt><dd>{plan.planner_type ?? '—'}</dd></div>
-      </dl>
-      <h3 className="panel__subtitle">Índices usados</h3>
-      {indexes.length ? <div className="chips">{indexes.map((index) => <span className="chip" key={index}>{index}</span>)}</div> : <p className="panel__hint">Ninguno.</p>}
-      <h3 className="panel__subtitle">Plan lógico</h3>
-      {steps.length ? steps.map((step, i) => (
-        <div className="plan-step" key={`${step.operator}-${i}`}>
-          <strong>{i + 1}. {step.operator}</strong>
-          {step.index && <span className="chip">{step.index}</span>}
-          {step.reason && <p>{step.reason}</p>}
-        </div>
-      )) : <p className="panel__hint">Sin pasos detallados.</p>}
-      {runtime.length > 0 && <>
-        <h3 className="panel__subtitle">Ejecución real</h3>
-        <div className="table-scroll"><table className="grid"><thead><tr><th>Operador</th><th>Tiempo</th><th>In</th><th>Out</th></tr></thead><tbody>
-          {runtime.map((step, i) => <tr key={i}><td className="mono">{String(step.operator ?? '—')}</td><td>{typeof step.elapsed_ms === 'number' ? `${step.elapsed_ms.toFixed(3)} ms` : '—'}</td><td>{step.rows_in ?? '—'}</td><td>{step.rows_out ?? '—'}</td></tr>)}
-        </tbody></table></div>
-      </>}
+      <h2 className="panel__title">Panel de plan de ejecución</h2>
+
+      <div className="metrics">
+        <div className="metric"><span>Tabla</span><strong>{plan.table}</strong></div>
+        <div className="metric"><span>Ruta de acceso</span><strong>{plan.access_path}</strong></div>
+        <div className="metric"><span>Optimizador</span><strong>{plan.planner_type}</strong></div>
+        <div className="metric"><span>Tiempo total</span><strong>{total.toFixed(3)} ms</strong></div>
+      </div>
+
+      <h3 className="panel__subtitle">Índices utilizados</h3>
+      {plan.used_indexes.length === 0 ? (
+        <p className="panel__hint">
+          {hasLogicalPlan
+            ? 'Ninguno: se resolvió con escaneo secuencial.'
+            : `Sin índices en la ruta ${plan.access_path}: la sentencia no eligió ningún índice.`}
+        </p>
+      ) : (
+        <ul className="chips">
+          {plan.used_indexes.map((index) => <li key={index} className="chip">{index}</li>)}
+        </ul>
+      )}
+
+      <h3 className="panel__subtitle">Plan lógico (reglas del optimizador)</h3>
+      {hasLogicalPlan ? (
+        <table className="grid">
+          <thead>
+            <tr><th>#</th><th>Operador</th><th>Tabla</th><th>Índice</th><th>Justificación</th></tr>
+          </thead>
+          <tbody>
+            {plan.steps.map((step, index) => (
+              <tr key={`${step.operator}-${index}`}>
+                <td>{index + 1}</td>
+                <td className="mono">{step.operator}</td>
+                <td>{step.table ?? '—'}</td>
+                <td className="mono">{step.index ?? '—'}</td>
+                <td>{step.reason || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p className="panel__hint">
+          {isDdl
+            ? `Sentencia DDL (${plan.access_path}): no genera pasos lógicos de consulta, se aplica directamente sobre el catálogo y el almacenamiento.`
+            : `La mutación no envía pasos lógicos al optimizador (${plan.access_path}); el operador real está en la traza de ejecución.`}
+        </p>
+      )}
+
+      <h3 className="panel__subtitle">Ejecución real (instrumentación)</h3>
+      {plan.runtime_steps.length > 0 ? (
+        <table className="grid">
+          <thead>
+            <tr><th>#</th><th>Operador</th><th>Tiempo</th><th>Entrada</th><th>Salida</th></tr>
+          </thead>
+          <tbody>
+            {plan.runtime_steps.map((step, index) => (
+              <tr key={`${step.operator}-${index}`}>
+                <td>{index + 1}</td>
+                <td className="mono">{step.operator}</td>
+                <td>{step.elapsed_ms !== undefined ? `${step.elapsed_ms.toFixed(3)} ms` : '—'}</td>
+                <td>{step.rows_in ?? '—'}</td>
+                <td>{step.rows_out ?? '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p className="panel__hint">Esta sentencia no registró tiempos por operador.</p>
+      )}
     </div>
   );
 }

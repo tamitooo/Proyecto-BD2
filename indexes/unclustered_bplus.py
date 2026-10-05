@@ -127,6 +127,7 @@ class UnclusteredBPlusIndex:
         try:
             self.tree.insert(new_key, target_rid)
         except Exception:
+            # Rollback simple para no perder la referencia original.
             self.tree.insert(old_key, old_rid)
             raise
 

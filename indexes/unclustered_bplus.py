@@ -1,15 +1,20 @@
+from pathlib import Path
 from .bplus_tree import BPlusTree
+from .persistence import atomic_pickle_write, pickle_read, remove_if_exists
 
 
 class UnclusteredBPlusIndex:
     
-    def __init__(self, key_field, order=4, unique=False):
+    def __init__(self, key_field, order=4, unique=False, file_path=None):
         if not key_field:
             raise ValueError("key_field is required")
 
         self.key_field = key_field
         self.unique = unique
         self.tree = BPlusTree(order=order)
+        self.file_path = str(file_path) if file_path else None
+        if self.file_path and Path(self.file_path).exists():
+            self.load()
 
     def __len__(self):
         return len(self.tree)
@@ -45,6 +50,7 @@ class UnclusteredBPlusIndex:
             raise ValueError(f"duplicate indexed key: {key}")
 
         self.tree.insert(key, rid)
+        self.persist()
 
     def insert_key(self, key, rid):
         if rid is None:
@@ -54,10 +60,15 @@ class UnclusteredBPlusIndex:
             raise ValueError(f"duplicate indexed key: {key}")
 
         self.tree.insert(key, rid)
+        self.persist()
 
     def bulk_load(self, entries):
-        for record, rid in entries:
-            self.insert(record, rid)
+        old = self.file_path; self.file_path = None
+        try:
+            for record, rid in entries: self.insert(record, rid)
+        finally:
+            self.file_path = old
+        self.persist()
 
     def search(self, key):
         return self.tree.search(key)
@@ -102,11 +113,15 @@ class UnclusteredBPlusIndex:
         return self.range_entries(limit=limit)
 
     def delete(self, key, rid=None):
-        return self.tree.delete(key, rid)
+        ok=self.tree.delete(key, rid)
+        if ok: self.persist()
+        return ok
 
     def delete_record(self, record, rid):
         key = self._get_key(record)
-        return self.tree.delete(key, rid)
+        ok=self.tree.delete(key, rid)
+        if ok: self.persist()
+        return ok
 
     def update(self, old_record, old_rid, new_record, new_rid=None):
         old_key = self._get_key(old_record)
@@ -127,10 +142,10 @@ class UnclusteredBPlusIndex:
         try:
             self.tree.insert(new_key, target_rid)
         except Exception:
-            # Rollback simple para no perder la referencia original.
             self.tree.insert(old_key, old_rid)
             raise
 
+        self.persist()
         return True
 
     def contains(self, key):
@@ -152,3 +167,29 @@ class UnclusteredBPlusIndex:
                 first = False
 
         return True
+
+
+    def attach_file(self, file_path, load_existing=True):
+        self.file_path = str(file_path)
+        if load_existing and Path(self.file_path).exists():
+            self.load(); return True
+        return False
+
+    def persist(self):
+        if self.file_path:
+            atomic_pickle_write(self.file_path, {
+                "kind": "bplus_unclustered", "key_field": self.key_field,
+                "unique": self.unique, "order": self.order, "tree": self.tree,
+            })
+
+    def load(self):
+        state=pickle_read(self.file_path)
+        if state.get("kind") != "bplus_unclustered" or state.get("key_field") != self.key_field:
+            raise ValueError("archivo de índice B+ no agrupado incompatible")
+        self.unique=bool(state.get("unique",self.unique)); self.tree=state["tree"]
+        self.validate(); return self
+
+    def drop_persistent_file(self): remove_if_exists(self.file_path)
+
+    def serialized_size_bytes(self):
+        return Path(self.file_path).stat().st_size if self.file_path and Path(self.file_path).exists() else 0

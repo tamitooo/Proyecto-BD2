@@ -26,3 +26,6 @@ python-multipart>=0.0.9
 # Es opcional: si falta, el benchmark mide solo secuencial y R-Tree y marca
 # PostgreSQL como no disponible.
 psycopg2-binary>=2.9
+
+# Benchmark espacial vectorizado / medición secuencial
+numpy>=1.26

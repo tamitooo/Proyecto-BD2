@@ -1,0 +1,4 @@
+dataset_size,technique,metric,value_bytes,method,notes
+100000,rtree,memory,94180755,deep_size,"Medición recursiva del objeto Python completo; no es tamaño en disco"
+100000,postgres_gist,index_disk,26468352,pg_relation_size,"Valor de la corrida PostGIS histórica"
+100000,sequential,array_memory,1600000,numpy_nbytes,"100000 pares float64 lat/lon"

@@ -1,899 +1,216 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple, Union
 
-
-EQUALITY_OPERATORS = {"=", "=="}
-RANGE_OPERATORS = {"<", "<=", ">", ">=", "between"}
-SUPPORTED_PREDICATE_OPERATORS = EQUALITY_OPERATORS | RANGE_OPERATORS | {"!=", "<>"}
-
+EQUALITY_OPERATORS={"=","=="}; RANGE_OPERATORS={"<","<=",">",">=","between"}; SUPPORTED_PREDICATE_OPERATORS=EQUALITY_OPERATORS|RANGE_OPERATORS|{"!=","<>"}
 
 @dataclass(frozen=True)
 class DistanceExpression:
-    """``distancia(columna_espacial, POINT(lat, lon))`` dentro de un predicado.
-
-    El planner lo reconoce para ofrecer el camino de acceso del R-Tree en lugar
-    de un escaneo con filtro: ``distancia(ubicacion, POINT(...)) < 5000`` es una
-    búsqueda por rango y ``ORDER BY distancia(...) LIMIT k`` es una búsqueda de
-    los k vecinos más cercanos.
-    """
-
-    column: str
-    point: Tuple[float, float]
-    metric: str = "haversine"
-
+    column:str; point:Tuple[float,float]; metric:str="haversine"
     @property
-    def lat(self) -> float:
-        return self.point[0]
-
+    def lat(self): return self.point[0]
     @property
-    def lon(self) -> float:
-        return self.point[1]
-
-    def __repr__(self) -> str:  # pragma: no cover - ayuda al depurar
-        return (
-            f"distancia({self.column}, POINT({self.lat}, {self.lon}), "
-            f"{self.metric})"
-        )
-
-
+    def lon(self): return self.point[1]
 @dataclass(frozen=True)
 class Predicate:
-    column: str
-    operator: str
-    value: Any
-    #: Presente cuando el lado izquierdo del WHERE es una función espacial
-    #: ``distancia(col, POINT(...))`` en lugar de una columna. El planner lo usa
-    #: para ofrecer el camino de acceso del R-Tree.
-    distance: Optional["DistanceExpression"] = None
-
+    column:str; operator:str; value:Any; distance:Optional[DistanceExpression]=None
     @property
-    def is_spatial(self) -> bool:
-        return self.distance is not None
-
-    def normalized_operator(self) -> str:
-        return self.operator.strip().lower()
-
-
+    def is_spatial(self): return self.distance is not None
+    def normalized_operator(self): return self.operator.strip().lower()
 @dataclass(frozen=True)
 class PolygonPredicate:
-    """``dentro_de(col, POLYGON((lat lon, lat lon, ...)))``.
-
-    Es la consulta de **intersección con un polígono**: se poda con el MBR del
-    polígono y se confirma con punto-en-polígono (ray casting).
-    """
-
-    column: str
-    ring: Tuple[Tuple[float, float], ...]
-
+    column:str; ring:Tuple[Tuple[float,float],...]
     @property
-    def is_spatial(self) -> bool:
-        return True
-
+    def is_spatial(self): return True
     @property
-    def operator(self) -> str:
-        return "dentro_de"
-
+    def operator(self): return "dentro_de"
     @property
-    def value(self):
-        return self.ring
-
+    def value(self): return self.ring
     @property
-    def distance(self):
-        return None
-
-
+    def distance(self): return None
 @dataclass(frozen=True)
 class OrderBy:
-    column: str
-    descending: bool = False
-    #: Presente cuando el ORDER BY es ``distancia(col, POINT(...))``: es una
-    #: búsqueda de los k vecinos más cercanos (k-NN), no un ordenamiento.
-    distance: Optional["DistanceExpression"] = None
-
+    column:str; descending:bool=False; distance:Optional[DistanceExpression]=None
     @property
-    def is_spatial(self) -> bool:
-        return self.distance is not None
-
-
+    def is_spatial(self): return self.distance is not None
 @dataclass(frozen=True)
 class JoinSpec:
-    table: str
-    left_column: str
-    right_column: str
-    join_type: str = "inner"
-    operator: str = "="
-
-
+    table:str; left_column:str; right_column:str; join_type:str="inner"; operator:str="="
 @dataclass(frozen=True)
 class QuerySpec:
-    table: str
-    predicates: Tuple[Predicate, ...] = ()
-    order_by: Tuple[OrderBy, ...] = ()
-    group_by: Tuple[str, ...] = ()
-    joins: Tuple[JoinSpec, ...] = ()
-    #: Grupos de predicados unidos por OR (cada grupo interno es un AND).
-    #: Si está vacío, ``predicates`` se interpreta como una conjunción.
-    or_groups: Tuple[Tuple[Predicate, ...], ...] = ()
-
+    table:str; predicates:Tuple[Predicate,...]=(); order_by:Tuple[OrderBy,...]=(); group_by:Tuple[str,...]=(); joins:Tuple[JoinSpec,...]=(); or_groups:Tuple[Tuple[Predicate,...],...]=()
     @property
-    def has_disjunction(self) -> bool:
-        return bool(self.or_groups)
-
-
+    def has_disjunction(self): return bool(self.or_groups)
 @dataclass(frozen=True)
 class IndexMetadata:
-    name: str
-    table: str
-    column: str
-    kind: str
-    unique: bool = False
-
+    name:str; table:str; column:str; kind:str; unique:bool=False
     def __post_init__(self):
-        allowed = {"hash", "bplus_clustered", "bplus_unclustered", "rtree"}
-        if self.kind not in allowed:
-            raise ValueError(f"unsupported index kind: {self.kind}")
-
-
+        if self.kind not in {"hash","bplus_clustered","bplus_unclustered","rtree"}: raise ValueError(f"unsupported index kind: {self.kind}")
 @dataclass
 class PlanStep:
-    operator: str
-    table: Optional[str] = None
-    index: Optional[str] = None
-    reason: str = ""
-    details: Dict[str, Any] = field(default_factory=dict)
-
-    def to_dict(self):
-        return {
-            "operator": self.operator,
-            "table": self.table,
-            "index": self.index,
-            "reason": self.reason,
-            "details": dict(self.details),
-        }
-
-
+    operator:str; table:Optional[str]=None; index:Optional[str]=None; reason:str=""; details:Dict[str,Any]=field(default_factory=dict)
+    def to_dict(self): return {"operator":self.operator,"table":self.table,"index":self.index,"reason":self.reason,"details":dict(self.details)}
 @dataclass
 class QueryPlan:
-    table: str
-    steps: List[PlanStep]
-    access_path: str
-    used_indexes: List[str] = field(default_factory=list)
-    planner_type: str = "rule_based"
-
-    def to_dict(self):
-        return {
-            "table": self.table,
-            "planner_type": self.planner_type,
-            "access_path": self.access_path,
-            "used_indexes": list(self.used_indexes),
-            "steps": [step.to_dict() for step in self.steps],
-        }
-
-    def explain(self) -> str:
-        lines = [
-            f"Planner: {self.planner_type}",
-            f"Table: {self.table}",
-            f"Access path: {self.access_path}",
-        ]
-        for position, step in enumerate(self.steps, start=1):
-            line = f"{position}. {step.operator}"
-            if step.table:
-                line += f" [{step.table}]"
-            if step.index:
-                line += f" using {step.index}"
-            if step.reason:
-                line += f" - {step.reason}"
-            if step.details:
-                rendered = ", ".join(
-                    f"{key}={value!r}" for key, value in step.details.items()
-                )
-                line += f" ({rendered})"
+    table:str; steps:List[PlanStep]; access_path:str; used_indexes:List[str]=field(default_factory=list); planner_type:str="rule_based"
+    def to_dict(self): return {"table":self.table,"planner_type":self.planner_type,"access_path":self.access_path,"used_indexes":list(self.used_indexes),"steps":[s.to_dict() for s in self.steps]}
+    def explain(self):
+        lines=[f"Planner: {self.planner_type}",f"Table: {self.table}",f"Access path: {self.access_path}"]
+        for i,s in enumerate(self.steps,1):
+            line=f"{i}. {s.operator}"+(f" [{s.table}]" if s.table else "")+(f" using {s.index}" if s.index else "")+(f" - {s.reason}" if s.reason else "")
             lines.append(line)
         return "\n".join(lines)
-
-
 @dataclass(frozen=True)
 class _AccessCandidate:
-    index: IndexMetadata
-    predicate: Optional[Predicate]
-    score: int
-    operator: str
-    preserves_order: bool
-    reason: str
-    #: Predicados adicionales que el mismo índice resuelve (p. ej. el segundo
-    #: extremo de un rango ``>= 19 AND <= 23`` o los miembros de un OR).
-    extra_predicates: Tuple[Predicate, ...] = ()
-    #: True cuando el candidato viene de un OR (unión de búsquedas por índice).
-    from_disjunction: bool = False
+    index:IndexMetadata; predicate:Optional[Predicate]; score:int; operator:str; preserves_order:bool; reason:str; extra_predicates:Tuple[Predicate,...]=(); from_disjunction:bool=False
 
-
-def replace_candidate(candidate: _AccessCandidate, **changes) -> _AccessCandidate:
-    """Copia un candidato cambiando solo los campos indicados."""
-    return _AccessCandidate(
-        index=changes.get("index", candidate.index),
-        predicate=changes.get("predicate", candidate.predicate),
-        score=changes.get("score", candidate.score),
-        operator=changes.get("operator", candidate.operator),
-        preserves_order=changes.get("preserves_order", candidate.preserves_order),
-        reason=changes.get("reason", candidate.reason),
-        extra_predicates=changes.get(
-            "extra_predicates", candidate.extra_predicates
-        ),
-        from_disjunction=changes.get(
-            "from_disjunction", candidate.from_disjunction
-        ),
-    )
-
+def replace_candidate(c,**kw):
+    return _AccessCandidate(kw.get("index",c.index),kw.get("predicate",c.predicate),kw.get("score",c.score),kw.get("operator",c.operator),kw.get("preserves_order",c.preserves_order),kw.get("reason",c.reason),kw.get("extra_predicates",c.extra_predicates),kw.get("from_disjunction",c.from_disjunction))
 
 class QueryPlanner:
-    """
-    Reglas:
-      - Igualdad: Hash > B+ clustered > B+ unclustered.
-      - Rango: B+ clustered > B+ unclustered.
-      - ORDER BY: B+ puede evitar External Sort.
-      - GROUP BY: External Hashing.
-      - Equi-JOIN: External Hash Join.
-      - Sin indice util: Heap/Sequential Scan.
-    """
-
-    def __init__(
-        self,
-        indexes: Optional[Iterable[IndexMetadata]] = None,
-        storage_by_table: Optional[Mapping[str, str]] = None,
-    ):
-        self.indexes = list(indexes or [])
-        self.storage_by_table = dict(storage_by_table or {})
-
-    def register_index(self, index: IndexMetadata):
-        self.indexes.append(index)
-
-    def register_storage(self, table: str, storage_kind: str):
-        kind = storage_kind.strip().lower()
-        if kind not in {"heap", "sequential"}:
-            raise ValueError("storage_kind must be 'heap' or 'sequential'")
-        self.storage_by_table[table] = kind
-
-    def plan(self, query: Union[QuerySpec, Mapping[str, Any]]) -> QueryPlan:
-        query = self._coerce_query(query)
-        self._validate_query(query)
-
-        steps = []
-        used_indexes = []
-        candidate = self._choose_access_candidate(query)
-
-        if candidate is None:
-            access_step = self._fallback_scan(query.table)
-            access_path = access_step.operator
-            preserves_order = False
-            consumed_predicate = None
-            consumed_predicates = ()
-            from_disjunction = False
+    def __init__(self,indexes=None,storage_by_table=None): self.indexes=list(indexes or []); self.storage_by_table=dict(storage_by_table or {})
+    def register_index(self,index): self.indexes.append(index)
+    def register_storage(self,table,storage_kind): self.storage_by_table[table]=storage_kind.lower()
+    def plan(self,query):
+        query=self._coerce_query(query); self._validate_query(query); steps=[]; used=[]; c=self._choose_access_candidate(query)
+        if c is None:
+            access=self._fallback_scan(query.table); path=access.operator; preserves=False; consumed=(); from_or=False
         else:
-            access_step = PlanStep(
-                operator=candidate.operator,
-                table=query.table,
-                index=candidate.index.name,
-                reason=candidate.reason,
-                details=self._access_details(candidate),
-            )
-            access_path = candidate.operator
-            preserves_order = candidate.preserves_order
-            consumed_predicate = candidate.predicate
-            consumed_predicates = (
-                (candidate.predicate,) + candidate.extra_predicates
-                if candidate.predicate is not None
-                else candidate.extra_predicates
-            )
-            from_disjunction = candidate.from_disjunction
-            used_indexes.append(candidate.index.name)
-
-        steps.append(access_step)
-
-        residual = self._residual_predicates(
-            query.predicates,
-            consumed_predicates,
-        )
-        # Con OR, el filtro final vuelve a evaluar los grupos completos (la
-        # unión de índices solo aporta candidatos).
-        if query.or_groups and not from_disjunction:
-            residual = list(query.predicates)
+            access=PlanStep(c.operator,query.table,c.index.name,c.reason,self._access_details(c)); path=c.operator; preserves=c.preserves_order; consumed=((c.predicate,) if c.predicate else ())+c.extra_predicates; from_or=c.from_disjunction; used=[c.index.name]
+        steps.append(access)
+        residual=self._residual_predicates(query.predicates,consumed)
+        if query.or_groups and not from_or: residual=list(query.predicates)
         if residual:
-            steps.append(
-                PlanStep(
-                    operator="FILTER",
-                    table=query.table,
-                    reason=(
-                        "unión de índices: el filtro confirma los grupos del OR"
-                        if from_disjunction
-                        else "predicados no resueltos por el camino de acceso"
-                    ),
-                    details={
-                        "predicates": [
-                            self._predicate_to_dict(p) for p in residual
-                        ]
-                    },
-                )
-            )
-
-        for join in query.joins:
-            if join.operator.strip().lower() in EQUALITY_OPERATORS:
-                steps.append(
-                    PlanStep(
-                        operator="EXTERNAL_HASH_JOIN",
-                        table=join.table,
-                        reason="equi-join: Grace Hash Join",
-                        details={
-                            "join_type": join.join_type.lower(),
-                            "left_column": join.left_column,
-                            "right_column": join.right_column,
-                            "operator": join.operator,
-                        },
-                    )
-                )
-            else:
-                steps.append(
-                    PlanStep(
-                        operator="NESTED_LOOP_JOIN",
-                        table=join.table,
-                        reason="hash join solo aplica a igualdad",
-                        details={
-                            "join_type": join.join_type.lower(),
-                            "left_column": join.left_column,
-                            "right_column": join.right_column,
-                            "operator": join.operator,
-                        },
-                    )
-                )
-            preserves_order = False
-
+            steps.append(PlanStep("FILTER",query.table,reason="unión de índices: el filtro confirma los grupos del OR" if from_or else "predicados no resueltos por el camino de acceso",details={"predicates":[self._predicate_to_dict(p) for p in residual]}))
+        for j in query.joins:
+            op="EXTERNAL_HASH_JOIN" if j.operator.strip().lower() in EQUALITY_OPERATORS else "NESTED_LOOP_JOIN"
+            steps.append(PlanStep(op,j.table,reason="equi-join: Grace Hash Join" if op.startswith("EXTERNAL") else "hash join solo aplica a igualdad",details={"join_type":j.join_type.lower(),"left_column":j.left_column,"right_column":j.right_column,"operator":j.operator})); preserves=False
         if query.group_by:
-            steps.append(
-                PlanStep(
-                    operator="EXTERNAL_HASH_GROUP_BY",
-                    table=query.table,
-                    reason="GROUP BY con particionado hash externo",
-                    details={"columns": list(query.group_by)},
-                )
-            )
-            preserves_order = False
-
-        if query.order_by and not self._order_is_covered(
-            query, candidate, preserves_order
-        ):
-            steps.append(
-                PlanStep(
-                    operator="EXTERNAL_SORT",
-                    table=query.table,
-                    reason="el camino de acceso no garantiza el ORDER BY",
-                    details={
-                        "columns": [
-                            {
-                                "column": item.column,
-                                "direction": "DESC" if item.descending else "ASC",
-                            }
-                            for item in query.order_by
-                        ]
-                    },
-                )
-            )
-
-        return QueryPlan(
-            table=query.table,
-            steps=steps,
-            access_path=access_path,
-            used_indexes=used_indexes,
-        )
-
-    def _choose_access_candidate(self, query):
-        table_indexes = [i for i in self.indexes if i.table == query.table]
-        candidates = []
-
-        # Con OR los predicados no son una conjunción: usar UNO solo como
-        # camino de acceso descartaría filas que cumplen los otros grupos. Por
-        # eso aquí solo se consideran la unión por índice o el escaneo.
-        if not query.has_disjunction:
-            for index in table_indexes:
-                candidate = self._candidate_for_index(query, index)
-                if candidate:
-                    candidates.append(candidate)
+            steps.append(PlanStep("EXTERNAL_HASH_GROUP_BY",query.table,reason="GROUP BY con particionado hash externo",details={"columns":list(query.group_by)})); preserves=False
+        if query.order_by and not self._order_is_covered(query,c,preserves):
+            steps.append(PlanStep("EXTERNAL_SORT",query.table,reason="el camino de acceso no garantiza el ORDER BY",details={"columns":[{"column":o.column,"direction":"DESC" if o.descending else "ASC"} for o in query.order_by]}))
+        return QueryPlan(query.table,steps,path,used)
+    def _choose_access_candidate(self,q):
+        idx=[i for i in self.indexes if i.table==q.table]; cs=[]
+        if not q.has_disjunction:
+            for i in idx:
+                c=self._candidate_for_index(q,i)
+                if c: cs.append(c)
         else:
-            # Un OR de grupos que son todos igualdad sobre la MISMA columna se
-            # puede resolver con una unión de búsquedas por índice.
-            union = self._candidate_for_disjunction(query, table_indexes)
-            if union:
-                candidates.append(union)
-
-        # El recorrido ordenado del B+ solo es un camino de acceso válido si no
-        # hay WHERE: si hay predicados, usar el índice para ordenar dejaría el
-        # filtrado a un escaneo completo del índice (y con OR descartaría filas).
-        if query.order_by and not query.predicates and not query.has_disjunction:
-            first_order = query.order_by[0]
-
-            # Los B+ actuales exponen recorrido ascendente; DESC requiere
-            # External Sort mientras no exista reverse scan en el indice.
-            if first_order.descending:
-                first_order = None
-
-            for index in table_indexes:
-                if first_order is None or index.column != first_order.column:
-                    continue
-                if index.kind == "bplus_clustered":
-                    candidates.append(
-                        _AccessCandidate(
-                            index, None, 70,
-                            "BPLUS_CLUSTERED_INDEX_SCAN",
-                            True,
-                            "B+ clustered evita sort inicial",
-                        )
-                    )
-                elif index.kind == "bplus_unclustered":
-                    candidates.append(
-                        _AccessCandidate(
-                            index, None, 60,
-                            "BPLUS_UNCLUSTERED_INDEX_SCAN",
-                            True,
-                            "B+ unclustered entrega RIDs ordenados",
-                        )
-                    )
-
-        if not candidates:
-            return None
-
-        kind_priority = {
-            "hash": 3,
-            "bplus_clustered": 2,
-            "bplus_unclustered": 1,
-        }
-        return max(
-            candidates,
-            key=lambda c: (c.score, kind_priority[c.index.kind]),
-        )
-
-    def _candidate_for_index(self, query, index):
-        """Elige el mejor candidato de UN índice agrupando sus predicados.
-
-        Agrupar importa para los rangos: ``WHERE age >= 19 AND age <= 23`` usa
-        los dos extremos en un solo ``range_search`` en lugar de indexar solo
-        uno y filtrar el resto.
-        """
-        matching = [
-            predicate
-            for predicate in query.predicates
-            if predicate.column == index.column
-        ]
-        if not matching:
-            return None
-
-        equality = [
-            p for p in matching
-            if p.normalized_operator() in EQUALITY_OPERATORS
-        ]
-        if equality:
-            return self._candidate_for_predicate(
-                query, index, equality[0], equality[0].normalized_operator()
-            )
-
-        ranges = [
-            p for p in matching
-            if p.normalized_operator() in RANGE_OPERATORS
-        ]
-        if not ranges:
-            return None
-
-        if len(ranges) == 1:
-            return self._candidate_for_predicate(
-                query, index, ranges[0], ranges[0].normalized_operator()
-            )
-
-        bounds = self._combined_range(ranges)
-        if bounds is None:
-            # Rangos contradictorios o no combinables: se indexa el primero y
-            # el resto queda como predicado residual (FILTER).
-            return self._candidate_for_predicate(
-                query, index, ranges[0], ranges[0].normalized_operator()
-            )
-
-        low, high, include_low, include_high = bounds
-        if low is None:
-            anchor = next(p for p in ranges if self._is_upper_bound(p))
-        elif high is None:
-            anchor = next(p for p in ranges if self._is_lower_bound(p))
-        else:
-            anchor = next(
-                (p for p in ranges if self._is_lower_bound(p)), ranges[0]
-            )
-
-        combined = Predicate(index.column, "between", (low, high))
-        consumed = tuple(
-            p for p in ranges if p is not anchor
-        )
-        candidate = self._candidate_for_predicate(
-            query, index, combined, "between"
-        )
-        if candidate is None:
-            return None
-        return replace_candidate(
-            candidate,
-            predicate=anchor,
-            extra_predicates=consumed,
-            reason=(
-                f"B+ {index.kind.split('_')[-1]} combina los dos extremos del "
-                f"rango ({self._render_bound(low, include_low)} .. "
-                f"{self._render_bound(high, include_high)})"
-            ),
-        )
-
+            c=self._candidate_for_disjunction(q,idx)
+            if c: cs.append(c)
+        if q.order_by and not q.predicates and not q.has_disjunction:
+            first=q.order_by[0] if not q.order_by[0].descending else None
+            for i in idx:
+                if first is None or i.column!=first.column: continue
+                if i.kind=="bplus_clustered": cs.append(_AccessCandidate(i,None,70,"BPLUS_CLUSTERED_INDEX_SCAN",True,"B+ clustered evita sort inicial"))
+                elif i.kind=="bplus_unclustered": cs.append(_AccessCandidate(i,None,60,"BPLUS_UNCLUSTERED_INDEX_SCAN",True,"B+ unclustered entrega RIDs ordenados"))
+        if not cs:return None
+        pri={"hash":3,"bplus_clustered":2,"bplus_unclustered":1,"rtree":0}
+        return max(cs,key=lambda c:(c.score,pri.get(c.index.kind,0)))
+    def _candidate_for_index(self,q,i):
+        match=[p for p in q.predicates if p.column==i.column and not getattr(p,"is_spatial",False)]
+        eq=[p for p in match if p.normalized_operator() in EQUALITY_OPERATORS]
+        if eq:return self._candidate_for_predicate(q,i,eq[0],eq[0].normalized_operator())
+        ranges=[p for p in match if p.normalized_operator() in RANGE_OPERATORS]
+        if not ranges:return None
+        if len(ranges)==1:return self._candidate_for_predicate(q,i,ranges[0],ranges[0].normalized_operator())
+        bounds=self._combined_range(ranges)
+        if bounds is None:return self._candidate_for_predicate(q,i,ranges[0],ranges[0].normalized_operator())
+        low,high,il,ih=bounds; anchor=next((p for p in ranges if (low is not None and self._is_lower_bound(p)) or (low is None and self._is_upper_bound(p))),ranges[0]); combined=Predicate(i.column,"between",(low,high)); c=self._candidate_for_predicate(q,i,combined,"between")
+        if not c:return None
+        return replace_candidate(c,predicate=anchor,extra_predicates=tuple(p for p in ranges if p is not anchor),reason=f"B+ {i.kind.split('_')[-1]} combina los dos extremos del rango")
     @staticmethod
-    def _is_lower_bound(predicate) -> bool:
-        return predicate.normalized_operator() in {">", ">="} or (
-            predicate.normalized_operator() == "between"
-        )
-
+    def _is_lower_bound(p): return p.normalized_operator() in {">",">=","between"}
     @staticmethod
-    def _is_upper_bound(predicate) -> bool:
-        return predicate.normalized_operator() in {"<", "<="} or (
-            predicate.normalized_operator() == "between"
-        )
-
+    def _is_upper_bound(p): return p.normalized_operator() in {"<","<=","between"}
     @classmethod
-    def _combined_range(cls, predicates):
-        """Fusiona varios predicados de rango en (low, high, inc_low, inc_high)."""
-        low = high = None
-        include_low = include_high = True
-
-        for predicate in predicates:
-            op = predicate.normalized_operator()
-            value = predicate.value
-
-            if op == "between":
-                candidate_low, candidate_high = value
-                if low is None or candidate_low > low:
-                    low, include_low = candidate_low, True
-                if high is None or candidate_high < high:
-                    high, include_high = candidate_high, True
-                continue
-
-            if op in {">", ">="}:
-                if low is None or value > low:
-                    low = value
-                    include_low = op == ">="
-                elif value == low and op == ">":
-                    include_low = False
-                continue
-
-            if op in {"<", "<="}:
-                if high is None or value < high:
-                    high = value
-                    include_high = op == "<="
-                elif value == high and op == "<":
-                    include_high = False
-                continue
-
-            return None
-
-        return low, high, include_low, include_high
-
-    @staticmethod
-    def _render_bound(value, inclusive: bool) -> str:
-        if value is None:
-            return "sin límite"
-        return f"{value!r}" if inclusive else f"{value!r} (exclusivo)"
-
-    def _candidate_for_disjunction(self, query, table_indexes):
-        """Unión de búsquedas por índice para un WHERE con OR.
-
-        Solo se aplica cuando **todos** los grupos son de igualdad (o rango)
-        sobre la **misma columna indexada**; así la unión se resuelve con un
-        único índice y el resultado sigue siendo correcto.
-        """
-        groups = query.or_groups
-        if not groups or not all(groups):
-            return None
-
-        for index in table_indexes:
-            if not all(
-                all(p.column == index.column for p in group)
-                for group in groups
-            ):
-                continue
-            if not all(
-                all(
-                    p.normalized_operator() in EQUALITY_OPERATORS
-                    for p in group
-                )
-                for group in groups
-            ):
-                continue
-            if index.kind == "hash" and not all(
-                len(group) == 1 for group in groups
-            ):
-                continue
-
-            members = tuple(p for group in groups for p in group)
-            operator = (
-                "HASH_INDEX_UNION"
-                if index.kind == "hash"
-                else "BPLUS_INDEX_UNION"
-            )
-            return _AccessCandidate(
-                index=index,
-                predicate=members[0],
-                score=100,
-                operator=operator,
-                preserves_order=False,
-                reason=(
-                    f"WHERE con OR: unión de {len(members)} búsquedas por "
-                    f"'{index.column}' usando {index.name}"
-                ),
-                extra_predicates=members[1:],
-                from_disjunction=True,
-            )
-
+    def _combined_range(cls,ps):
+        low=high=None; il=ih=True
+        for p in ps:
+            op=p.normalized_operator(); v=p.value
+            if op=="between":
+                a,b=v
+                if low is None or a>low:low,il=a,True
+                if high is None or b<high:high,ih=b,True
+            elif op in {">",">="}:
+                if low is None or v>low:low,il=v,op==">="
+                elif v==low and op==">":il=False
+            elif op in {"<","<="}:
+                if high is None or v<high:high,ih=v,op=="<="
+                elif v==high and op=="<":ih=False
+            else:return None
+        return low,high,il,ih
+    def _candidate_for_disjunction(self,q,indexes):
+        groups=q.or_groups
+        if not groups:return None
+        for i in indexes:
+            if not all(all(p.column==i.column and p.normalized_operator() in EQUALITY_OPERATORS for p in g) for g in groups):continue
+            members=tuple(p for g in groups for p in g); op="HASH_INDEX_UNION" if i.kind=="hash" else "BPLUS_INDEX_UNION"
+            if i.kind not in {"hash","bplus_clustered","bplus_unclustered"}:continue
+            return _AccessCandidate(i,members[0],100,op,False,f"WHERE con OR: unión de {len(members)} búsquedas por '{i.column}'",members[1:],True)
         return None
-
-    def _candidate_for_predicate(self, query, index, predicate, operator):
-        bonus = self._order_bonus(query, index)
-
-        if operator in EQUALITY_OPERATORS:
-            if index.kind == "hash":
-                return _AccessCandidate(
-                    index, predicate, 110,
-                    "HASH_INDEX_LOOKUP", False,
-                    "Extendible Hashing es preferido para igualdad exacta",
-                )
-            if index.kind == "bplus_clustered":
-                return _AccessCandidate(
-                    index, predicate, 90 + bonus,
-                    "BPLUS_CLUSTERED_LOOKUP", True,
-                    "B+ clustered soporta lookup directo",
-                )
-            if index.kind == "bplus_unclustered":
-                return _AccessCandidate(
-                    index, predicate, 80 + bonus,
-                    "BPLUS_UNCLUSTERED_LOOKUP", True,
-                    "B+ unclustered soporta lookup mediante RIDs",
-                )
-
-        if operator in RANGE_OPERATORS:
-            if index.kind == "bplus_clustered":
-                return _AccessCandidate(
-                    index, predicate, 95 + bonus,
-                    "BPLUS_CLUSTERED_RANGE_SCAN", True,
-                    "B+ clustered soporta range scan ordenado",
-                )
-            if index.kind == "bplus_unclustered":
-                return _AccessCandidate(
-                    index, predicate, 85 + bonus,
-                    "BPLUS_UNCLUSTERED_RANGE_SCAN", True,
-                    "B+ unclustered soporta range scan",
-                )
-
+    def _candidate_for_predicate(self,q,i,p,op):
+        bonus=self._order_bonus(q,i)
+        if op in EQUALITY_OPERATORS:
+            if i.kind=="hash":return _AccessCandidate(i,p,110,"HASH_INDEX_LOOKUP",False,"Extendible Hashing es preferido para igualdad exacta")
+            if i.kind=="bplus_clustered":return _AccessCandidate(i,p,90+bonus,"BPLUS_CLUSTERED_LOOKUP",True,"B+ clustered soporta lookup directo")
+            if i.kind=="bplus_unclustered":return _AccessCandidate(i,p,80+bonus,"BPLUS_UNCLUSTERED_LOOKUP",True,"B+ unclustered soporta lookup mediante RIDs")
+        if op in RANGE_OPERATORS:
+            if i.kind=="bplus_clustered":return _AccessCandidate(i,p,95+bonus,"BPLUS_CLUSTERED_RANGE_SCAN",True,"B+ clustered soporta range scan ordenado")
+            if i.kind=="bplus_unclustered":return _AccessCandidate(i,p,85+bonus,"BPLUS_UNCLUSTERED_RANGE_SCAN",True,"B+ unclustered soporta range scan")
         return None
-
     @staticmethod
-    def _order_bonus(query, index):
-        if (
-            query.order_by
-            and not query.order_by[0].descending
-            and query.order_by[0].column == index.column
-            and index.kind.startswith("bplus")
-        ):
-            return 15
-        return 0
-
+    def _order_bonus(q,i): return 15 if q.order_by and not q.order_by[0].descending and q.order_by[0].column==i.column and i.kind.startswith("bplus") else 0
     @staticmethod
-    def _order_is_covered(query, candidate, preserves_order):
-        if not query.order_by:
-            return True
-
-        if candidate is None:
-            return False
-
-        if len(query.order_by) != 1:
-            return False
-
-        order_item = query.order_by[0]
-
-        # Si el camino de acceso consume una igualdad sobre la misma
-        # columna del ORDER BY, todas las filas devueltas tienen el mismo
-        # valor para esa columna. No es necesario ordenar, incluso si el
-        # acceso es mediante Hash.
-        if (
-            candidate.predicate is not None
-            and candidate.predicate.normalized_operator() in EQUALITY_OPERATORS
-            and candidate.predicate.column == order_item.column
-        ):
-            return True
-
-        if not preserves_order:
-            return False
-
-        return (
-            not order_item.descending
-            and candidate.index.kind.startswith("bplus")
-            and candidate.index.column == order_item.column
-        )
-
-    def _fallback_scan(self, table):
-        storage_kind = self.storage_by_table.get(table, "heap").lower()
-        if storage_kind == "sequential":
-            return PlanStep(
-                operator="SEQUENTIAL_SCAN",
-                table=table,
-                reason="no existe indice aplicable",
-            )
-        return PlanStep(
-            operator="HEAP_SCAN",
-            table=table,
-            reason="no existe indice aplicable",
-        )
-
+    def _order_is_covered(q,c,preserves):
+        if not q.order_by:return True
+        if c is None or len(q.order_by)!=1:return False
+        o=q.order_by[0]
+        if c.predicate and c.predicate.normalized_operator() in EQUALITY_OPERATORS and c.predicate.column==o.column:return True
+        return preserves and not o.descending and c.index.kind.startswith("bplus") and c.index.column==o.column
+    def _fallback_scan(self,t): return PlanStep("SEQUENTIAL_SCAN" if self.storage_by_table.get(t,"heap").lower()=="sequential" else "HEAP_SCAN",t,reason="no existe indice aplicable")
     @staticmethod
-    def _residual_predicates(predicates, consumed_predicate):
-        consumed = (
-            consumed_predicate
-            if isinstance(consumed_predicate, tuple)
-            else (() if consumed_predicate is None else (consumed_predicate,))
-        )
-        if not consumed:
-            return list(predicates)
-
-        remaining = list(consumed)
-        residual = []
-        for predicate in predicates:
-            for index, candidate in enumerate(remaining):
-                if predicate == candidate:
-                    remaining.pop(index)
-                    break
-            else:
-                residual.append(predicate)
-        return residual
-
+    def _residual_predicates(ps,consumed):
+        rem=list(consumed or ()); out=[]
+        for p in ps:
+            for j,c in enumerate(rem):
+                if p==c: rem.pop(j); break
+            else: out.append(p)
+        return out
     @staticmethod
-    def _access_details(candidate):
-        details = {
-            "index_kind": candidate.index.kind,
-            "column": candidate.index.column,
-            "unique": candidate.index.unique,
-        }
-        if candidate.predicate is not None:
-            details["predicate"] = QueryPlanner._predicate_to_dict(
-                candidate.predicate
-            )
-        if candidate.extra_predicates:
-            details["predicates_extra"] = [
-                QueryPlanner._predicate_to_dict(p)
-                for p in candidate.extra_predicates
-            ]
-        if candidate.from_disjunction:
-            details["disjunction"] = True
-            details["searches"] = 1 + len(candidate.extra_predicates)
-        return details
-
+    def _access_details(c):
+        d={"index_kind":c.index.kind,"column":c.index.column,"unique":c.index.unique}
+        if c.predicate:d["predicate"]=QueryPlanner._predicate_to_dict(c.predicate)
+        if c.extra_predicates:d["predicates_extra"]=[QueryPlanner._predicate_to_dict(p) for p in c.extra_predicates]
+        if c.from_disjunction:d.update({"disjunction":True,"searches":1+len(c.extra_predicates)})
+        return d
     @staticmethod
-    def _predicate_to_dict(predicate):
-        return {
-            "column": predicate.column,
-            "operator": predicate.operator,
-            "value": predicate.value,
-        }
-
+    def _predicate_to_dict(p): return {"column":p.column,"operator":p.operator,"value":p.value}
     @staticmethod
-    def _validate_query(query):
-        if not query.table:
-            raise ValueError("query.table is required")
-
-        for predicate in query.predicates:
-            op = predicate.normalized_operator()
-            if op not in SUPPORTED_PREDICATE_OPERATORS:
-                raise ValueError(
-                    f"unsupported predicate operator: {predicate.operator}"
-                )
-            if (
-                op == "between"
-                and not (
-                    isinstance(predicate.value, (tuple, list))
-                    and len(predicate.value) == 2
-                )
-            ):
-                raise ValueError(
-                    "BETWEEN predicate requires a (low, high) value"
-                )
-
-        for join in query.joins:
-            if join.join_type.strip().lower() not in {
-                "inner", "left", "right", "full"
-            }:
-                raise ValueError(
-                    f"unsupported join type: {join.join_type}"
-                )
-
+    def _validate_query(q):
+        if not q.table:raise ValueError("query.table is required")
+        for p in q.predicates:
+            if getattr(p,"is_spatial",False):continue
+            op=p.normalized_operator()
+            if op not in SUPPORTED_PREDICATE_OPERATORS:raise ValueError(f"unsupported predicate operator: {p.operator}")
     @classmethod
-    def _coerce_query(cls, query):
-        if isinstance(query, QuerySpec):
-            return query
-        if not isinstance(query, Mapping):
-            raise TypeError("query must be QuerySpec or mapping")
-
-        predicates = tuple(
-            cls._coerce_predicate(item)
-            for item in query.get("predicates", ())
-        )
-        order_by = tuple(
-            cls._coerce_order_by(item)
-            for item in query.get("order_by", ())
-        )
-        joins = tuple(
-            cls._coerce_join(item)
-            for item in query.get("joins", ())
-        )
-
-        group_by_value = query.get("group_by", ())
-        group_by = (
-            (group_by_value,)
-            if isinstance(group_by_value, str)
-            else tuple(group_by_value)
-        )
-
-        return QuerySpec(
-            table=query.get("table", ""),
-            predicates=predicates,
-            order_by=order_by,
-            group_by=group_by,
-            joins=joins,
-        )
-
+    def _coerce_query(cls,q):
+        if isinstance(q,QuerySpec):return q
+        if not isinstance(q,Mapping):raise TypeError("query must be QuerySpec or mapping")
+        return QuerySpec(table=q.get("table",""),predicates=tuple(cls._coerce_predicate(x) for x in q.get("predicates",())),order_by=tuple(cls._coerce_order_by(x) for x in q.get("order_by",())),group_by=((q.get("group_by"),) if isinstance(q.get("group_by"),str) else tuple(q.get("group_by",()))),joins=tuple(cls._coerce_join(x) for x in q.get("joins",())))
     @staticmethod
-    def _coerce_predicate(item):
-        if isinstance(item, Predicate):
-            return item
-        if isinstance(item, Mapping):
-            return Predicate(
-                item["column"],
-                item["operator"],
-                item.get("value"),
-            )
-        if isinstance(item, (tuple, list)) and len(item) == 3:
-            return Predicate(item[0], item[1], item[2])
-        raise TypeError(
-            "predicate must be Predicate, mapping, or "
-            "(column, operator, value)"
-        )
-
+    def _coerce_predicate(x):
+        if isinstance(x,Predicate):return x
+        if isinstance(x,Mapping):return Predicate(x["column"],x["operator"],x.get("value"))
+        return Predicate(*x)
     @staticmethod
-    def _coerce_order_by(item):
-        if isinstance(item, OrderBy):
-            return item
-        if isinstance(item, str):
-            return OrderBy(item)
-        if isinstance(item, Mapping):
-            return OrderBy(
-                item["column"],
-                bool(item.get("descending", False)),
-            )
-        if isinstance(item, (tuple, list)):
-            if len(item) == 1:
-                return OrderBy(item[0])
-            if len(item) == 2:
-                direction = item[1]
-                descending = (
-                    direction.strip().lower() == "desc"
-                    if isinstance(direction, str)
-                    else bool(direction)
-                )
-                return OrderBy(item[0], descending)
-        raise TypeError("invalid order_by item")
-
+    def _coerce_order_by(x):
+        if isinstance(x,OrderBy):return x
+        if isinstance(x,str):return OrderBy(x)
+        if isinstance(x,Mapping):return OrderBy(x["column"],bool(x.get("descending",False)))
+        if len(x)==1:return OrderBy(x[0])
+        return OrderBy(x[0],str(x[1]).lower()=="desc" if isinstance(x[1],str) else bool(x[1]))
     @staticmethod
-    def _coerce_join(item):
-        if isinstance(item, JoinSpec):
-            return item
-        if isinstance(item, Mapping):
-            return JoinSpec(
-                table=item["table"],
-                left_column=item["left_column"],
-                right_column=item["right_column"],
-                join_type=item.get("join_type", "inner"),
-                operator=item.get("operator", "="),
-            )
-        raise TypeError("join must be JoinSpec or mapping")
+    def _coerce_join(x):
+        if isinstance(x,JoinSpec):return x
+        return JoinSpec(x["table"],x["left_column"],x["right_column"],x.get("join_type","inner"),x.get("operator","="))

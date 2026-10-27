@@ -408,6 +408,90 @@ class HNSWIndex:
 
         return node
 
+    # ---------------------------------------------------------- issue #115
+
+    def knn(
+        self,
+        query_vector: Iterable[float],
+        *,
+        k: int = 10,
+        ef_search: Optional[int] = None,
+    ) -> list[tuple[Hashable, float]]:
+        """Busca los ``k`` vecinos aproximados más cercanos.
+
+        La búsqueda sigue el flujo HNSW clásico:
+
+        1. comienza en ``entry_point``;
+        2. desciende greedy desde ``max_level`` hasta nivel 1;
+        3. en nivel 0 ejecuta búsqueda best-first con ``ef_search``;
+        4. ordena los candidatos por la métrica configurada y retorna hasta ``k``.
+
+        En este issue el contrato de la métrica sigue siendo **menor = mejor**.
+        El issue #116 se encargará de normalizar distancia/similitud para la capa
+        SQL y ``SIMILARITY_SCORE()``.
+        """
+        if k <= 0 or not self.nodes:
+            return []
+
+        query = tuple(float(value) for value in query_vector)
+        if not query:
+            raise ValueError("query_vector no puede estar vacío")
+        if self.dimension is None or len(query) != self.dimension:
+            raise ValueError(
+                f"dimensión inválida: esperada {self.dimension}, recibida {len(query)}"
+            )
+
+        effective_ef = self.ef_search if ef_search is None else int(ef_search)
+        if effective_ef < 1:
+            raise ValueError("ef_search debe ser >= 1")
+        # Para devolver k resultados, la lista dinámica debe poder retener al
+        # menos k candidatos. HNSW suele exigir ef_search >= k; aquí elevamos
+        # automáticamente el valor efectivo para una API más segura.
+        effective_ef = max(effective_ef, min(k, len(self.nodes)))
+
+        assert self.entry_point is not None
+        entry_id = self.entry_point
+
+        # Descenso greedy por las capas superiores.
+        for level in range(self.max_level, 0, -1):
+            entry_id = self._greedy_search_level(query, entry_id, level)
+
+        # Exploración best-first en la capa base.
+        candidates = self._search_layer(
+            query, [entry_id], effective_ef, 0
+        )
+
+        ranked = [
+            (node_id, self._distance(query, self.nodes[node_id].vector))
+            for node_id in candidates
+        ]
+        ranked.sort(key=lambda item: (item[1], repr(item[0])))
+        return ranked[: min(k, len(ranked))]
+
+    def brute_force_knn(
+        self, query_vector: Iterable[float], *, k: int = 10
+    ) -> list[tuple[Hashable, float]]:
+        """Referencia exacta para tests/benchmarks de Recall@k.
+
+        No forma parte del camino de consulta HNSW; existe para verificar la
+        calidad de la búsqueda aproximada de manera reproducible.
+        """
+        if k <= 0 or not self.nodes:
+            return []
+        query = tuple(float(value) for value in query_vector)
+        if not query:
+            raise ValueError("query_vector no puede estar vacío")
+        if self.dimension is None or len(query) != self.dimension:
+            raise ValueError(
+                f"dimensión inválida: esperada {self.dimension}, recibida {len(query)}"
+            )
+        ranked = [
+            (node_id, self._distance(query, node.vector))
+            for node_id, node in self.nodes.items()
+        ]
+        ranked.sort(key=lambda item: (item[1], repr(item[0])))
+        return ranked[: min(k, len(ranked))]
+
     def validate(self) -> bool:
         """Comprueba invariantes estructurales del grafo.
 

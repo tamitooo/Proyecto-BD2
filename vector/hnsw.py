@@ -9,13 +9,15 @@ jerárquica que usarán los issues posteriores:
 * generación probabilística y reproducible de niveles;
 * validación de invariantes estructurales.
 
-La inserción navegable/conexión de vecinos se implementa en el issue #114 y la
-búsqueda k-NN en el #115. Mantener esa separación hace que cada issue sea
+La inserción navegable/conexión de vecinos corresponde al issue #114; la
+búsqueda k-NN pública se completa en el #115. Mantener esa separación hace que cada issue sea
 pequeño, testeable y fácil de integrar.
 """
 
 from __future__ import annotations
 
+import heapq
+import itertools
 import math
 import random
 from dataclasses import dataclass, field
@@ -117,6 +119,7 @@ class HNSWIndex:
 
         self._rng = random.Random(random_seed)
         self.random_seed = random_seed
+        self._heap_counter = itertools.count()
 
     def __len__(self) -> int:
         return len(self.nodes)
@@ -174,6 +177,236 @@ class HNSWIndex:
         if self.entry_point is None or node.level > self.max_level:
             self.entry_point = node.vector_id
             self.max_level = node.level
+
+    # ---------------------------------------------------------- issue #114
+
+    @staticmethod
+    def _euclidean(first: Sequence[float], second: Sequence[float]) -> float:
+        return math.sqrt(sum((float(a) - float(b)) ** 2 for a, b in zip(first, second)))
+
+    def _distance(self, first: Sequence[float], second: Sequence[float]) -> float:
+        """Distancia usada por construcción/navegación.
+
+        Persona B podrá inyectar una métrica común mediante ``metric``. Mientras
+        esa capa todavía no exista, Euclidiana es el fallback determinista.
+        El contrato de HNSW en esta etapa es "menor valor = más cercano".
+        """
+        if len(first) != len(second):
+            raise ValueError("los vectores deben tener la misma dimensión")
+        fn = self.metric or self._euclidean
+        value = float(fn(first, second))
+        if not math.isfinite(value):
+            raise ValueError("la métrica debe devolver un valor finito")
+        return value
+
+    def _greedy_search_level(
+        self,
+        query: Sequence[float],
+        entry_id: Hashable,
+        level: int,
+    ) -> Hashable:
+        """Navega greedy en una capa hasta alcanzar un mínimo local."""
+        current_id = entry_id
+        current = self.nodes[current_id]
+        if current.level < level:
+            raise ValueError("entry point no participa en el nivel solicitado")
+        current_distance = self._distance(query, current.vector)
+
+        improved = True
+        while improved:
+            improved = False
+            # ``repr`` hace deterministas los empates incluso con IDs de tipos
+            # que Python no puede comparar directamente entre sí.
+            neighbors = sorted(current.neighbors[level], key=repr)
+            for neighbor_id in neighbors:
+                neighbor = self.nodes[neighbor_id]
+                distance = self._distance(query, neighbor.vector)
+                if (distance, repr(neighbor_id)) < (
+                    current_distance,
+                    repr(current_id),
+                ):
+                    current_id = neighbor_id
+                    current = neighbor
+                    current_distance = distance
+                    improved = True
+                    break
+        return current_id
+
+    def _search_layer(
+        self,
+        query: Sequence[float],
+        entry_ids: Iterable[Hashable],
+        ef: int,
+        level: int,
+    ) -> list[Hashable]:
+        """Best-first local usado durante construcción de una capa HNSW."""
+        if ef < 1:
+            raise ValueError("ef debe ser >= 1")
+
+        visited: Set[Hashable] = set()
+        candidates = []  # min-heap por distancia
+        best = []        # max-heap simulado con distancia negativa
+
+        for node_id in entry_ids:
+            if node_id in visited:
+                continue
+            node = self.nodes[node_id]
+            if node.level < level:
+                continue
+            visited.add(node_id)
+            distance = self._distance(query, node.vector)
+            order = next(self._heap_counter)
+            heapq.heappush(candidates, (distance, order, node_id))
+            heapq.heappush(best, (-distance, -order, node_id))
+
+        if not candidates:
+            return []
+
+        while candidates:
+            candidate_distance, _, candidate_id = heapq.heappop(candidates)
+            worst_best = -best[0][0]
+            if len(best) >= ef and candidate_distance > worst_best:
+                break
+
+            node = self.nodes[candidate_id]
+            for neighbor_id in sorted(node.neighbors[level], key=repr):
+                if neighbor_id in visited:
+                    continue
+                visited.add(neighbor_id)
+                neighbor = self.nodes[neighbor_id]
+                distance = self._distance(query, neighbor.vector)
+                worst_best = -best[0][0]
+                if len(best) < ef or distance < worst_best:
+                    order = next(self._heap_counter)
+                    heapq.heappush(candidates, (distance, order, neighbor_id))
+                    heapq.heappush(best, (-distance, -order, neighbor_id))
+                    if len(best) > ef:
+                        heapq.heappop(best)
+
+        result = [item[2] for item in best]
+        result.sort(
+            key=lambda node_id: (
+                self._distance(query, self.nodes[node_id].vector),
+                repr(node_id),
+            )
+        )
+        return result
+
+    def _prune_node(self, node_id: Hashable, level: int) -> None:
+        """Conserva los M vecinos más próximos y elimina enlaces recíprocos."""
+        node = self.nodes[node_id]
+        neighbors = node.neighbors[level]
+        if len(neighbors) <= self.M:
+            return
+
+        ordered = sorted(
+            neighbors,
+            key=lambda other_id: (
+                self._distance(node.vector, self.nodes[other_id].vector),
+                repr(other_id),
+            ),
+        )
+        keep = set(ordered[: self.M])
+        removed = set(neighbors) - keep
+        node.neighbors[level] = keep
+
+        for other_id in removed:
+            other = self.nodes.get(other_id)
+            if other is not None and other.level >= level:
+                other.neighbors[level].discard(node_id)
+
+    def _connect_bidirectional(
+        self,
+        first_id: Hashable,
+        second_id: Hashable,
+        level: int,
+    ) -> None:
+        if first_id == second_id:
+            return
+        first = self.nodes[first_id]
+        second = self.nodes[second_id]
+        if first.level < level or second.level < level:
+            raise ValueError("ambos nodos deben participar en el nivel del enlace")
+        first.neighbors[level].add(second_id)
+        second.neighbors[level].add(first_id)
+
+    def insert(
+        self,
+        vector_id: Hashable,
+        vector: Iterable[float],
+        *,
+        level: Optional[int] = None,
+    ) -> HNSWNode:
+        """Inserta un vector siguiendo el flujo de construcción HNSW.
+
+        El parámetro ``level`` existe para pruebas reproducibles; en uso normal
+        se omite y se obtiene mediante la distribución probabilística definida
+        en :meth:`random_level`.
+        """
+        if vector_id in self.nodes:
+            raise ValueError(f"vector_id duplicado: {vector_id!r}")
+
+        node = self.make_node(vector_id, vector, level=level)
+
+        # Primer vector: no hay navegación ni vecinos.
+        if not self.nodes:
+            self._register_structural_node(node)
+            return node
+
+        old_entry = self.entry_point
+        old_max_level = self.max_level
+        assert old_entry is not None
+
+        # Se registra primero para que las rutinas de conexión puedan resolver
+        # el ID, pero se conserva el entry point previo durante la navegación.
+        self._register_structural_node(node)
+        self.entry_point = old_entry
+        self.max_level = old_max_level
+
+        entry_id = old_entry
+
+        # 1) Desde las capas que el nuevo nodo no alcanza, descenso greedy.
+        for current_level in range(old_max_level, node.level, -1):
+            entry_id = self._greedy_search_level(
+                node.vector, entry_id, current_level
+            )
+
+        # 2) En cada capa compartida buscar candidatos con ef_construction,
+        # escoger los M más próximos y crear conexiones recíprocas.
+        top_shared = min(node.level, old_max_level)
+        for current_level in range(top_shared, -1, -1):
+            candidates = self._search_layer(
+                node.vector,
+                [entry_id],
+                self.ef_construction,
+                current_level,
+            )
+            candidates = [cid for cid in candidates if cid != vector_id]
+            selected = candidates[: self.M]
+
+            for neighbor_id in selected:
+                self._connect_bidirectional(
+                    vector_id, neighbor_id, current_level
+                )
+
+            # La conexión del nuevo nodo puede llevar a un vecino existente por
+            # encima de M. Podarlo puede eliminar también el enlace recíproco.
+            for neighbor_id in list(selected):
+                self._prune_node(neighbor_id, current_level)
+            self._prune_node(vector_id, current_level)
+
+            if candidates:
+                entry_id = candidates[0]
+
+        # 3) Un nodo que alcanza una capa nueva se vuelve entry point.
+        if node.level > old_max_level:
+            self.entry_point = vector_id
+            self.max_level = node.level
+        else:
+            self.entry_point = old_entry
+            self.max_level = old_max_level
+
+        return node
 
     def validate(self) -> bool:
         """Comprueba invariantes estructurales del grafo.

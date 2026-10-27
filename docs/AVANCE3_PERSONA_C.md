@@ -165,3 +165,50 @@ python -m pytest tests/test_hnsw_structure.py -q
 python -m pytest -q
 # 62 passed
 ```
+
+---
+
+## Parte 4 — Issue #114: inserción de vectores en HNSW
+
+Implementado en `HNSWIndex.insert(...)` dentro de `vector/hnsw.py`.
+
+### Flujo implementado
+
+1. Se valida ID y dimensionalidad.
+2. Se genera el nivel aleatorio del nodo (o se fija `level` en tests).
+3. Se parte del `entry_point` existente.
+4. Se desciende greedy por las capas superiores que el nuevo nodo no alcanza.
+5. En cada capa compartida se ejecuta una búsqueda local con `ef_construction`.
+6. Se seleccionan hasta `M` candidatos cercanos.
+7. Se crean enlaces bidireccionales.
+8. Se podan conexiones por encima de `M`, eliminando también el enlace recíproco.
+9. Si el nuevo nodo supera el nivel máximo, se convierte en el nuevo `entry_point`.
+
+### Métrica
+
+HNSW acepta una función `metric` inyectable. Mientras Persona B no conecte la capa común de métricas, se utiliza distancia Euclidiana como fallback. En esta etapa el contrato interno es **menor valor = más cercano**.
+
+### Pruebas
+
+```bash
+python -m pytest tests/test_hnsw_structure.py tests/test_hnsw_insert.py -q
+# 17 passed
+
+python -m pytest -q
+# 70 passed
+```
+
+Casos cubiertos:
+
+- primer vector e inicialización del índice;
+- enlaces bidireccionales;
+- actualización de `entry_point` y `max_level`;
+- inserción de nodos de menor nivel sin reemplazar el entry point;
+- poda del grado a `M`;
+- rechazo de IDs duplicados y dimensiones incompatibles;
+- uso de una métrica inyectada;
+- 100 inserciones con niveles aleatorios manteniendo todas las invariantes.
+
+## Siguiente issue
+
+#115 — búsqueda k-NN con HNSW usando descenso jerárquico y `ef_search`.

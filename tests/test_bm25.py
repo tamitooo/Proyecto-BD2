@@ -132,3 +132,74 @@ def test_repeticion_en_query_suma_nuevamente_el_aporte():
     one = ranker.score(1, ["base"])
     repeated = ranker.score(1, ["base", "base"])
     assert repeated == pytest.approx(2 * one)
+
+
+def test_search_top_k_usa_candidatos_de_postings_y_ordena_descendente():
+    stats = build_stats()
+    ranker = BM25Ranker(stats)
+
+    results = ranker.search(["base", "vectorial"], k=3)
+
+    assert len(results) <= 3
+    assert [score for _, score in results] == sorted(
+        [score for _, score in results], reverse=True
+    )
+    # doc 4 está vacío y no pertenece a ninguna posting list.
+    assert 4 not in [doc_id for doc_id, _ in results]
+
+
+def test_search_coincide_con_ranking_exhaustivo_de_candidatos():
+    stats = build_stats()
+    ranker = BM25Ranker(stats)
+    terms = ["base", "dato", "vectorial"]
+
+    candidates = stats.candidate_documents(terms)
+    exhaustive = sorted(
+        ((doc_id, ranker.score(doc_id, terms)) for doc_id in candidates),
+        key=lambda item: (-item[1], type(item[0]).__name__, repr(item[0])),
+    )[:2]
+
+    assert ranker.search(terms, k=2) == exhaustive
+
+
+def test_search_k_mayor_que_candidatos_devuelve_todos():
+    ranker = BM25Ranker(build_stats())
+    results = ranker.search(["indice"], k=100)
+    assert [doc_id for doc_id, _ in results] == [3]
+
+
+def test_search_consulta_vacia_o_sin_postings_devuelve_vacio():
+    ranker = BM25Ranker(build_stats())
+    assert ranker.search([], k=10) == []
+    assert ranker.search(["inexistente"], k=10) == []
+
+
+def test_search_k_no_positivo_devuelve_vacio_y_tipo_invalido_falla():
+    ranker = BM25Ranker(build_stats())
+    assert ranker.search(["base"], k=0) == []
+    assert ranker.search(["base"], k=-1) == []
+    with pytest.raises(TypeError, match="k"):
+        ranker.search(["base"], k=2.5)
+
+
+def test_search_desempata_por_doc_id_de_forma_determinista():
+    stats = BM25Statistics.from_documents(
+        {
+            2: ["x"],
+            1: ["x"],
+            3: ["x"],
+        }
+    )
+    ranker = BM25Ranker(stats, b=0.0)
+    results = ranker.search(["x"], k=3)
+    assert [doc_id for doc_id, _ in results] == [1, 2, 3]
+
+
+def test_statistics_postings_se_actualizan_al_eliminar_documento():
+    stats = build_stats()
+    assert stats.documents_for_term("base") == frozenset({1, 2})
+    assert stats.candidate_documents(["base", "indice"]) == {1, 2, 3}
+
+    assert stats.remove_document(2)
+    assert stats.documents_for_term("base") == frozenset({1})
+    assert stats.document_frequency("base") == 1

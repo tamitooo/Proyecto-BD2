@@ -7,8 +7,9 @@ SPIMI para mantener una única representación textual en todo el motor.
 
 from __future__ import annotations
 
+import heapq
 import math
-from typing import Iterable
+from typing import Iterable, List, Tuple
 
 from .statistics import BM25Statistics, DocumentId
 
@@ -20,8 +21,8 @@ class BM25Ranker:
     - ``k1=1.2`` controla la saturación de la frecuencia del término.
     - ``b=0.75`` controla la normalización por longitud de documento.
 
-    Este issue implementa únicamente la función de scoring. La selección de
-    candidatos y el ranking top-k pertenecen al issue #55.
+    Además del scoring, implementa selección de candidatos por postings y
+    ranking top-k (issue #55).
     """
 
     def __init__(
@@ -97,3 +98,47 @@ class BM25Ranker:
         # consulta está vacía o todos sus términos están ausentes.
         self.statistics.document_length(doc_id)
         return sum(self.term_score(term, doc_id) for term in query_terms)
+
+    def search(self, query_terms: Iterable[str], k: int = 10) -> List[Tuple[DocumentId, float]]:
+        """Retorna los ``k`` documentos con mayor score BM25.
+
+        Los candidatos se obtienen de la unión de posting lists de los términos
+        consultados; por tanto, no se recorre la colección completa para cada
+        búsqueda. Se usa un min-heap de tamaño ``k`` y el resultado final se
+        ordena por score descendente y ``doc_id`` ascendente como desempate.
+        """
+        if not isinstance(k, int):
+            raise TypeError("k must be an integer")
+        if k <= 0:
+            return []
+
+        terms = list(query_terms)
+        if not terms:
+            return []
+
+        candidates = self.statistics.candidate_documents(terms)
+        if not candidates:
+            return []
+
+        # El heap conserva el peor elemento en la raíz. Para empates de score,
+        # un doc_id mayor es peor porque el contrato final desempata ascendente.
+        # La clave invertida del doc_id se evita usando una entrada comparable
+        # auxiliar basada en repr, que funciona con IDs hashables heterogéneos.
+        scored = [(doc_id, self.score(doc_id, terms)) for doc_id in candidates]
+        scored = [(doc_id, score) for doc_id, score in scored if score > 0.0]
+        if not scored:
+            return []
+
+        # Para mantener compatibilidad con DocumentId hashable (int/str/etc.),
+        # el desempate determinista se basa en (tipo, repr).
+        def tie_key(doc_id: DocumentId):
+            return (type(doc_id).__name__, repr(doc_id))
+
+        # nsmallest sobre una clave que prioriza score alto y luego id menor
+        # permite limitar el trabajo de selección a O(C log k).
+        best = heapq.nsmallest(
+            min(k, len(scored)),
+            scored,
+            key=lambda item: (-item[1], tie_key(item[0])),
+        )
+        return sorted(best, key=lambda item: (-item[1], tie_key(item[0])))

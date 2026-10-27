@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import Dict, Hashable, Iterable, Mapping
+from typing import Dict, Hashable, Iterable, Mapping, Set
 
 DocumentId = Hashable
 
@@ -27,6 +27,7 @@ class BM25Statistics:
 
     _term_frequencies: Dict[DocumentId, Counter[str]] = field(default_factory=dict)
     _document_frequencies: Counter[str] = field(default_factory=Counter)
+    _postings: Dict[str, Set[DocumentId]] = field(default_factory=dict)
     _document_lengths: Dict[DocumentId, int] = field(default_factory=dict)
     _total_document_length: int = 0
 
@@ -63,6 +64,7 @@ class BM25Statistics:
 
         for term in frequencies:
             self._document_frequencies[term] += 1
+            self._postings.setdefault(term, set()).add(doc_id)
 
     def remove_document(self, doc_id: DocumentId) -> bool:
         """Elimina las estadísticas de un documento y actualiza DF/avgdl."""
@@ -75,6 +77,11 @@ class BM25Statistics:
 
         for term in frequencies:
             self._document_frequencies[term] -= 1
+            posting = self._postings.get(term)
+            if posting is not None:
+                posting.discard(doc_id)
+                if not posting:
+                    del self._postings[term]
             if self._document_frequencies[term] <= 0:
                 del self._document_frequencies[term]
 
@@ -90,6 +97,17 @@ class BM25Statistics:
     def document_frequency(self, term: str) -> int:
         """Devuelve df(term); 0 si el término no aparece en la colección."""
         return self._document_frequencies.get(term, 0)
+
+    def documents_for_term(self, term: str) -> frozenset[DocumentId]:
+        """Documentos que contienen ``term`` sin recorrer toda la colección."""
+        return frozenset(self._postings.get(term, ()))
+
+    def candidate_documents(self, terms: Iterable[str]) -> set[DocumentId]:
+        """Unión de postings para una consulta ya preprocesada."""
+        candidates: set[DocumentId] = set()
+        for term in terms:
+            candidates.update(self._postings.get(term, ()))
+        return candidates
 
     def document_length(self, doc_id: DocumentId) -> int:
         """Devuelve |d|. Lanza KeyError si el documento no está registrado."""
@@ -107,6 +125,7 @@ class BM25Statistics:
         """Vacía todas las estadísticas."""
         self._term_frequencies.clear()
         self._document_frequencies.clear()
+        self._postings.clear()
         self._document_lengths.clear()
         self._total_document_length = 0
 

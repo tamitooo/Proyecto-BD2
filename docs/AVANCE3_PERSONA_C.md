@@ -89,3 +89,56 @@ python -m pytest tests/test_bm25.py -q
 
 Se verifica IDF, fórmula manual, consultas multi-término, saturación de TF,
 normalización por longitud, parámetros, términos ausentes y casos borde.
+
+---
+
+## Issue #55 — Ranking top-k con BM25
+
+Implementado en `BM25Ranker.search(...)` dentro de `text/bm25.py`.
+
+### Contrato
+
+```python
+results = ranker.search(
+    ["base", "dato", "vectorial"],
+    k=10,
+)
+# [(doc_id, score), ...]
+```
+
+### Comportamiento
+
+- Los candidatos salen de la unión de posting lists de los términos consultados.
+- No se hace un scan completo de todos los documentos para cada query.
+- Se calcula BM25 únicamente sobre candidatos.
+- Se retorna como máximo `k` resultados.
+- El orden es score descendente.
+- Los empates se resuelven de forma determinista por `doc_id`.
+- Consulta vacía, términos inexistentes o `k <= 0` retornan `[]`.
+- `k > número de candidatos` retorna todos los candidatos válidos.
+
+Para soportar este issue, `BM25Statistics` expone también:
+
+- `documents_for_term(term)`
+- `candidate_documents(terms)`
+
+Las posting lists se mantienen incrementalmente al agregar o eliminar documentos.
+
+### Pruebas
+
+```bash
+python -m pytest tests/test_bm25_statistics.py tests/test_bm25.py -q
+```
+
+Resultado específico acumulado de Persona C: `22 passed`.
+
+Suite completa del proyecto después de #55: `53 passed`.
+
+## Estado acumulado Persona C — Parte 3
+
+- [x] #53 Frecuencias y longitudes de documentos para BM25
+- [x] #54 Score BM25 con `k1` y `b`
+- [x] #55 Ranking top-k con BM25
+- [x] Tests unitarios de BM25 correspondientes a #72
+
+La integración SQL `MATCH(... ) USING BM25`, `SCORE()`, `ORDER BY` y `LIMIT` queda para Persona D.

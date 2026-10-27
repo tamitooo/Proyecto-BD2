@@ -212,3 +212,27 @@ Casos cubiertos:
 ## Siguiente issue
 
 #115 — búsqueda k-NN con HNSW usando descenso jerárquico y `ef_search`.
+
+## Issue #116 — Ranking de resultados por similitud
+
+Se agregó `vector/ranking.py` con un contrato público común para resultados vectoriales:
+
+```python
+SearchResult(vector_id, score, raw_metric, metric)
+```
+
+Convención pública: `score` siempre cumple **mayor = mejor**.
+
+Convenciones internas para que HNSW pueda seguir minimizando un costo:
+
+- Euclidiana: `search_distance = euclidean_distance`
+- Coseno: `search_distance = 1 - cosine_similarity`
+- Producto punto: `search_distance = -dot_product`
+
+`HNSWIndex.search_similar(...)` reutiliza la búsqueda k-NN y transforma sus resultados sin recalcular vecinos. De esta forma la integración SQL podrá consumir directamente el `score` para `SIMILARITY_SCORE()`.
+
+Pruebas específicas:
+
+```bash
+python -m pytest tests/test_vector_ranking.py -q
+```

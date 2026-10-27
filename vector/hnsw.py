@@ -23,6 +23,8 @@ import random
 from dataclasses import dataclass, field
 from typing import Callable, Dict, Hashable, Iterable, Optional, Sequence, Set, Tuple
 
+from .ranking import SearchResult, SimilarityRanking
+
 Vector = Tuple[float, ...]
 Metric = Callable[[Sequence[float], Sequence[float]], float]
 
@@ -92,6 +94,7 @@ class HNSWIndex:
         random_seed: Optional[int] = None,
         level_multiplier: Optional[float] = None,
         metric: Optional[Metric] = None,
+        metric_name: str = "euclidean",
     ) -> None:
         if M < 2:
             raise ValueError("M debe ser >= 2")
@@ -111,6 +114,7 @@ class HNSWIndex:
         self.ef_search = int(ef_search)
         self.level_multiplier = multiplier
         self.metric = metric
+        self.metric_name = SimilarityRanking(metric_name).metric
 
         self.nodes: Dict[Hashable, HNSWNode] = {}
         self.entry_point: Optional[Hashable] = None
@@ -468,6 +472,26 @@ class HNSWIndex:
         ranked.sort(key=lambda item: (item[1], repr(item[0])))
         return ranked[: min(k, len(ranked))]
 
+    def search_similar(
+        self,
+        query_vector: Iterable[float],
+        *,
+        k: int = 10,
+        ef_search: Optional[int] = None,
+    ) -> list[SearchResult]:
+        """Retorna resultados con un ``score`` uniforme (mayor = mejor).
+
+        ``knn`` conserva el costo interno de navegación, donde menor = mejor.
+        Esta vista pública lo transforma según ``metric_name`` para que la capa
+        SQL pueda exponer ``SIMILARITY_SCORE()`` sin recalcular la consulta.
+
+        Cuando se usa Coseno o Producto Punto, la función ``metric`` inyectada
+        debe seguir el contrato de costo mínimo documentado en
+        :mod:`vector.ranking`: ``1-cosine`` o ``-dot_product`` respectivamente.
+        """
+        raw = self.knn(query_vector, k=k, ef_search=ef_search)
+        return SimilarityRanking(self.metric_name).rank(raw, k=k)
+
     def brute_force_knn(
         self, query_vector: Iterable[float], *, k: int = 10
     ) -> list[tuple[Hashable, float]]:
@@ -568,5 +592,6 @@ class HNSWIndex:
             "M": self.M,
             "ef_construction": self.ef_construction,
             "ef_search": self.ef_search,
+            "metric": self.metric_name,
             "level_counts": level_counts,
         }

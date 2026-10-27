@@ -142,3 +142,26 @@ Suite completa del proyecto después de #55: `53 passed`.
 - [x] Tests unitarios de BM25 correspondientes a #72
 
 La integración SQL `MATCH(... ) USING BM25`, `SCORE()`, `ORDER BY` y `LIMIT` queda para Persona D.
+
+## Parte 4 — Issue #113: estructura jerárquica HNSW
+
+Se agregó `vector/hnsw.py` con la infraestructura base del índice HNSW:
+
+- `HNSWNode`: id, vector, nivel superior y vecinos separados por capa.
+- `HNSWIndex`: parámetros `M`, `ef_construction`, `ef_search`, `entry_point`, `max_level` y dimensión.
+- generación probabilística de niveles con semilla reproducible;
+- `make_node()` para construir nodos validados sin adelantarse a la inserción del issue #114;
+- `validate()` para comprobar dimensión, entry point, nivel máximo, límites de grado, vecinos existentes y enlaces recíprocos;
+- `stats()` para instrumentación y futuros benchmarks.
+
+El issue #113 **no implementa todavía la inserción HNSW completa**. La navegación, selección de vecinos, enlaces y poda pertenecen al issue #114; k-NN pertenece al #115.
+
+Validación actual:
+
+```bash
+python -m pytest tests/test_hnsw_structure.py -q
+# 9 passed
+
+python -m pytest -q
+# 62 passed
+```

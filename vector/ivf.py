@@ -4,8 +4,8 @@ IVF particiona el espacio en ``n_lists`` celdas: K-Means entrena un centroide
 por celda y cada vector se guarda en la lista invertida de su centroide más
 cercano. Una búsqueda solo necesita revisar las listas más prometedoras.
 
-Este módulo cubre el entrenamiento, la inserción y la persistencia. La búsqueda
-k-NN pública corresponde al issue #109.
+El entrenamiento, la inserción y la persistencia corresponden al issue #108; la
+búsqueda k-NN aproximada, al #109.
 
 Solo ``train`` agrupa según la geometría de cada métrica:
 
@@ -19,6 +19,7 @@ La asignación de un vector a su lista siempre usa la métrica del índice.
 
 from __future__ import annotations
 
+import heapq
 import math
 import random
 from pathlib import Path
@@ -27,7 +28,7 @@ from typing import Dict, Hashable, Iterable, List, Optional, Sequence, Tuple
 from indexes.persistence import atomic_pickle_write, pickle_read, remove_if_exists
 
 from .metrics import euclidean_distance, get_search_metric
-from .ranking import SimilarityRanking
+from .ranking import SearchResult, SimilarityRanking
 
 Vector = Tuple[float, ...]
 
@@ -47,6 +48,9 @@ class IVFIndex:
     training_points_per_list:
         Máximo de vectores de entrenamiento por centroide. Los centroides no
         mejoran mucho con más puntos y K-Means cuesta O(puntos * n_lists).
+    n_probe:
+        Listas revisadas por defecto en cada búsqueda. Más listas dan mejor
+        recall a cambio de más tiempo. Si se omite se usa ``sqrt(n_lists)``.
     random_seed:
         Semilla para que el entrenamiento sea reproducible en tests.
     """
@@ -58,6 +62,7 @@ class IVFIndex:
         metric_name: str = "euclidean",
         max_iterations: int = 25,
         training_points_per_list: int = 256,
+        n_probe: Optional[int] = None,
         random_seed: Optional[int] = None,
     ) -> None:
         if n_lists < 1:
@@ -66,11 +71,16 @@ class IVFIndex:
             raise ValueError("max_iterations debe ser >= 1")
         if training_points_per_list < 1:
             raise ValueError("training_points_per_list debe ser >= 1")
+        if n_probe is not None and n_probe < 1:
+            raise ValueError("n_probe debe ser >= 1")
 
         self.n_lists = int(n_lists)
         self.metric_name = SimilarityRanking(metric_name).metric
         self.max_iterations = int(max_iterations)
         self.training_points_per_list = int(training_points_per_list)
+        self.n_probe = (
+            math.ceil(math.sqrt(self.n_lists)) if n_probe is None else int(n_probe)
+        )
 
         self.centroids: List[Vector] = []
         self.lists: List[Dict[Hashable, Vector]] = []
@@ -190,13 +200,10 @@ class IVFIndex:
         """Devuelve la lista invertida que corresponde a ``vector``."""
         if not self.is_trained:
             raise ValueError("el índice debe entrenarse antes de usarse")
-        values = self._as_vector(vector)
-        if len(values) != self.dimension:
-            raise ValueError(
-                f"dimensión inválida: esperada {self.dimension}, recibida {len(values)}"
-            )
         return self._nearest(
-            values, self.centroids, get_search_metric(self.metric_name)
+            self._as_query(vector),
+            self.centroids,
+            get_search_metric(self.metric_name),
         )
 
     def insert(self, vector_id: Hashable, vector: Iterable[float]) -> int:
@@ -238,6 +245,95 @@ class IVFIndex:
             raise ValueError("el vector debe contener solo valores finitos")
         return values
 
+    def _as_query(self, vector: Iterable[float]) -> Vector:
+        values = self._as_vector(vector)
+        if len(values) != self.dimension:
+            raise ValueError(
+                f"dimensión inválida: esperada {self.dimension}, recibida {len(values)}"
+            )
+        return values
+
+    # ---------------------------------------------------------- issue #109
+
+    def knn(
+        self,
+        query_vector: Iterable[float],
+        *,
+        k: int = 10,
+        n_probe: Optional[int] = None,
+    ) -> List[Tuple[Hashable, float]]:
+        """Busca los ``k`` vecinos aproximados más cercanos.
+
+        Ordena las listas por la cercanía de su centroide a la consulta y solo
+        compara los vectores de las ``n_probe`` primeras. Las listas vacías no
+        cuentan, y se siguen abriendo listas hasta reunir ``k`` candidatos para
+        no devolver menos resultados de los que el índice puede dar.
+
+        Como en HNSW, el contrato de la métrica es **menor = mejor**.
+        """
+        if k <= 0 or not self._assignments:
+            return []
+
+        effective_probe = self.n_probe if n_probe is None else int(n_probe)
+        if effective_probe < 1:
+            raise ValueError("n_probe debe ser >= 1")
+
+        query = self._as_query(query_vector)
+        cost = get_search_metric(self.metric_name)
+        probe_order = sorted(
+            (list_id for list_id, items in enumerate(self.lists) if items),
+            key=lambda list_id: (cost(query, self.centroids[list_id]), list_id),
+        )
+
+        candidates: List[Tuple[Hashable, float]] = []
+        for position, list_id in enumerate(probe_order):
+            if position >= effective_probe and len(candidates) >= k:
+                break
+            candidates.extend(
+                (vector_id, cost(query, vector))
+                for vector_id, vector in self.lists[list_id].items()
+            )
+        return self._best(candidates, k)
+
+    def search_similar(
+        self,
+        query_vector: Iterable[float],
+        *,
+        k: int = 10,
+        n_probe: Optional[int] = None,
+    ) -> List[SearchResult]:
+        """Retorna resultados con un ``score`` uniforme (mayor = mejor)."""
+        raw = self.knn(query_vector, k=k, n_probe=n_probe)
+        return SimilarityRanking(self.metric_name).rank(raw, k=k)
+
+    def brute_force_knn(
+        self, query_vector: Iterable[float], *, k: int = 10
+    ) -> List[Tuple[Hashable, float]]:
+        """Referencia exacta para tests/benchmarks de Recall@k.
+
+        No forma parte del camino de consulta IVF; existe para verificar la
+        calidad de la búsqueda aproximada de manera reproducible.
+        """
+        if k <= 0 or not self._assignments:
+            return []
+        query = self._as_query(query_vector)
+        cost = get_search_metric(self.metric_name)
+        return self._best(
+            [
+                (vector_id, cost(query, vector))
+                for inverted_list in self.lists
+                for vector_id, vector in inverted_list.items()
+            ],
+            k,
+        )
+
+    @staticmethod
+    def _best(
+        candidates: Iterable[Tuple[Hashable, float]], k: int
+    ) -> List[Tuple[Hashable, float]]:
+        """Top-k por costo; ``repr`` hace deterministas los empates."""
+        return heapq.nsmallest(k, candidates, key=lambda item: (item[1], repr(item[0])))
+
     # ------------------------------------------------------------ persistencia
 
     def attach_file(self, file_path, load_existing: bool = True) -> bool:
@@ -258,6 +354,7 @@ class IVFIndex:
                 "metric_name": self.metric_name,
                 "max_iterations": self.max_iterations,
                 "training_points_per_list": self.training_points_per_list,
+                "n_probe": self.n_probe,
                 "dimension": self.dimension,
                 "centroids": self.centroids,
                 "lists": self.lists,
@@ -272,6 +369,7 @@ class IVFIndex:
         self.metric_name = state["metric_name"]
         self.max_iterations = int(state["max_iterations"])
         self.training_points_per_list = int(state["training_points_per_list"])
+        self.n_probe = int(state["n_probe"])
         self.dimension = state["dimension"]
         self.centroids = state["centroids"]
         self.lists = state["lists"]
@@ -323,6 +421,7 @@ class IVFIndex:
             "vectors": len(self),
             "dimension": self.dimension,
             "n_lists": self.n_lists,
+            "n_probe": self.n_probe,
             "metric": self.metric_name,
             "is_trained": self.is_trained,
             "non_empty_lists": sum(1 for size in sizes if size),

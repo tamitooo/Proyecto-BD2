@@ -207,6 +207,171 @@ class TestBuild(unittest.TestCase):
         self.assertEqual(stats["metric"], "euclidean")
 
 
+class TestSearch(unittest.TestCase):
+    METRICS = ("euclidean", "cosine", "dot_product")
+
+    def setUp(self):
+        self.rng = random.Random(10)
+        centers = [
+            [self.rng.gauss(0.0, 4.0) for _ in range(8)] for _ in range(10)
+        ]
+        self.vectors = [
+            [value + self.rng.gauss(0.0, 1.0) for value in self.rng.choice(centers)]
+            for _ in range(600)
+        ]
+        self.queries = [
+            [value + self.rng.gauss(0.0, 1.0) for value in self.rng.choice(centers)]
+            for _ in range(30)
+        ]
+
+    def build(self, metric_name="euclidean", **kwargs):
+        index = IVFIndex(n_lists=16, metric_name=metric_name, random_seed=1, **kwargs)
+        index.build(enumerate(self.vectors))
+        return index
+
+    def test_invalid_n_probe_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "n_probe"):
+            IVFIndex(n_lists=2, n_probe=0)
+        with self.assertRaisesRegex(ValueError, "n_probe"):
+            self.build().knn(self.queries[0], n_probe=0)
+
+    def test_default_n_probe_is_sqrt_of_lists(self):
+        self.assertEqual(IVFIndex(n_lists=16).n_probe, 4)
+        self.assertEqual(IVFIndex(n_lists=17).n_probe, 5)
+        self.assertEqual(IVFIndex(n_lists=16, n_probe=2).n_probe, 2)
+
+    def test_non_positive_k_returns_empty(self):
+        self.assertEqual(self.build().knn(self.queries[0], k=0), [])
+
+    def test_empty_index_returns_empty(self):
+        self.assertEqual(IVFIndex(n_lists=2).knn([1.0, 2.0]), [])
+        self.assertEqual(IVFIndex(n_lists=2).brute_force_knn([1.0, 2.0]), [])
+
+    def test_wrong_query_dimension_is_rejected(self):
+        index = self.build()
+        with self.assertRaisesRegex(ValueError, "dimensión inválida"):
+            index.knn([1.0])
+        with self.assertRaisesRegex(ValueError, "dimensión inválida"):
+            index.brute_force_knn([1.0])
+
+    def test_non_finite_query_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "finitos"):
+            self.build().knn([math.nan] * 8)
+
+    def test_results_are_sorted_by_cost(self):
+        results = self.build().knn(self.queries[0], k=10)
+        costs = [cost for _, cost in results]
+        self.assertEqual(len(results), 10)
+        self.assertEqual(costs, sorted(costs))
+
+    def test_finds_an_inserted_vector(self):
+        index = self.build()
+        results = index.knn(self.vectors[42], k=1)
+        self.assertEqual(results, [(42, 0.0)])
+
+    def test_probing_every_list_matches_brute_force(self):
+        for metric_name in self.METRICS:
+            index = self.build(metric_name)
+            for query in self.queries:
+                with self.subTest(metric=metric_name):
+                    self.assertEqual(
+                        index.knn(query, k=10, n_probe=index.n_lists),
+                        index.brute_force_knn(query, k=10),
+                    )
+
+    def test_brute_force_matches_an_independent_scan(self):
+        index = self.build()
+        for query in self.queries:
+            expected = sorted(
+                range(len(self.vectors)),
+                key=lambda item: math.dist(query, self.vectors[item]),
+            )[:10]
+            found = [vector_id for vector_id, _ in index.brute_force_knn(query)]
+            self.assertEqual(found, expected)
+
+    def test_recall_is_high_with_a_few_lists(self):
+        for metric_name in self.METRICS:
+            with self.subTest(metric=metric_name):
+                index = self.build(metric_name)
+                hits = 0
+                for query in self.queries:
+                    exact = {item for item, _ in index.brute_force_knn(query)}
+                    hits += len(exact & {item for item, _ in index.knn(query)})
+                self.assertGreaterEqual(hits / (10 * len(self.queries)), 0.9)
+
+    def test_more_lists_never_reduce_the_candidates_inspected(self):
+        index = self.build()
+        query = self.queries[0]
+        exact = {item for item, _ in index.brute_force_knn(query, k=20)}
+        previous = 0
+        for n_probe in (1, 4, 16):
+            found = {item for item, _ in index.knn(query, k=20, n_probe=n_probe)}
+            self.assertGreaterEqual(len(exact & found), previous)
+            previous = len(exact & found)
+
+    def test_k_larger_than_probed_lists_keeps_probing(self):
+        index = IVFIndex(n_lists=2, n_probe=1, random_seed=1)
+        index.build(
+            [("a", [0.0]), ("b", [0.1]), ("c", [10.0]), ("d", [10.1])]
+        )
+        self.assertEqual(
+            [vector_id for vector_id, _ in index.knn([0.0], k=3)], ["a", "b", "c"]
+        )
+
+    def test_k_larger_than_the_index_returns_everything(self):
+        index = IVFIndex(n_lists=2, random_seed=1)
+        index.build([("a", [0.0]), ("b", [10.0])])
+        self.assertEqual(len(index.knn([0.0], k=50)), 2)
+
+    def test_empty_lists_do_not_consume_probes(self):
+        index = IVFIndex(n_lists=3, n_probe=1, random_seed=1)
+        index.train([[0.0], [5.0], [10.0]])
+        index.insert("far", [10.0])
+        nearest_empty_centroid_query = [0.0]
+        self.assertEqual(
+            index.knn(nearest_empty_centroid_query, k=1)[0][0], "far"
+        )
+
+    def test_ties_are_deterministic(self):
+        index = IVFIndex(n_lists=1, random_seed=1)
+        index.build([("b", [1.0]), ("a", [1.0]), (3, [1.0])])
+        self.assertEqual(
+            [vector_id for vector_id, _ in index.knn([1.0], k=3)], ["a", "b", 3]
+        )
+
+    def test_search_similar_exposes_the_public_contract(self):
+        vectors = [("aligned", [10.0, 0.0]), ("opposite", [-1.0, 0.0])]
+        expected = {
+            "euclidean": ([1.0, 0.0], "opposite", 2.0, 1.0 / 3.0),
+            "cosine": ([1.0, 0.0], "aligned", 1.0, 1.0),
+            "dot_product": ([1.0, 0.0], "aligned", 10.0, 10.0),
+        }
+        for metric_name, (query, best, raw, score) in expected.items():
+            with self.subTest(metric=metric_name):
+                index = IVFIndex(n_lists=2, metric_name=metric_name, random_seed=1)
+                index.build(vectors)
+                results = index.search_similar(query, k=2)
+                self.assertEqual(results[0].vector_id, best)
+                self.assertEqual(results[0].metric, metric_name)
+                self.assertAlmostEqual(results[0].raw_metric, raw)
+                self.assertAlmostEqual(results[0].score, score)
+                self.assertGreater(results[0].score, results[1].score)
+
+    def test_search_finds_vectors_after_reloading(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "idx.idx"
+            index = IVFIndex(n_lists=4, n_probe=2, random_seed=1)
+            index.attach_file(path)
+            index.build(enumerate(self.vectors))
+
+            restored = IVFIndex(n_lists=1)
+            restored.attach_file(path)
+            self.assertEqual(restored.n_probe, 2)
+            self.assertEqual(
+                restored.knn(self.queries[0]), index.knn(self.queries[0])
+            )
+
+
 class TestPersistence(unittest.TestCase):
     def setUp(self):
         directory = tempfile.TemporaryDirectory()

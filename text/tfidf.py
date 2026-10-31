@@ -13,15 +13,19 @@ Reutiliza :class:`BM25Statistics` en lugar de recontar: TF, DF y N son los mismo
 que usa BM25, y compartirlos garantiza que ambos rankings vean la misma
 colección. Tampoco tokeniza: los términos deben llegar ya normalizados.
 
-La representación vectorial corresponde al issue #50, la similitud del coseno
-al #51 y el ranking top-k al #52.
+Documentos y consultas se representan como vectores dispersos (issue #50). La
+similitud del coseno corresponde al issue #51 y el ranking top-k al #52.
 """
 
 from __future__ import annotations
 
 import math
+from collections import Counter
+from typing import Dict, Iterable, Mapping
 
 from .statistics import BM25Statistics, DocumentId
+
+SparseVector = Dict[str, float]
 
 
 class TFIDFWeighter:
@@ -72,3 +76,33 @@ class TFIDFWeighter:
 
         count = self.statistics.term_frequency(term, doc_id)
         return self.term_frequency_weight(count) * self.idf(term)
+
+    def document_vector(self, doc_id: DocumentId) -> SparseVector:
+        """Devuelve el vector TF-IDF de un documento como ``término -> peso``.
+
+        Lanza KeyError si el documento no está registrado.
+        """
+        return self._vector(self.statistics.document_term_frequencies(doc_id))
+
+    def query_vector(self, query_terms: Iterable[str]) -> SparseVector:
+        """Devuelve el vector TF-IDF de una consulta ya preprocesada.
+
+        Se pondera como un documento, contando los términos repetidos. Un
+        término que no existe en la colección no aporta y queda fuera.
+        """
+        if isinstance(query_terms, str):
+            # Iterar un str daría caracteres sueltos en lugar de términos.
+            raise TypeError("query_terms must be an iterable of terms, not a str")
+        return self._vector(Counter(query_terms))
+
+    def _vector(self, frequencies: Mapping[str, int]) -> SparseVector:
+        """Pondera ``término -> frecuencia``; los pesos en cero no se guardan.
+
+        Con vocabularios grandes un documento solo tiene una fracción mínima
+        de los términos, y un vector denso no cabría en memoria.
+        """
+        weights = {
+            term: self.term_frequency_weight(count) * self.idf(term)
+            for term, count in frequencies.items()
+        }
+        return {term: weight for term, weight in weights.items() if weight > 0.0}

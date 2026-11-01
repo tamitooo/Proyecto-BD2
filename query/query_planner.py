@@ -36,8 +36,35 @@ class OrderBy:
 class JoinSpec:
     table:str; left_column:str; right_column:str; join_type:str="inner"; operator:str="="
 @dataclass(frozen=True)
+class SimilarityPredicate:
+    """Predicado ``SIMILAR_TO(objetivo, k=N)`` de la búsqueda vectorial (Parte 4).
+
+    ``target`` es lo que se busca: la ruta de un archivo (``'foto.jpg'``), un
+    vector literal (``[0.1, 0.2, ...]``) o el nombre de una columna que guarda
+    el vector. ``column`` queda como ``None`` cuando el enunciado no nombra la
+    columna (``WHERE SIMILAR_TO('foto.jpg', k=10)``); en ese caso el ejecutor
+    de la Parte 4 (#90) decidirá la columna multimedia de la tabla.
+    """
+
+    target:Any; k:int=10; column:Optional[str]=None
+    @property
+    def is_similarity(self):return True
+    @property
+    def is_spatial(self):return False
+    @property
+    def operator(self):return "similar_to"
+    @property
+    def value(self):return self.target
+    @property
+    def distance(self):return None
+@dataclass(frozen=True)
+class SimilaritySpec:
+    """Búsqueda vectorial completa: predicado + índice + métrica (USING ...)."""
+
+    predicate:SimilarityPredicate; index_kind:Optional[str]=None; metric:Optional[str]=None
+@dataclass(frozen=True)
 class QuerySpec:
-    table:str; predicates:Tuple[Predicate,...]=(); order_by:Tuple[OrderBy,...]=(); group_by:Tuple[str,...]=(); joins:Tuple[JoinSpec,...]=(); or_groups:Tuple[Tuple[Predicate,...],...]=()
+    table:str; predicates:Tuple[Predicate,...]=(); order_by:Tuple[OrderBy,...]=(); group_by:Tuple[str,...]=(); joins:Tuple[JoinSpec,...]=(); or_groups:Tuple[Tuple[Predicate,...],...]=(); similarity:Optional[SimilaritySpec]=None
     @property
     def has_disjunction(self): return bool(self.or_groups)
 @dataclass(frozen=True)

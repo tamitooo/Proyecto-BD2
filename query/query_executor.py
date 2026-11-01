@@ -50,6 +50,7 @@ class QueryExecutor:
     # ---------- SELECT ----------
     def _select(self,s):
         q=s.query_spec;self._resolve_named_points(q);t=self.catalog.get_table(q.table);self._validate_select(s,t)
+        if getattr(q,"similarity",None):raise QueryExecutionError("SIMILAR_TO aún no lo ejecuta el motor; llega con el issue #90 (ejecutor vectorial)")
         kind=spatial_kind(q)
         if kind:
             r=self._spatial(s,t,kind)
@@ -218,6 +219,7 @@ class QueryExecutor:
         inner=s.statement
         if isinstance(inner,SelectStatement):
             q=inner.query_spec;self._resolve_named_points(q);t=self.catalog.get_table(q.table);kind=spatial_kind(q)
+            if getattr(q,"similarity",None):raise QueryExecutionError("EXPLAIN de SIMILAR_TO llega con el issue #91 (plan vectorial)")
             if kind and self.catalog.spatial_index_for(t.name,(find_spatial_order_by(q).distance.column if kind=="knn" else (find_polygon_predicate(q).column if kind=="polygon" else find_distance_predicate(q).distance.column))):
                 op={"range":"RTREE_RANGE_SCAN","knn":"RTREE_KNN","polygon":"RTREE_POLYGON"}[kind];reg=self.catalog.spatial_index_for(t.name,(find_spatial_order_by(q).distance.column if kind=="knn" else (find_polygon_predicate(q).column if kind=="polygon" else find_distance_predicate(q).distance.column)));payload={"table":t.name,"planner_type":"spatial_rtree","access_path":op,"used_indexes":[reg.metadata.name],"steps":[{"operator":op,"table":t.name,"index":reg.metadata.name,"reason":"consulta espacial con R-Tree","details":{}}],"runtime_steps":[]}
             else:payload=self._planner().plan(q).to_dict();payload["runtime_steps"]=[]

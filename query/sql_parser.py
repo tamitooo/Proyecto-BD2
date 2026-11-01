@@ -2,7 +2,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from typing import Any, List, Optional, Tuple
-from query.query_planner import DistanceExpression, JoinSpec, OrderBy, PolygonPredicate, Predicate, QuerySpec
+from query.query_planner import DistanceExpression, JoinSpec, OrderBy, PolygonPredicate, Predicate, QuerySpec, SimilarityPredicate, SimilaritySpec
 
 _ID=r"[A-Za-z_][A-Za-z0-9_]*"; _QID=rf"{_ID}(?:\.{_ID})?"
 @dataclass(frozen=True)
@@ -119,6 +119,8 @@ class SQLParser:
             elif c in "'\"":quote=c
             elif c=='(':depth+=1
             elif c==')':depth-=1
+            elif c=='[':depth+=1
+            elif c==']':depth-=1
             elif c==sep and depth==0:out.append(text[start:i].strip());start=i+1
             i+=1
         out.append(text[start:].strip()); return [x for x in out if x]
@@ -128,13 +130,19 @@ class SQLParser:
         fs,fe,_=marks[0]; columns=tuple(self._split(body[:fs])); tail=body[fe:].strip(); m=re.match(rf"({_ID})\b",tail)
         if not m:raise SQLParseError("FROM requires table")
         table=m.group(1); rest=tail[m.end():]
-        marks=self._scan_top(rest,["WHERE","GROUP BY","ORDER BY","LIMIT"]); marks.sort()
+        marks=self._scan_top(rest,["WHERE","USING","GROUP BY","ORDER BY","LIMIT"]); marks.sort()
         join_text=rest[:marks[0][0]].strip() if marks else rest.strip(); clauses={}
         for n,(a,b,k) in enumerate(marks):clauses[k]=rest[b:(marks[n+1][0] if n+1<len(marks) else len(rest))].strip()
         joins=self._joins(join_text); groups=self._where_groups(clauses["WHERE"]) if "WHERE" in clauses else (); preds=tuple(p for g in groups for p in g)
+        index_kind,metric=self._using(clauses["USING"]) if clauses.get("USING") else (None,None)
+        similar=tuple(p for p in preds if getattr(p,"is_similarity",False))
+        if len(similar)>1:raise SQLParseError("solo se admite un SIMILAR_TO por consulta")
+        if similar:preds=tuple(p for p in preds if not getattr(p,"is_similarity",False))
+        elif index_kind:raise SQLParseError("USING HNSW/IVF requiere un SIMILAR_TO(...)")
+        spec=SimilaritySpec(similar[0],index_kind,metric) if similar else None
         group=tuple(x.split('.')[-1] for x in self._split(clauses.get("GROUP BY",""))) if clauses.get("GROUP BY") else ()
         order=self._order(clauses.get("ORDER BY")); limit=int(clauses["LIMIT"]) if clauses.get("LIMIT") else None
-        return SelectStatement(columns,QuerySpec(table,preds,order,group,joins,groups if len(groups)>1 else ()),limit)
+        return SelectStatement(columns,QuerySpec(table,preds,order,group,joins,groups if len(groups)>1 else (),spec),limit)
     def _joins(self,text):
         out=[]; rem=text.strip()
         while rem:
@@ -243,6 +251,8 @@ class SQLParser:
             pos=self._ws(text,pos)
             poly=self._polygon(text,pos)
             if poly: out.append(poly[0]); pos=poly[1]; pos=self._consume_and(text,pos); continue
+            sim=self._similar_expr(text,pos)
+            if sim: out.append(sim[0]); pos=sim[1]; pos=self._consume_and(text,pos); continue
             dist=self._distance_expr(text[pos:])
             if dist:
                 expr,end=dist; pos+=end; pos=self._ws(text,pos); om=re.match(r"(<=|<)",text[pos:])
@@ -295,6 +305,45 @@ class SQLParser:
             ring.append((float(self._literal(xy[0])),float(self._literal(xy[1]))))
         if len(ring)<3:raise SQLParseError("polígono necesita 3 vértices")
         return PolygonPredicate(col,tuple(ring)),ci+1
+    def _similar_expr(self,text,pos):
+        m=re.match(r"SIMILAR_TO\s*\(",text[pos:],re.I)
+        if not m:return None
+        oi=pos+text[pos:].find('(');ci=self._match_paren(text,oi)
+        if ci is None:raise SQLParseError("SIMILAR_TO sin paréntesis de cierre")
+        parts=self._split(text[oi+1:ci])
+        if not parts or not parts[0].strip():raise SQLParseError("SIMILAR_TO requiere un objetivo: archivo, columna o vector literal")
+        target=self._similar_target(parts[0]);k=10
+        for extra in parts[1:]:
+            mm=re.fullmatch(r"k\s*=\s*(\d+)",extra.strip(),re.I)
+            if not mm:raise SQLParseError(f"argumento inválido en SIMILAR_TO: {extra}; usa k=N")
+            k=int(mm.group(1))
+        if k<=0:raise SQLParseError("k de SIMILAR_TO debe ser mayor que 0")
+        return SimilarityPredicate(target,k),ci+1
+    @classmethod
+    def _similar_target(cls,tok):
+        tok=tok.strip()
+        if len(tok)>=2 and tok[0]==tok[-1] and tok[0] in "'\"":return tok[1:-1].replace(tok[0]*2,tok[0])
+        if tok.startswith('[') and tok.endswith(']'):
+            raw=[x for x in (y.strip() for y in tok[1:-1].split(',')) if x]
+            if not raw:raise SQLParseError("vector literal vacío en SIMILAR_TO")
+            vals=[]
+            for x in raw:
+                v=cls._literal(x)
+                if not isinstance(v,(int,float)):raise SQLParseError(f"vector literal inválido en SIMILAR_TO: {tok}")
+                vals.append(float(v))
+            return tuple(vals)
+        if re.fullmatch(_QID,tok):return tok.split('.')[-1]
+        raise SQLParseError(f"objetivo inválido en SIMILAR_TO: {tok}")
+    def _using(self,raw):
+        m=re.fullmatch(r"(?:USING\s+)?([A-Za-z_][A-Za-z0-9_]*)(?:\s+WITH\s+METRIC\s*=\s*([A-Za-z_][A-Za-z0-9_]*))?",raw.strip(),re.I)
+        if not m:raise SQLParseError(f"cláusula USING inválida: {raw}")
+        kind=m.group(1).lower()
+        if kind not in {"hnsw","ivf"}:raise SQLParseError(f"índice desconocido en USING: {m.group(1)}; usa HNSW o IVF")
+        metric=m.group(2)
+        if metric:
+            metric={"dot":"dot_product","producto_punto":"dot_product","dot_product":"dot_product","coseno":"cosine","cosine":"cosine","euclidiana":"euclidean","euclidean":"euclidean"}.get(metric.lower())
+            if metric is None:raise SQLParseError(f"métrica desconocida: {m.group(2)}; usa euclidean, cosine o dot_product")
+        return kind,metric
     @staticmethod
     def _ws(t,p):
         while p<len(t) and t[p].isspace():p+=1

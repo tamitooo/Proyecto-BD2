@@ -1,5 +1,5 @@
 from pathlib import Path
-from .persistence import atomic_pickle_write, pickle_read, remove_if_exists
+from persistence import atomic_pickle_write, pickle_read, remove_if_exists
 class _Bucket:
     def __init__(self, local_depth):
         self.local_depth = local_depth

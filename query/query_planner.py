@@ -63,8 +63,35 @@ class SimilaritySpec:
 
     predicate:SimilarityPredicate; index_kind:Optional[str]=None; metric:Optional[str]=None
 @dataclass(frozen=True)
+class MatchPredicate:
+    """Predicado ``MATCH(columna, 'texto')`` de la búsqueda textual (Parte 3).
+
+    ``column`` es la columna de texto que se indexa y ``query`` el texto
+    buscado, ya sin comillas. El ranking (TF-IDF o BM25) y el ``LIMIT`` se
+    resuelven en :class:`MatchSpec` y en la sentencia.
+    """
+
+    column:str; query:str
+    @property
+    def is_match(self):return True
+    @property
+    def is_similarity(self):return False
+    @property
+    def is_spatial(self):return False
+    @property
+    def operator(self):return "match"
+    @property
+    def value(self):return self.query
+    @property
+    def distance(self):return None
+@dataclass(frozen=True)
+class MatchSpec:
+    """Búsqueda textual completa: predicado + modelo de ranking (USING ...)."""
+
+    predicate:MatchPredicate; ranking:Optional[str]=None
+@dataclass(frozen=True)
 class QuerySpec:
-    table:str; predicates:Tuple[Predicate,...]=(); order_by:Tuple[OrderBy,...]=(); group_by:Tuple[str,...]=(); joins:Tuple[JoinSpec,...]=(); or_groups:Tuple[Tuple[Predicate,...],...]=(); similarity:Optional[SimilaritySpec]=None
+    table:str; predicates:Tuple[Predicate,...]=(); order_by:Tuple[OrderBy,...]=(); group_by:Tuple[str,...]=(); joins:Tuple[JoinSpec,...]=(); or_groups:Tuple[Tuple[Predicate,...],...]=(); similarity:Optional[SimilaritySpec]=None; match:Optional[MatchSpec]=None
     @property
     def has_disjunction(self): return bool(self.or_groups)
 @dataclass(frozen=True)

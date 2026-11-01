@@ -2,7 +2,8 @@ import math
 
 import pytest
 
-from text import BM25Statistics, TFIDFWeighter
+from text import BM25Statistics, TFIDFWeighter, sparse_cosine_similarity
+from vector import cosine_similarity
 
 
 def build_stats():
@@ -214,3 +215,80 @@ def test_pesos_reflejan_cambios_en_la_coleccion():
 
     assert weighter.idf("base") == pytest.approx(math.log10(3 / 1))
     assert weighter.idf("base") > before
+
+
+def test_coseno_coincide_con_el_ejemplo_de_la_clase():
+    # Diapositiva 68: el documento va sin IDF y la consulta con TF-IDF.
+    query = {"mejor": 1.3, "carro": 2.0, "seguro": 3.0}
+    document = {"auto": 1.0, "carro": 1.0, "seguro": 1.3}
+
+    assert sparse_cosine_similarity(query, document) == pytest.approx(0.8, abs=0.01)
+
+
+def test_coseno_coincide_con_la_version_densa():
+    first = {"a": 1.0, "b": 2.0, "c": 3.0}
+    second = {"b": 4.0, "c": 0.5, "d": 2.0}
+
+    assert sparse_cosine_similarity(first, second) == pytest.approx(
+        cosine_similarity([1.0, 2.0, 3.0, 0.0], [0.0, 4.0, 0.5, 2.0])
+    )
+
+
+def test_coseno_de_un_vector_consigo_mismo_es_uno():
+    vector = {"base": 0.3, "dato": 1.7}
+
+    assert sparse_cosine_similarity(vector, vector) == pytest.approx(1.0)
+
+
+def test_coseno_es_simetrico():
+    first = {"a": 1.0, "b": 2.0, "c": 3.0}
+    second = {"b": 4.0}
+
+    assert sparse_cosine_similarity(first, second) == pytest.approx(
+        sparse_cosine_similarity(second, first)
+    )
+
+
+def test_coseno_sin_terminos_en_comun_es_cero():
+    assert sparse_cosine_similarity({"a": 1.0}, {"b": 1.0}) == 0.0
+
+
+def test_coseno_con_vector_vacio_es_cero():
+    assert sparse_cosine_similarity({}, {"a": 1.0}) == 0.0
+    assert sparse_cosine_similarity({"a": 1.0}, {}) == 0.0
+    assert sparse_cosine_similarity({}, {}) == 0.0
+
+
+def test_coseno_con_vector_de_ceros_es_cero():
+    assert sparse_cosine_similarity({"a": 0.0}, {"a": 1.0}) == 0.0
+
+
+def test_coseno_no_depende_de_la_longitud_del_vector():
+    vector = {"a": 1.0, "b": 2.0}
+    scaled = {term: weight * 100 for term, weight in vector.items()}
+
+    assert sparse_cosine_similarity(vector, scaled) == pytest.approx(1.0)
+
+
+def test_coseno_con_magnitudes_extremas():
+    assert sparse_cosine_similarity({"a": 1e300}, {"a": 1e300}) == pytest.approx(1.0)
+    assert sparse_cosine_similarity({"a": 1e-300}, {"a": 1e-300}) == pytest.approx(1.0)
+
+
+def test_coseno_rechaza_pesos_no_finitos():
+    with pytest.raises(ValueError):
+        sparse_cosine_similarity({"a": math.inf}, {"a": 1.0})
+    with pytest.raises(ValueError):
+        sparse_cosine_similarity({"a": 1.0}, {"a": math.nan})
+
+
+def test_coseno_entre_consulta_y_documento_reales():
+    weighter = build_class_example()
+    query = weighter.query_vector(["oro", "plata", "camión"])
+
+    scores = {
+        doc_id: sparse_cosine_similarity(query, weighter.document_vector(doc_id))
+        for doc_id in ("D1", "D2", "D3")
+    }
+
+    assert scores["D2"] > scores["D3"] > scores["D1"] > 0.0

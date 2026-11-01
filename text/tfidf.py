@@ -13,8 +13,9 @@ Reutiliza :class:`BM25Statistics` en lugar de recontar: TF, DF y N son los mismo
 que usa BM25, y compartirlos garantiza que ambos rankings vean la misma
 colección. Tampoco tokeniza: los términos deben llegar ya normalizados.
 
-Documentos y consultas se representan como vectores dispersos (issue #50). La
-similitud del coseno corresponde al issue #51 y el ranking top-k al #52.
+Documentos y consultas se representan como vectores dispersos (issue #50) y se
+comparan con la similitud del coseno (issue #51). El ranking top-k corresponde
+al issue #52.
 """
 
 from __future__ import annotations
@@ -26,6 +27,37 @@ from typing import Dict, Iterable, Mapping
 from .statistics import BM25Statistics, DocumentId
 
 SparseVector = Dict[str, float]
+
+
+def sparse_cosine_similarity(
+    first: Mapping[str, float], second: Mapping[str, float]
+) -> float:
+    """Similitud del coseno entre dos vectores dispersos, en ``[-1, 1]``.
+
+    La normalización por longitud evita que un documento gane solo por ser
+    largo. Un vector vacío no tiene dirección y devuelve ``0.0``: una consulta
+    sin términos conocidos es válida y simplemente no se parece a nada.
+    """
+    first_norm = _norm(first)
+    second_norm = _norm(second)
+    if first_norm == 0.0 or second_norm == 0.0:
+        return 0.0
+
+    # Solo los términos comunes aportan. Normalizar antes de multiplicar evita
+    # overflow y underflow, igual que el coseno de vector/metrics.py.
+    cosine = sum(
+        (first[term] / first_norm) * (second[term] / second_norm)
+        for term in first.keys() & second.keys()
+    )
+    # El redondeo puede dejar el resultado apenas fuera de [-1, 1].
+    return max(-1.0, min(1.0, cosine))
+
+
+def _norm(vector: Mapping[str, float]) -> float:
+    norm = math.hypot(*vector.values())
+    if not math.isfinite(norm):
+        raise ValueError("vector weights must be finite")
+    return norm
 
 
 class TFIDFWeighter:

@@ -91,3 +91,34 @@ def test_clear_reinicia_todas_las_estadisticas():
     assert stats.average_document_length == 0.0
     assert stats.document_frequency("base") == 0
     assert stats.term_frequency("base", 1) == 0
+
+
+def test_revision_cambia_con_cada_modificacion():
+    stats = BM25Statistics()
+    revisions = [stats.revision]
+
+    stats.add_document(1, ["base"])
+    revisions.append(stats.revision)
+    stats.remove_document(1)
+    revisions.append(stats.revision)
+    stats.clear()
+    revisions.append(stats.revision)
+
+    assert len(set(revisions)) == 4
+
+
+def test_revision_no_cambia_si_no_hay_modificacion():
+    stats = BM25Statistics.from_documents({1: ["base"]})
+    revision = stats.revision
+
+    stats.remove_document(99)
+    with pytest.raises(ValueError):
+        stats.add_document(1, ["base"])
+
+    assert stats.revision == revision
+
+
+def test_document_ids_lista_los_documentos():
+    stats = BM25Statistics.from_documents({1: ["base"], "a": []})
+
+    assert stats.document_ids == {1, "a"}

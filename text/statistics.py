@@ -23,6 +23,8 @@ class BM25Statistics:
     - Los tokens deben llegar ya normalizados por el mismo pipeline que SPIMI.
     - ``add_document`` puede llamarse mientras se construye el índice invertido.
     - ``term_frequency`` y ``document_frequency`` son O(1) promedio.
+    - ``revision`` cambia con cada modificación de la colección, para que quien
+      guarde valores derivados de ella sepa cuándo recalcularlos.
     """
 
     _term_frequencies: Dict[DocumentId, Counter[str]] = field(default_factory=dict)
@@ -30,6 +32,7 @@ class BM25Statistics:
     _postings: Dict[str, Set[DocumentId]] = field(default_factory=dict)
     _document_lengths: Dict[DocumentId, int] = field(default_factory=dict)
     _total_document_length: int = 0
+    revision: int = 0
 
     def __len__(self) -> int:
         return self.document_count
@@ -46,6 +49,11 @@ class BM25Statistics:
             return 0.0
         return self._total_document_length / self.document_count
 
+    @property
+    def document_ids(self) -> frozenset[DocumentId]:
+        """Identificadores de todos los documentos registrados."""
+        return frozenset(self._document_lengths)
+
     def add_document(self, doc_id: DocumentId, tokens: Iterable[str]) -> None:
         """Registra un documento a partir de tokens ya preprocesados.
 
@@ -61,6 +69,7 @@ class BM25Statistics:
         self._term_frequencies[doc_id] = frequencies
         self._document_lengths[doc_id] = len(token_list)
         self._total_document_length += len(token_list)
+        self.revision += 1
 
         for term in frequencies:
             self._document_frequencies[term] += 1
@@ -74,6 +83,7 @@ class BM25Statistics:
         frequencies = self._term_frequencies.pop(doc_id)
         length = self._document_lengths.pop(doc_id)
         self._total_document_length -= length
+        self.revision += 1
 
         for term in frequencies:
             self._document_frequencies[term] -= 1
@@ -128,6 +138,7 @@ class BM25Statistics:
         self._postings.clear()
         self._document_lengths.clear()
         self._total_document_length = 0
+        self.revision += 1
 
     @classmethod
     def from_documents(

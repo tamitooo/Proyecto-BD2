@@ -14,15 +14,16 @@ que usa BM25, y compartirlos garantiza que ambos rankings vean la misma
 colección. Tampoco tokeniza: los términos deben llegar ya normalizados.
 
 Documentos y consultas se representan como vectores dispersos (issue #50) y se
-comparan con la similitud del coseno (issue #51). El ranking top-k corresponde
-al issue #52.
+comparan con la similitud del coseno (issue #51) para el ranking top-k (issue
+#52).
 """
 
 from __future__ import annotations
 
+import heapq
 import math
 from collections import Counter
-from typing import Dict, Iterable, Mapping
+from typing import Dict, Iterable, List, Mapping, Optional, Tuple
 
 from .statistics import BM25Statistics, DocumentId
 
@@ -138,3 +139,83 @@ class TFIDFWeighter:
             for term, count in frequencies.items()
         }
         return {term: weight for term, weight in weights.items() if weight > 0.0}
+
+
+class TFIDFRanker:
+    """Ordena documentos por similitud del coseno entre vectores TF-IDF.
+
+    Tiene el mismo contrato que :class:`BM25Ranker` para poder compararlos.
+
+    La norma de cada documento depende de todos sus términos, pero el producto
+    punto solo de los de la consulta. Por eso las normas se calculan una vez y
+    la búsqueda recorre únicamente los postings consultados, en lugar de
+    reconstruir el vector de cada candidato. Como N cambia los IDF de toda la
+    colección, cualquier modificación obliga a recalcular todas las normas.
+    """
+
+    def __init__(self, statistics: BM25Statistics) -> None:
+        self.weighter = TFIDFWeighter(statistics)
+        self.statistics = statistics
+        self._norms: Dict[DocumentId, float] = {}
+        self._norms_revision: Optional[int] = None
+
+    def document_norms(self) -> Mapping[DocumentId, float]:
+        """Devuelve ``doc_id -> norma``, recalculándolas si la colección cambió.
+
+        La primera búsqueda las calcula sola. Llamarlo después de cargar la
+        colección evita que ese costo caiga sobre esa consulta.
+        """
+        if self._norms_revision != self.statistics.revision:
+            self._norms = {
+                doc_id: _norm(self.weighter.document_vector(doc_id))
+                for doc_id in self.statistics.document_ids
+            }
+            self._norms_revision = self.statistics.revision
+        return self._norms
+
+    def score(self, doc_id: DocumentId, query_terms: Iterable[str]) -> float:
+        """Calcula la similitud entre un documento y una consulta.
+
+        Lanza KeyError si el documento no está registrado.
+        """
+        return sparse_cosine_similarity(
+            self.weighter.query_vector(query_terms),
+            self.weighter.document_vector(doc_id),
+        )
+
+    def search(
+        self, query_terms: Iterable[str], k: int = 10
+    ) -> List[Tuple[DocumentId, float]]:
+        """Retorna los ``k`` documentos más similares a la consulta.
+
+        Ordena por score descendente; los empates se resuelven como en BM25.
+        Los documentos sin similitud no se incluyen.
+        """
+        if not isinstance(k, int):
+            raise TypeError("k must be an integer")
+
+        query = self.weighter.query_vector(query_terms)
+        if k <= 0 or not query:
+            return []
+
+        norms = self.document_norms()
+        query_norm = _norm(query)
+        scores: Dict[DocumentId, float] = {}
+
+        # El vector de consulta ya descarta los términos presentes en toda la
+        # colección, que obligarían a recorrerla completa.
+        for term, query_weight in query.items():
+            idf = self.weighter.idf(term)
+            for doc_id in self.statistics.documents_for_term(term):
+                count = self.statistics.term_frequency(term, doc_id)
+                weight = self.weighter.term_frequency_weight(count) * idf
+                scores[doc_id] = scores.get(doc_id, 0.0) + (
+                    (query_weight / query_norm) * (weight / norms[doc_id])
+                )
+
+        return heapq.nsmallest(
+            k,
+            # El redondeo puede dejar el score apenas por encima de 1.
+            ((doc_id, min(1.0, score)) for doc_id, score in scores.items()),
+            key=lambda item: (-item[1], type(item[0]).__name__, repr(item[0])),
+        )

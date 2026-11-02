@@ -1,0 +1,323 @@
+{
+  "meta": {
+    "sizes": [
+      1000,
+      10000,
+      100000
+    ],
+    "configs": [
+      "simple",
+      "spanish"
+    ],
+    "k": 10,
+    "repeticiones": 3
+  },
+  "results": [
+    {
+      "dataset_size": 1000,
+      "config": "simple",
+      "fase": "construccion",
+      "grupo": "-",
+      "carga_s": 0.031,
+      "indice_s": 0.083,
+      "tabla_mb": 0.8,
+      "indice_mb": 0.1,
+      "usa_indice": true
+    },
+    {
+      "dataset_size": 1000,
+      "config": "simple",
+      "fase": "consulta",
+      "grupo": "una",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 1.1
+    },
+    {
+      "dataset_size": 1000,
+      "config": "simple",
+      "fase": "consulta",
+      "grupo": "tres",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 1.036
+    },
+    {
+      "dataset_size": 1000,
+      "config": "simple",
+      "fase": "consulta",
+      "grupo": "larga",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 1.125
+    },
+    {
+      "dataset_size": 1000,
+      "config": "simple",
+      "fase": "consulta",
+      "grupo": "todas",
+      "consultas": 36,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 1.087
+    },
+    {
+      "dataset_size": 1000,
+      "config": "spanish",
+      "fase": "construccion",
+      "grupo": "-",
+      "carga_s": 0.025,
+      "indice_s": 0.109,
+      "tabla_mb": 0.77,
+      "indice_mb": 0.08,
+      "usa_indice": true
+    },
+    {
+      "dataset_size": 1000,
+      "config": "spanish",
+      "fase": "consulta",
+      "grupo": "una",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 1.358
+    },
+    {
+      "dataset_size": 1000,
+      "config": "spanish",
+      "fase": "consulta",
+      "grupo": "tres",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 1.441
+    },
+    {
+      "dataset_size": 1000,
+      "config": "spanish",
+      "fase": "consulta",
+      "grupo": "larga",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 1.513
+    },
+    {
+      "dataset_size": 1000,
+      "config": "spanish",
+      "fase": "consulta",
+      "grupo": "todas",
+      "consultas": 36,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 1.437
+    },
+    {
+      "dataset_size": 10000,
+      "config": "simple",
+      "fase": "construccion",
+      "grupo": "-",
+      "carga_s": 0.208,
+      "indice_s": 0.826,
+      "tabla_mb": 5.11,
+      "indice_mb": 0.72,
+      "usa_indice": true
+    },
+    {
+      "dataset_size": 10000,
+      "config": "simple",
+      "fase": "consulta",
+      "grupo": "una",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 1.333
+    },
+    {
+      "dataset_size": 10000,
+      "config": "simple",
+      "fase": "consulta",
+      "grupo": "tres",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 1.173
+    },
+    {
+      "dataset_size": 10000,
+      "config": "simple",
+      "fase": "consulta",
+      "grupo": "larga",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 1.172
+    },
+    {
+      "dataset_size": 10000,
+      "config": "simple",
+      "fase": "consulta",
+      "grupo": "todas",
+      "consultas": 36,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 1.226
+    },
+    {
+      "dataset_size": 10000,
+      "config": "spanish",
+      "fase": "construccion",
+      "grupo": "-",
+      "carga_s": 0.189,
+      "indice_s": 1.026,
+      "tabla_mb": 4.95,
+      "indice_mb": 0.55,
+      "usa_indice": true
+    },
+    {
+      "dataset_size": 10000,
+      "config": "spanish",
+      "fase": "consulta",
+      "grupo": "una",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 1.761
+    },
+    {
+      "dataset_size": 10000,
+      "config": "spanish",
+      "fase": "consulta",
+      "grupo": "tres",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 1.577
+    },
+    {
+      "dataset_size": 10000,
+      "config": "spanish",
+      "fase": "consulta",
+      "grupo": "larga",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 1.757
+    },
+    {
+      "dataset_size": 10000,
+      "config": "spanish",
+      "fase": "consulta",
+      "grupo": "todas",
+      "consultas": 36,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 1.698
+    },
+    {
+      "dataset_size": 100000,
+      "config": "simple",
+      "fase": "construccion",
+      "grupo": "-",
+      "carga_s": 2.284,
+      "indice_s": 8.121,
+      "tabla_mb": 44.4,
+      "indice_mb": 5.58,
+      "usa_indice": true
+    },
+    {
+      "dataset_size": 100000,
+      "config": "simple",
+      "fase": "consulta",
+      "grupo": "una",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 2.975
+    },
+    {
+      "dataset_size": 100000,
+      "config": "simple",
+      "fase": "consulta",
+      "grupo": "tres",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 1.356
+    },
+    {
+      "dataset_size": 100000,
+      "config": "simple",
+      "fase": "consulta",
+      "grupo": "larga",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 1.567
+    },
+    {
+      "dataset_size": 100000,
+      "config": "simple",
+      "fase": "consulta",
+      "grupo": "todas",
+      "consultas": 36,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 1.966
+    },
+    {
+      "dataset_size": 100000,
+      "config": "spanish",
+      "fase": "construccion",
+      "grupo": "-",
+      "carga_s": 2.165,
+      "indice_s": 10.037,
+      "tabla_mb": 43.11,
+      "indice_mb": 4.29,
+      "usa_indice": true
+    },
+    {
+      "dataset_size": 100000,
+      "config": "spanish",
+      "fase": "consulta",
+      "grupo": "una",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 3.888
+    },
+    {
+      "dataset_size": 100000,
+      "config": "spanish",
+      "fase": "consulta",
+      "grupo": "tres",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 1.6
+    },
+    {
+      "dataset_size": 100000,
+      "config": "spanish",
+      "fase": "consulta",
+      "grupo": "larga",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 1.875
+    },
+    {
+      "dataset_size": 100000,
+      "config": "spanish",
+      "fase": "consulta",
+      "grupo": "todas",
+      "consultas": 36,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 2.454
+    }
+  ]
+}

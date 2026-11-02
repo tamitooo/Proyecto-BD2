@@ -25,20 +25,38 @@ optimizador planificador ejecutor catalogo esquema tupla atributo indice
 imagen audio pixel frame espectro mel cepstrum descriptor histograma
 cuantizacion vecindad grafo capa salto poda aproximado exacto recall precision
 latencia rendimiento heap secuencial ordenamiento agrupamiento join
+atributo dominio integridad restriccion disparador vista secuencia cursor
+deadlock commit rollback aislamiento serializacion checkpoint buffer cache
+sector cabecera factor llenado division fusion rebalanceo altura raiz hoja
+hermano selectividad cardinalidad estimacion costo operador proyeccion filtro
+union interseccion diferencia producto agregacion promedio conteo suma maximo
+minimo ventana muestreo sesgo aproximacion exactitud cobertura ruido margen
+corte similitud peso norma normalizacion radio arista candidato exploracion
+refinamiento
 """.split()
     )
 )
 
 
 def construir_consultas(semilla: int = SEMILLA, por_grupo: int = POR_GRUPO) -> list[dict]:
-    """Devuelve el banco completo, ordenado de una a cinco palabras."""
+    """Devuelve el banco completo. Ningun termino se comparte entre consultas.
+
+    Si dos consultas compartieran terminos, sus documentos respuesta se
+    mezclarian y la relevancia dejaria de estar bien definida.
+    """
     rng = random.Random(semilla)
+    disponibles = list(TERMINOS)
+    rng.shuffle(disponibles)
     banco: list[dict] = []
+    siguiente = 0
 
     for grupo, base in (("una", 1), ("tres", 3), ("larga", 5)):
         for _ in range(por_grupo):
             cantidad = base if base < 5 else rng.randint(5, 7)
-            terminos = rng.sample(TERMINOS, cantidad)
+            if siguiente + cantidad > len(disponibles):
+                raise ValueError("no hay suficientes terminos distintos para el banco")
+            terminos = disponibles[siguiente:siguiente + cantidad]
+            siguiente += cantidad
             banco.append(
                 {
                     "id": len(banco) + 1,

@@ -33,6 +33,12 @@ def test_relevantes_contienen_todos_los_terminos(tmp_path):
             assert set(consulta["terminos"]) <= textos[posicion]
 
 
+def test_consultas_no_comparten_terminos():
+    banco = construir_consultas()
+    usados = [termino for consulta in banco for termino in consulta["terminos"]]
+    assert len(usados) == len(set(usados))
+
+
 def test_pocos_documentos_es_error(tmp_path):
     try:
         escribir(100, tmp_path / "d")

@@ -18,21 +18,24 @@ TERMINOS = list(
     dict.fromkeys(
         """
 algoritmo indice protocolo servidor cliente columna registro consulta
-transaccion bloqueo arbol nodo pagina disco memoria vector matriz distancia
+transaccion bloqueo nodo pagina disco memoria vector matriz distancia
 vecino centroide cluster ranking corpus termino frecuencia relevancia umbral
 semilla particion bloque mezcla lista cola cubeta hash clave rango predicado
 optimizador planificador ejecutor catalogo esquema tupla atributo indice
 imagen audio pixel frame espectro mel cepstrum descriptor histograma
 cuantizacion vecindad grafo capa salto poda aproximado exacto recall precision
 latencia rendimiento heap secuencial ordenamiento agrupamiento join
-atributo dominio integridad restriccion disparador vista secuencia cursor
-deadlock commit rollback aislamiento serializacion checkpoint buffer cache
-sector cabecera factor llenado division fusion rebalanceo altura raiz hoja
-hermano selectividad cardinalidad estimacion costo operador proyeccion filtro
-union interseccion diferencia producto agregacion promedio conteo suma maximo
-minimo ventana muestreo sesgo aproximacion exactitud cobertura ruido margen
-corte similitud peso norma normalizacion radio arista candidato exploracion
-refinamiento
+dominio integridad restriccion disparador vista secuencia cursor deadlock
+commit rollback aislamiento serializacion checkpoint buffer cache sector
+cabecera factor llenado division fusion rebalanceo altura raiz hoja
+selectividad cardinalidad estimacion costo operador proyeccion filtro union
+interseccion diferencia producto agregacion promedio conteo suma maximo
+minimo muestreo sesgo aproximacion exactitud cobertura ruido margen corte
+similitud peso norma normalizacion radio arista candidato exploracion
+refinamiento metadato ponderacion tokenizador lematizacion sinopsis prefijo
+sufijo entropia varianza covarianza gradiente iteracion convergencia
+tolerancia iterador generador gestor almacen respaldo replica fragmento
+instantanea auditoria bitacora trazabilidad
 """.split()
     )
 )

@@ -1,7 +1,7 @@
 import json
 
-from benchmarks.text_corpus import DOCS_RESPUESTA, escribir
-from benchmarks.text_queries import construir_consultas
+from benchmarks.text_corpus import DOCS_RESPUESTA, PALABRAS, VACIAS, escribir
+from benchmarks.text_queries import TERMINOS, construir_consultas
 
 
 def test_banco_respeta_los_grupos():
@@ -37,6 +37,11 @@ def test_consultas_no_comparten_terminos():
     banco = construir_consultas()
     usados = [termino for consulta in banco for termino in consulta["terminos"]]
     assert len(usados) == len(set(usados))
+
+
+def test_terminos_de_consulta_no_son_palabras_del_ruido():
+    assert not set(TERMINOS) & set(PALABRAS)
+    assert not set(TERMINOS) & set(VACIAS)
 
 
 def test_pocos_documentos_es_error(tmp_path):

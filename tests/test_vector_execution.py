@@ -20,9 +20,8 @@ def _temp_dir(prefix):
     base = tempfile.gettempdir()
     if os.path.abspath(base) == os.path.abspath(os.getcwd()):
         local = os.environ.get("LOCALAPPDATA")
-        base = os.path.join(local, "Temp") if local else base
-    base = os.path.join(base, "bd2-tests")
-    os.makedirs(base, exist_ok=True)
+        if local:
+            base = os.path.join(local, "Temp")
     path = os.path.join(base, f"{prefix}{uuid.uuid4().hex}")
     os.makedirs(path)
     return path

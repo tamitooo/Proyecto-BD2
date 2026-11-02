@@ -35,5 +35,11 @@ frontend/.vite/
 # Datos de la demo creados por el API
 backend/data/
 
+# Corpus sintetico de los experimentos de texto (se regenera con la semilla)
+data/text/
+
+# Salida temporal de pruebas
+.ptmp/
+
 # IDE
 .idea/

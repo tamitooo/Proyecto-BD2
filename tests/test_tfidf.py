@@ -2,7 +2,14 @@ import math
 
 import pytest
 
-from text import BM25Statistics, TFIDFWeighter
+from text import (
+    BM25Ranker,
+    BM25Statistics,
+    TFIDFRanker,
+    TFIDFWeighter,
+    sparse_cosine_similarity,
+)
+from vector import cosine_similarity
 
 
 def build_stats():
@@ -214,3 +221,287 @@ def test_pesos_reflejan_cambios_en_la_coleccion():
 
     assert weighter.idf("base") == pytest.approx(math.log10(3 / 1))
     assert weighter.idf("base") > before
+
+
+def test_coseno_coincide_con_el_ejemplo_de_la_clase():
+    # Diapositiva 68: el documento va sin IDF y la consulta con TF-IDF.
+    query = {"mejor": 1.3, "carro": 2.0, "seguro": 3.0}
+    document = {"auto": 1.0, "carro": 1.0, "seguro": 1.3}
+
+    assert sparse_cosine_similarity(query, document) == pytest.approx(0.8, abs=0.01)
+
+
+def test_coseno_coincide_con_la_version_densa():
+    first = {"a": 1.0, "b": 2.0, "c": 3.0}
+    second = {"b": 4.0, "c": 0.5, "d": 2.0}
+
+    assert sparse_cosine_similarity(first, second) == pytest.approx(
+        cosine_similarity([1.0, 2.0, 3.0, 0.0], [0.0, 4.0, 0.5, 2.0])
+    )
+
+
+def test_coseno_de_un_vector_consigo_mismo_es_uno():
+    vector = {"base": 0.3, "dato": 1.7}
+
+    assert sparse_cosine_similarity(vector, vector) == pytest.approx(1.0)
+
+
+def test_coseno_es_simetrico():
+    first = {"a": 1.0, "b": 2.0, "c": 3.0}
+    second = {"b": 4.0}
+
+    assert sparse_cosine_similarity(first, second) == pytest.approx(
+        sparse_cosine_similarity(second, first)
+    )
+
+
+def test_coseno_sin_terminos_en_comun_es_cero():
+    assert sparse_cosine_similarity({"a": 1.0}, {"b": 1.0}) == 0.0
+
+
+def test_coseno_con_vector_vacio_es_cero():
+    assert sparse_cosine_similarity({}, {"a": 1.0}) == 0.0
+    assert sparse_cosine_similarity({"a": 1.0}, {}) == 0.0
+    assert sparse_cosine_similarity({}, {}) == 0.0
+
+
+def test_coseno_con_vector_de_ceros_es_cero():
+    assert sparse_cosine_similarity({"a": 0.0}, {"a": 1.0}) == 0.0
+
+
+def test_coseno_no_depende_de_la_longitud_del_vector():
+    vector = {"a": 1.0, "b": 2.0}
+    scaled = {term: weight * 100 for term, weight in vector.items()}
+
+    assert sparse_cosine_similarity(vector, scaled) == pytest.approx(1.0)
+
+
+def test_coseno_con_magnitudes_extremas():
+    assert sparse_cosine_similarity({"a": 1e300}, {"a": 1e300}) == pytest.approx(1.0)
+    assert sparse_cosine_similarity({"a": 1e-300}, {"a": 1e-300}) == pytest.approx(1.0)
+
+
+def test_coseno_rechaza_pesos_no_finitos():
+    with pytest.raises(ValueError):
+        sparse_cosine_similarity({"a": math.inf}, {"a": 1.0})
+    with pytest.raises(ValueError):
+        sparse_cosine_similarity({"a": 1.0}, {"a": math.nan})
+
+
+def test_coseno_entre_consulta_y_documento_reales():
+    weighter = build_class_example()
+    query = weighter.query_vector(["oro", "plata", "camión"])
+
+    scores = {
+        doc_id: sparse_cosine_similarity(query, weighter.document_vector(doc_id))
+        for doc_id in ("D1", "D2", "D3")
+    }
+
+    assert scores["D2"] > scores["D3"] > scores["D1"] > 0.0
+
+
+def build_ranker():
+    return TFIDFRanker(
+        BM25Statistics.from_documents(
+            {
+                "D1": ["cargamento", "oro", "dañado", "fuego"],
+                "D2": ["entrega", "plata", "llegó", "camión", "color", "plata"],
+                "D3": ["cargamento", "oro", "llegó", "camión"],
+            }
+        )
+    )
+
+
+def test_ranking_requiere_estadisticas_validas():
+    with pytest.raises(TypeError):
+        TFIDFRanker({"base": 1})
+
+
+def test_ranking_ordena_por_similitud_descendente():
+    results = build_ranker().search(["oro", "plata", "camión"], k=3)
+
+    assert [doc_id for doc_id, _ in results] == ["D2", "D3", "D1"]
+    assert [score for _, score in results] == sorted(
+        (score for _, score in results), reverse=True
+    )
+
+
+def test_ranking_coincide_con_el_score_de_cada_documento():
+    ranker = build_ranker()
+    query = ["oro", "plata", "camión"]
+
+    for doc_id, score in ranker.search(query, k=3):
+        assert score == pytest.approx(ranker.score(doc_id, query))
+
+
+def test_ranking_coincide_con_fuerza_bruta():
+    ranker = TFIDFRanker(build_stats())
+    query = ["base", "vectorial", "relacional"]
+
+    expected = sorted(
+        (
+            (doc_id, ranker.score(doc_id, query))
+            for doc_id in (1, 2, 3, 4)
+            if ranker.score(doc_id, query) > 0.0
+        ),
+        key=lambda item: -item[1],
+    )
+
+    results = ranker.search(query, k=4)
+
+    assert [doc_id for doc_id, _ in results] == [doc_id for doc_id, _ in expected]
+    for (_, score), (_, expected_score) in zip(results, expected):
+        assert score == pytest.approx(expected_score)
+
+
+def test_ranking_respeta_k():
+    ranker = build_ranker()
+
+    assert len(ranker.search(["oro", "plata", "camión"], k=2)) == 2
+    assert len(ranker.search(["oro", "plata", "camión"], k=100)) == 3
+
+
+def test_ranking_con_k_no_positivo_es_vacio():
+    assert build_ranker().search(["oro"], k=0) == []
+    assert build_ranker().search(["oro"], k=-1) == []
+
+
+def test_ranking_rechaza_k_no_entero():
+    with pytest.raises(TypeError):
+        build_ranker().search(["oro"], k=1.5)
+
+
+def test_ranking_rechaza_un_str_sin_tokenizar():
+    with pytest.raises(TypeError):
+        build_ranker().search("oro")
+
+
+def test_ranking_sin_resultados():
+    ranker = build_ranker()
+
+    assert ranker.search([]) == []
+    assert ranker.search(["inexistente"]) == []
+    assert TFIDFRanker(BM25Statistics()).search(["oro"]) == []
+
+
+def test_ranking_omite_terminos_presentes_en_toda_la_coleccion():
+    stats = BM25Statistics.from_documents({1: ["base", "dato"], 2: ["base"]})
+
+    assert [doc_id for doc_id, _ in TFIDFRanker(stats).search(["base", "dato"])] == [1]
+    assert TFIDFRanker(stats).search(["base"]) == []
+
+
+def test_ranking_normaliza_por_longitud():
+    stats = BM25Statistics.from_documents(
+        {
+            "corto": ["base", "otro"],
+            "largo": ["base", "uno", "dos", "tres", "cuatro", "cinco"],
+            "resto": ["seis"],
+        }
+    )
+
+    assert TFIDFRanker(stats).search(["base"])[0][0] == "corto"
+
+
+def test_ranking_desempata_igual_que_bm25():
+    stats = BM25Statistics.from_documents(
+        {3: ["base", "dato"], 1: ["base", "dato"], 2: ["base", "dato"], 4: ["otro"]}
+    )
+
+    tfidf = [doc_id for doc_id, _ in TFIDFRanker(stats).search(["base"])]
+    bm25 = [doc_id for doc_id, _ in BM25Ranker(stats).search(["base"])]
+
+    assert tfidf == bm25 == [1, 2, 3]
+
+
+def test_ranking_acepta_ids_heterogeneos():
+    stats = BM25Statistics.from_documents(
+        {1: ["base"], "a": ["base"], (2, 3): ["base"], "b": ["otro"]}
+    )
+
+    assert len(TFIDFRanker(stats).search(["base"], k=3)) == 3
+
+
+def test_ranking_acepta_cualquier_iterable_de_terminos():
+    ranker = build_ranker()
+
+    assert ranker.search(iter(["oro"])) == ranker.search(["oro"])
+    assert ranker.score("D1", iter(["oro"])) == ranker.score("D1", ["oro"])
+
+
+def test_score_de_documento_desconocido_lanza_keyerror():
+    with pytest.raises(KeyError):
+        build_ranker().score("D9", ["oro"])
+
+
+def assert_ranking_coincide_con_score(ranker, query):
+    results = ranker.search(query, k=10)
+
+    assert results
+    for doc_id, score in results:
+        assert score == pytest.approx(ranker.score(doc_id, query))
+
+
+def test_ranking_refleja_documentos_eliminados():
+    stats = build_stats()
+    ranker = TFIDFRanker(stats)
+    ranker.search(["vectorial", "base"])
+
+    stats.remove_document(1)
+
+    assert 1 not in [doc_id for doc_id, _ in ranker.search(["vectorial", "base"])]
+    assert_ranking_coincide_con_score(ranker, ["vectorial", "base"])
+
+
+def test_ranking_refleja_documentos_agregados():
+    stats = build_stats()
+    ranker = TFIDFRanker(stats)
+    ranker.search(["vectorial"])
+
+    stats.add_document(5, ["vectorial", "nuevo"])
+
+    assert 5 in [doc_id for doc_id, _ in ranker.search(["vectorial"])]
+    assert_ranking_coincide_con_score(ranker, ["vectorial"])
+
+
+def test_ranking_detecta_reemplazo_con_la_misma_longitud():
+    stats = build_stats()
+    ranker = TFIDFRanker(stats)
+    ranker.search(["relacional"])
+
+    stats.remove_document(2)
+    stats.add_document(2, ["relacional", "indice", "indice"])
+
+    assert_ranking_coincide_con_score(ranker, ["relacional", "indice"])
+
+
+def test_ranking_tras_vaciar_la_coleccion():
+    stats = build_stats()
+    ranker = TFIDFRanker(stats)
+    ranker.search(["base"])
+
+    stats.clear()
+
+    assert ranker.search(["base"]) == []
+
+
+def test_normas_solo_se_recalculan_si_la_coleccion_cambia():
+    stats = build_stats()
+    ranker = TFIDFRanker(stats)
+
+    norms = ranker.document_norms()
+    assert ranker.document_norms() is norms
+
+    stats.add_document(5, ["nuevo"])
+    assert ranker.document_norms() is not norms
+    assert set(ranker.document_norms()) == {1, 2, 3, 4, 5}
+
+
+def test_normas_coinciden_con_el_vector_de_cada_documento():
+    stats = build_stats()
+    ranker = TFIDFRanker(stats)
+    weighter = TFIDFWeighter(stats)
+
+    for doc_id, norm in ranker.document_norms().items():
+        weights = weighter.document_vector(doc_id).values()
+        assert norm == pytest.approx(math.sqrt(sum(w * w for w in weights)))

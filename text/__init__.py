@@ -2,6 +2,12 @@
 
 from .bm25 import BM25Ranker
 from .statistics import BM25Statistics
-from .tfidf import TFIDFWeighter
+from .tfidf import TFIDFRanker, TFIDFWeighter, sparse_cosine_similarity
 
-__all__ = ["BM25Statistics", "BM25Ranker", "TFIDFWeighter"]
+__all__ = [
+    "BM25Statistics",
+    "BM25Ranker",
+    "TFIDFRanker",
+    "TFIDFWeighter",
+    "sparse_cosine_similarity",
+]

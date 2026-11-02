@@ -17,11 +17,8 @@ from query.vector_queries import VectorQueryError, parse_vector
 
 
 def _temp_dir(prefix):
-    base = tempfile.gettempdir()
-    if os.path.abspath(base) == os.path.abspath(os.getcwd()):
-        local = os.environ.get("LOCALAPPDATA")
-        if local:
-            base = os.path.join(local, "Temp")
+    base = os.environ.get("BD2_TEST_DIR") or os.path.join(os.path.expanduser("~"), ".bd2-tests")
+    os.makedirs(base, exist_ok=True)
     path = os.path.join(base, f"{prefix}{uuid.uuid4().hex}")
     os.makedirs(path)
     return path

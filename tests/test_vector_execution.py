@@ -16,8 +16,11 @@ from query.query_executor import QueryExecutor
 from query.vector_queries import VectorQueryError, parse_vector
 
 
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
 def _temp_dir(prefix):
-    base = os.environ.get("BD2_TEST_DIR") or os.path.join(os.path.expanduser("~"), ".bd2-tests")
+    base = os.environ.get("BD2_TEST_DIR") or os.path.join(_REPO_ROOT, ".bd2-tests")
     os.makedirs(base, exist_ok=True)
     path = os.path.join(base, f"{prefix}{uuid.uuid4().hex}")
     os.makedirs(path)
@@ -25,13 +28,19 @@ def _temp_dir(prefix):
 
 
 class _Engine:
-    """QueryExecutor sobre un catálogo propio (sin las tablas demo de DemoEngine)."""
+    """Catálogo propio (sin tablas demo ni índices persistentes para las pruebas)."""
 
     def __init__(self, directory):
-        self._executor = QueryExecutor(Catalog(data_dir=directory))
+        self.catalog = Catalog(data_dir=directory)
+        self._executor = QueryExecutor(self.catalog)
 
     def run(self, sql):
         return self._executor.execute(sql)
+
+    def create_table(self, name, columns, primary_key="id"):
+        return self.catalog.create_table(
+            name, columns, primary_key=primary_key, primary_key_index=False
+        )
 
 
 class TestParseVector(unittest.TestCase):
@@ -63,8 +72,8 @@ class TestEjecucionVectorial(unittest.TestCase):
     def setUp(self):
         self._dir = _temp_dir("bd2-vec-")
         self.engine = _Engine(self._dir)
-        self.engine.run(
-            "CREATE TABLE imagenes (id INT PRIMARY KEY, embedding VARCHAR(500))"
+        self.engine.create_table(
+            "imagenes", [("id", "INT"), ("embedding", "VARCHAR(500)")]
         )
         for i, vector in enumerate(("[1, 0]", "[0, 1]", "[0.8, 0.6]"), start=1):
             self.engine.run(f"INSERT INTO imagenes VALUES ({i}, '{vector}')")
@@ -151,7 +160,7 @@ class TestTablaSinVectores(unittest.TestCase):
         directory = _temp_dir("bd2-vec-")
         try:
             engine = _Engine(directory)
-            engine.run("CREATE TABLE t (id INT PRIMARY KEY, nombre VARCHAR(10))")
+            engine.create_table("t", [("id", "INT"), ("nombre", "VARCHAR(10)")])
             engine.run("INSERT INTO t VALUES (1, 'hola')")
             resultado = engine.run(
                 "SELECT * FROM t WHERE SIMILAR_TO([1, 0], k=2) USING HNSW"

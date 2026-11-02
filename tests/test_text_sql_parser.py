@@ -21,8 +21,11 @@ from query.query_planner import MatchSpec
 from query.sql_parser import SQLParser, SQLParseError
 
 
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
 def _temp_dir(prefix):
-    base = os.environ.get("BD2_TEST_DIR") or os.path.join(os.path.expanduser("~"), ".bd2-tests")
+    base = os.environ.get("BD2_TEST_DIR") or os.path.join(_REPO_ROOT, ".bd2-tests")
     os.makedirs(base, exist_ok=True)
     path = os.path.join(base, f"{prefix}{uuid.uuid4().hex}")
     os.makedirs(path)
@@ -30,13 +33,19 @@ def _temp_dir(prefix):
 
 
 class _Engine:
-    """QueryExecutor sobre un catálogo propio (sin las tablas demo de DemoEngine)."""
+    """Catálogo propio (sin tablas demo ni índices persistentes para las pruebas)."""
 
     def __init__(self, directory):
-        self._executor = QueryExecutor(Catalog(data_dir=directory))
+        self.catalog = Catalog(data_dir=directory)
+        self._executor = QueryExecutor(self.catalog)
 
     def run(self, sql):
         return self._executor.execute(sql)
+
+    def create_table(self, name, columns, primary_key="id"):
+        return self.catalog.create_table(
+            name, columns, primary_key=primary_key, primary_key_index=False
+        )
 
 
 class TestParserMatch(unittest.TestCase):
@@ -166,7 +175,9 @@ class TestEjecutorSinSoporteTodavia(unittest.TestCase):
         directory = _temp_dir("bd2-match-")
         try:
             engine = _Engine(directory)
-            engine.run("CREATE TABLE documentos (id INT PRIMARY KEY, contenido VARCHAR(200))")
+            engine.create_table(
+                "documentos", [("id", "INT"), ("contenido", "VARCHAR(200)")]
+            )
             resultado = engine.run(
                 "SELECT * FROM documentos WHERE MATCH(contenido, 'hola') USING BM25"
             )

@@ -18,8 +18,8 @@
       "config": "simple",
       "fase": "construccion",
       "grupo": "-",
-      "carga_s": 0.031,
-      "indice_s": 0.083,
+      "carga_s": 0.03,
+      "indice_s": 0.06,
       "tabla_mb": 0.8,
       "indice_mb": 0.1,
       "usa_indice": true
@@ -32,7 +32,7 @@
       "consultas": 12,
       "p10": 1.0,
       "r10": 1.0,
-      "consulta_ms": 1.1
+      "consulta_ms": 0.716
     },
     {
       "dataset_size": 1000,
@@ -42,7 +42,7 @@
       "consultas": 12,
       "p10": 1.0,
       "r10": 1.0,
-      "consulta_ms": 1.036
+      "consulta_ms": 0.697
     },
     {
       "dataset_size": 1000,
@@ -52,7 +52,7 @@
       "consultas": 12,
       "p10": 1.0,
       "r10": 1.0,
-      "consulta_ms": 1.125
+      "consulta_ms": 0.683
     },
     {
       "dataset_size": 1000,
@@ -62,17 +62,17 @@
       "consultas": 36,
       "p10": 1.0,
       "r10": 1.0,
-      "consulta_ms": 1.087
+      "consulta_ms": 0.699
     },
     {
       "dataset_size": 1000,
       "config": "spanish",
       "fase": "construccion",
       "grupo": "-",
-      "carga_s": 0.025,
-      "indice_s": 0.109,
-      "tabla_mb": 0.77,
-      "indice_mb": 0.08,
+      "carga_s": 0.015,
+      "indice_s": 0.066,
+      "tabla_mb": 0.78,
+      "indice_mb": 0.09,
       "usa_indice": true
     },
     {
@@ -83,7 +83,7 @@
       "consultas": 12,
       "p10": 1.0,
       "r10": 1.0,
-      "consulta_ms": 1.358
+      "consulta_ms": 0.799
     },
     {
       "dataset_size": 1000,
@@ -93,7 +93,7 @@
       "consultas": 12,
       "p10": 1.0,
       "r10": 1.0,
-      "consulta_ms": 1.441
+      "consulta_ms": 0.77
     },
     {
       "dataset_size": 1000,
@@ -103,7 +103,7 @@
       "consultas": 12,
       "p10": 1.0,
       "r10": 1.0,
-      "consulta_ms": 1.513
+      "consulta_ms": 0.944
     },
     {
       "dataset_size": 1000,
@@ -113,15 +113,15 @@
       "consultas": 36,
       "p10": 1.0,
       "r10": 1.0,
-      "consulta_ms": 1.437
+      "consulta_ms": 0.838
     },
     {
       "dataset_size": 10000,
       "config": "simple",
       "fase": "construccion",
       "grupo": "-",
-      "carga_s": 0.208,
-      "indice_s": 0.826,
+      "carga_s": 0.106,
+      "indice_s": 0.455,
       "tabla_mb": 5.11,
       "indice_mb": 0.72,
       "usa_indice": true
@@ -134,7 +134,7 @@
       "consultas": 12,
       "p10": 1.0,
       "r10": 1.0,
-      "consulta_ms": 1.333
+      "consulta_ms": 0.708
     },
     {
       "dataset_size": 10000,
@@ -144,7 +144,7 @@
       "consultas": 12,
       "p10": 1.0,
       "r10": 1.0,
-      "consulta_ms": 1.173
+      "consulta_ms": 0.663
     },
     {
       "dataset_size": 10000,
@@ -154,7 +154,7 @@
       "consultas": 12,
       "p10": 1.0,
       "r10": 1.0,
-      "consulta_ms": 1.172
+      "consulta_ms": 0.695
     },
     {
       "dataset_size": 10000,
@@ -164,15 +164,15 @@
       "consultas": 36,
       "p10": 1.0,
       "r10": 1.0,
-      "consulta_ms": 1.226
+      "consulta_ms": 0.689
     },
     {
       "dataset_size": 10000,
       "config": "spanish",
       "fase": "construccion",
       "grupo": "-",
-      "carga_s": 0.189,
-      "indice_s": 1.026,
+      "carga_s": 0.102,
+      "indice_s": 0.554,
       "tabla_mb": 4.95,
       "indice_mb": 0.55,
       "usa_indice": true
@@ -185,7 +185,7 @@
       "consultas": 12,
       "p10": 1.0,
       "r10": 1.0,
-      "consulta_ms": 1.761
+      "consulta_ms": 0.885
     },
     {
       "dataset_size": 10000,
@@ -195,7 +195,7 @@
       "consultas": 12,
       "p10": 1.0,
       "r10": 1.0,
-      "consulta_ms": 1.577
+      "consulta_ms": 0.84
     },
     {
       "dataset_size": 10000,
@@ -205,7 +205,7 @@
       "consultas": 12,
       "p10": 1.0,
       "r10": 1.0,
-      "consulta_ms": 1.757
+      "consulta_ms": 0.881
     },
     {
       "dataset_size": 10000,
@@ -215,15 +215,15 @@
       "consultas": 36,
       "p10": 1.0,
       "r10": 1.0,
-      "consulta_ms": 1.698
+      "consulta_ms": 0.869
     },
     {
       "dataset_size": 100000,
       "config": "simple",
       "fase": "construccion",
       "grupo": "-",
-      "carga_s": 2.284,
-      "indice_s": 8.121,
+      "carga_s": 1.571,
+      "indice_s": 7.966,
       "tabla_mb": 44.4,
       "indice_mb": 5.58,
       "usa_indice": true
@@ -236,7 +236,7 @@
       "consultas": 12,
       "p10": 1.0,
       "r10": 1.0,
-      "consulta_ms": 2.975
+      "consulta_ms": 1.938
     },
     {
       "dataset_size": 100000,
@@ -246,7 +246,7 @@
       "consultas": 12,
       "p10": 1.0,
       "r10": 1.0,
-      "consulta_ms": 1.356
+      "consulta_ms": 1.109
     },
     {
       "dataset_size": 100000,
@@ -256,7 +256,7 @@
       "consultas": 12,
       "p10": 1.0,
       "r10": 1.0,
-      "consulta_ms": 1.567
+      "consulta_ms": 1.215
     },
     {
       "dataset_size": 100000,
@@ -266,15 +266,15 @@
       "consultas": 36,
       "p10": 1.0,
       "r10": 1.0,
-      "consulta_ms": 1.966
+      "consulta_ms": 1.42
     },
     {
       "dataset_size": 100000,
       "config": "spanish",
       "fase": "construccion",
       "grupo": "-",
-      "carga_s": 2.165,
-      "indice_s": 10.037,
+      "carga_s": 1.834,
+      "indice_s": 10.01,
       "tabla_mb": 43.11,
       "indice_mb": 4.29,
       "usa_indice": true
@@ -287,7 +287,7 @@
       "consultas": 12,
       "p10": 1.0,
       "r10": 1.0,
-      "consulta_ms": 3.888
+      "consulta_ms": 2.589
     },
     {
       "dataset_size": 100000,
@@ -297,7 +297,7 @@
       "consultas": 12,
       "p10": 1.0,
       "r10": 1.0,
-      "consulta_ms": 1.6
+      "consulta_ms": 1.24
     },
     {
       "dataset_size": 100000,
@@ -307,7 +307,7 @@
       "consultas": 12,
       "p10": 1.0,
       "r10": 1.0,
-      "consulta_ms": 1.875
+      "consulta_ms": 1.298
     },
     {
       "dataset_size": 100000,
@@ -317,7 +317,7 @@
       "consultas": 36,
       "p10": 1.0,
       "r10": 1.0,
-      "consulta_ms": 2.454
+      "consulta_ms": 1.709
     }
   ]
 }

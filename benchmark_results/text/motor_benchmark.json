@@ -1,0 +1,302 @@
+{
+  "meta": {
+    "sizes": [
+      1000,
+      10000,
+      100000
+    ],
+    "k": 10,
+    "repeticiones": 3,
+    "tokenizacion": "lower+split"
+  },
+  "results": [
+    {
+      "dataset_size": 1000,
+      "tecnica": "bm25+tfidf",
+      "fase": "construccion",
+      "grupo": "-",
+      "construccion_s": 0.033,
+      "memoria_mb": 4.36
+    },
+    {
+      "dataset_size": 1000,
+      "tecnica": "bm25",
+      "fase": "consulta",
+      "grupo": "una",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 0.041,
+      "preparacion_s": 0.0
+    },
+    {
+      "dataset_size": 1000,
+      "tecnica": "bm25",
+      "fase": "consulta",
+      "grupo": "tres",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 0.066,
+      "preparacion_s": 0.0
+    },
+    {
+      "dataset_size": 1000,
+      "tecnica": "bm25",
+      "fase": "consulta",
+      "grupo": "larga",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 0.111,
+      "preparacion_s": 0.0
+    },
+    {
+      "dataset_size": 1000,
+      "tecnica": "bm25",
+      "fase": "consulta",
+      "grupo": "todas",
+      "consultas": 36,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 0.072,
+      "preparacion_s": 0.0
+    },
+    {
+      "dataset_size": 1000,
+      "tecnica": "tfidf",
+      "fase": "consulta",
+      "grupo": "una",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 0.036,
+      "preparacion_s": 0.055
+    },
+    {
+      "dataset_size": 1000,
+      "tecnica": "tfidf",
+      "fase": "consulta",
+      "grupo": "tres",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 0.055,
+      "preparacion_s": 0.055
+    },
+    {
+      "dataset_size": 1000,
+      "tecnica": "tfidf",
+      "fase": "consulta",
+      "grupo": "larga",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 0.086,
+      "preparacion_s": 0.055
+    },
+    {
+      "dataset_size": 1000,
+      "tecnica": "tfidf",
+      "fase": "consulta",
+      "grupo": "todas",
+      "consultas": 36,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 0.059,
+      "preparacion_s": 0.055
+    },
+    {
+      "dataset_size": 10000,
+      "tecnica": "bm25+tfidf",
+      "fase": "construccion",
+      "grupo": "-",
+      "construccion_s": 0.387,
+      "memoria_mb": 39.94
+    },
+    {
+      "dataset_size": 10000,
+      "tecnica": "bm25",
+      "fase": "consulta",
+      "grupo": "una",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 0.04,
+      "preparacion_s": 0.0
+    },
+    {
+      "dataset_size": 10000,
+      "tecnica": "bm25",
+      "fase": "consulta",
+      "grupo": "tres",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 0.133,
+      "preparacion_s": 0.0
+    },
+    {
+      "dataset_size": 10000,
+      "tecnica": "bm25",
+      "fase": "consulta",
+      "grupo": "larga",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 0.253,
+      "preparacion_s": 0.0
+    },
+    {
+      "dataset_size": 10000,
+      "tecnica": "bm25",
+      "fase": "consulta",
+      "grupo": "todas",
+      "consultas": 36,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 0.142,
+      "preparacion_s": 0.0
+    },
+    {
+      "dataset_size": 10000,
+      "tecnica": "tfidf",
+      "fase": "consulta",
+      "grupo": "una",
+      "consultas": 12,
+      "p10": 0.975,
+      "r10": 0.975,
+      "consulta_ms": 0.027,
+      "preparacion_s": 0.257
+    },
+    {
+      "dataset_size": 10000,
+      "tecnica": "tfidf",
+      "fase": "consulta",
+      "grupo": "tres",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 0.044,
+      "preparacion_s": 0.257
+    },
+    {
+      "dataset_size": 10000,
+      "tecnica": "tfidf",
+      "fase": "consulta",
+      "grupo": "larga",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 0.071,
+      "preparacion_s": 0.257
+    },
+    {
+      "dataset_size": 10000,
+      "tecnica": "tfidf",
+      "fase": "consulta",
+      "grupo": "todas",
+      "consultas": 36,
+      "p10": 0.9917,
+      "r10": 0.9917,
+      "consulta_ms": 0.047,
+      "preparacion_s": 0.257
+    },
+    {
+      "dataset_size": 100000,
+      "tecnica": "bm25+tfidf",
+      "fase": "construccion",
+      "grupo": "-",
+      "construccion_s": 3.776,
+      "memoria_mb": 404.58
+    },
+    {
+      "dataset_size": 100000,
+      "tecnica": "bm25",
+      "fase": "consulta",
+      "grupo": "una",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 0.17,
+      "preparacion_s": 0.0
+    },
+    {
+      "dataset_size": 100000,
+      "tecnica": "bm25",
+      "fase": "consulta",
+      "grupo": "tres",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 0.516,
+      "preparacion_s": 0.0
+    },
+    {
+      "dataset_size": 100000,
+      "tecnica": "bm25",
+      "fase": "consulta",
+      "grupo": "larga",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 1.293,
+      "preparacion_s": 0.0
+    },
+    {
+      "dataset_size": 100000,
+      "tecnica": "bm25",
+      "fase": "consulta",
+      "grupo": "todas",
+      "consultas": 36,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 0.66,
+      "preparacion_s": 0.0
+    },
+    {
+      "dataset_size": 100000,
+      "tecnica": "tfidf",
+      "fase": "consulta",
+      "grupo": "una",
+      "consultas": 12,
+      "p10": 0.875,
+      "r10": 0.875,
+      "consulta_ms": 0.093,
+      "preparacion_s": 4.275
+    },
+    {
+      "dataset_size": 100000,
+      "tecnica": "tfidf",
+      "fase": "consulta",
+      "grupo": "tres",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 0.253,
+      "preparacion_s": 4.275
+    },
+    {
+      "dataset_size": 100000,
+      "tecnica": "tfidf",
+      "fase": "consulta",
+      "grupo": "larga",
+      "consultas": 12,
+      "p10": 1.0,
+      "r10": 1.0,
+      "consulta_ms": 0.409,
+      "preparacion_s": 4.275
+    },
+    {
+      "dataset_size": 100000,
+      "tecnica": "tfidf",
+      "fase": "consulta",
+      "grupo": "todas",
+      "consultas": 36,
+      "p10": 0.9583,
+      "r10": 0.9583,
+      "consulta_ms": 0.252,
+      "preparacion_s": 4.275
+    }
+  ]
+}

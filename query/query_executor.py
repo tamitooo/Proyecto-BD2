@@ -9,6 +9,7 @@ from query.catalog import Catalog,CatalogError,TableMetadata
 from query.query_planner import EQUALITY_OPERATORS,OrderBy,Predicate,QueryPlanner,DistanceExpression
 from query.query_result import QueryResult
 from query.spatial_queries import SpatialExecutor,SpatialQueryError,find_distance_predicate,find_polygon_predicate,find_spatial_order_by,spatial_kind
+from query.vector_queries import VectorExecutor,VectorQueryError
 from query.sql_parser import *
 from spatial.geo import euclidean,haversine
 from transactions.lock_manager import LockManager
@@ -50,7 +51,7 @@ class QueryExecutor:
     # ---------- SELECT ----------
     def _select(self,s):
         q=s.query_spec;self._resolve_named_points(q);t=self.catalog.get_table(q.table);self._validate_select(s,t)
-        if getattr(q,"similarity",None):raise QueryExecutionError("SIMILAR_TO aún no lo ejecuta el motor; llega con el issue #90 (ejecutor vectorial)")
+        if getattr(q,"similarity",None):return self._vector(s,t,q.similarity)
         if getattr(q,"match",None):raise QueryExecutionError("MATCH aún no lo ejecuta el motor; llega con el issue #60 (ejecutor textual)")
         kind=spatial_kind(q)
         if kind:
@@ -94,6 +95,14 @@ class QueryExecutor:
             raise
         projected,cols=self._project(rows,s.columns)
         return QueryResult.ok("SELECT",columns=cols,rows=projected,affected_rows=len(projected),execution_plan={**plan,"spatial":True,"kind":kind})
+    def _vector(self,s,t,spec):
+        try:
+            rows,plan=VectorExecutor(self.catalog).execute(t,spec,limit=s.limit)
+        except VectorQueryError as e:
+            raise QueryExecutionError(str(e))
+        projected,cols=self._project(rows,s.columns)
+        if s.limit is not None:projected=projected[:s.limit]
+        return QueryResult.ok("SELECT",columns=cols,rows=projected,affected_rows=len(projected),execution_plan={**plan,"similarity":True})
     def _filter_spatial_linear(self,rows,preds):
         out=list(rows)
         for p in preds:

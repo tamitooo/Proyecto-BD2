@@ -9,11 +9,21 @@ Cubre la sintaxis del enunciado:
 #56 es solo el parser: el ejecutor textual llega con #60 y el plan con #61.
 """
 
+import os
+import shutil
+import tempfile
 import unittest
+import uuid
 
 from backend.engine import DemoEngine
 from query.query_planner import MatchSpec
 from query.sql_parser import SQLParser, SQLParseError
+
+
+def _temp_dir(prefix):
+    path = os.path.join(tempfile.gettempdir(), f"{prefix}{uuid.uuid4().hex}")
+    os.makedirs(path)
+    return path
 
 
 class TestParserMatch(unittest.TestCase):
@@ -140,13 +150,17 @@ class TestEjecutorSinSoporteTodavia(unittest.TestCase):
     """Mientras #60 no exista, el motor debe fallar con un mensaje explícito."""
 
     def test_select_match_devuelve_error_claro(self):
-        engine = DemoEngine()
-        engine.run("CREATE TABLE documentos (id INT PRIMARY KEY, contenido VARCHAR(200))")
-        resultado = engine.run(
-            "SELECT * FROM documentos WHERE MATCH(contenido, 'hola') USING BM25"
-        )
-        self.assertFalse(resultado.success)
-        self.assertIn("issue #60", resultado.error or "")
+        directory = _temp_dir("bd2-match-")
+        try:
+            engine = DemoEngine(data_dir=directory, seed=False)
+            engine.run("CREATE TABLE documentos (id INT PRIMARY KEY, contenido VARCHAR(200))")
+            resultado = engine.run(
+                "SELECT * FROM documentos WHERE MATCH(contenido, 'hola') USING BM25"
+            )
+            self.assertFalse(resultado.success)
+            self.assertIn("issue #60", resultado.error or "")
+        finally:
+            shutil.rmtree(directory, ignore_errors=True)
 
 
 if __name__ == "__main__":

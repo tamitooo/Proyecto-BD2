@@ -9,11 +9,21 @@ Cubre la sintaxis del enunciado:
 #86 es solo el parser: el ejecutor vectorial llega con #90 y el plan con #91.
 """
 
+import os
+import shutil
+import tempfile
 import unittest
+import uuid
 
 from backend.engine import DemoEngine
 from query.query_planner import SimilaritySpec
 from query.sql_parser import SQLParser, SQLParseError
+
+
+def _temp_dir(prefix):
+    path = os.path.join(tempfile.gettempdir(), f"{prefix}{uuid.uuid4().hex}")
+    os.makedirs(path)
+    return path
 
 
 class TestParserSimilarTo(unittest.TestCase):
@@ -161,16 +171,21 @@ class TestParserSimilarToErrores(unittest.TestCase):
 
 
 class TestEjecutorSinSoporteTodavia(unittest.TestCase):
-    """Mientras #90 no exista, el motor debe fallar con un mensaje explícito."""
+    """Tras #90, buscar por archivo exige ExtractFeatures (#107)."""
 
-    def test_select_similar_to_devuelve_error_claro(self):
-        engine = DemoEngine()
-        engine.run("CREATE TABLE imagenes (id INT PRIMARY KEY)")
-        resultado = engine.run(
-            "SELECT * FROM imagenes WHERE SIMILAR_TO('foto.jpg', k=10)"
-        )
-        self.assertFalse(resultado.success)
-        self.assertIn("issue #90", resultado.error or "")
+    def test_select_similar_to_por_archivo_pide_extractfeatures(self):
+        directory = _temp_dir("bd2-sim-")
+        try:
+            engine = DemoEngine(data_dir=directory, seed=False)
+            engine.run("CREATE TABLE imagenes (id INT PRIMARY KEY, embedding VARCHAR(100))")
+            engine.run("INSERT INTO imagenes VALUES (1, '[1, 0]')")
+            resultado = engine.run(
+                "SELECT * FROM imagenes WHERE SIMILAR_TO('foto.jpg', k=10)"
+            )
+            self.assertFalse(resultado.success)
+            self.assertIn("#107", resultado.error or "")
+        finally:
+            shutil.rmtree(directory, ignore_errors=True)
 
 
 if __name__ == "__main__":

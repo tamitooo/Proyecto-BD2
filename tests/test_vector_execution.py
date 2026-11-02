@@ -5,10 +5,20 @@ extracción de características (#107) no exista; el vector de consulta se pasa
 como literal. Se cubren HNSW, IVF y las tres métricas.
 """
 
+import os
+import shutil
+import tempfile
 import unittest
+import uuid
 
 from backend.engine import DemoEngine
 from query.vector_queries import VectorQueryError, parse_vector
+
+
+def _temp_dir(prefix):
+    path = os.path.join(tempfile.gettempdir(), f"{prefix}{uuid.uuid4().hex}")
+    os.makedirs(path)
+    return path
 
 
 class TestParseVector(unittest.TestCase):
@@ -38,12 +48,16 @@ class TestEjecucionVectorial(unittest.TestCase):
     """SIMILAR_TO sobre una tabla con la columna embedding."""
 
     def setUp(self):
-        self.engine = DemoEngine(seed=False)
+        self._dir = _temp_dir("bd2-vec-")
+        self.engine = DemoEngine(data_dir=self._dir, seed=False)
         self.engine.run(
             "CREATE TABLE imagenes (id INT PRIMARY KEY, embedding VARCHAR(500))"
         )
         for i, vector in enumerate(("[1, 0]", "[0, 1]", "[0.8, 0.6]"), start=1):
             self.engine.run(f"INSERT INTO imagenes VALUES ({i}, '{vector}')")
+
+    def tearDown(self):
+        shutil.rmtree(self._dir, ignore_errors=True)
 
     def ids(self, result):
         return [row["id"] for row in result.rows]
@@ -121,14 +135,18 @@ class TestEjecucionVectorial(unittest.TestCase):
 
 class TestTablaSinVectores(unittest.TestCase):
     def test_error_claro_sin_columna_de_vectores(self):
-        engine = DemoEngine(seed=False)
-        engine.run("CREATE TABLE t (id INT PRIMARY KEY, nombre VARCHAR(10))")
-        engine.run("INSERT INTO t VALUES (1, 'hola')")
-        resultado = engine.run(
-            "SELECT * FROM t WHERE SIMILAR_TO([1, 0], k=2) USING HNSW"
-        )
-        self.assertFalse(resultado.success)
-        self.assertIn("columna de vectores", resultado.error or "")
+        directory = _temp_dir("bd2-vec-")
+        try:
+            engine = DemoEngine(data_dir=directory, seed=False)
+            engine.run("CREATE TABLE t (id INT PRIMARY KEY, nombre VARCHAR(10))")
+            engine.run("INSERT INTO t VALUES (1, 'hola')")
+            resultado = engine.run(
+                "SELECT * FROM t WHERE SIMILAR_TO([1, 0], k=2) USING HNSW"
+            )
+            self.assertFalse(resultado.success)
+            self.assertIn("columna de vectores", resultado.error or "")
+        finally:
+            shutil.rmtree(directory, ignore_errors=True)
 
 
 if __name__ == "__main__":

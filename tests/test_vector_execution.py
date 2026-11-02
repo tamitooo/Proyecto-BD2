@@ -97,6 +97,15 @@ class TestEjecucionVectorial(unittest.TestCase):
         self.assertEqual(resultado.execution_plan["used_indexes"], ["embedding"])
         self.assertEqual(resultado.execution_plan["planner_type"], "vector_index")
 
+    def test_similarity_score_como_columna(self):
+        resultado = self.engine.run(
+            "SELECT id, SIMILARITY_SCORE() as score FROM imagenes "
+            "WHERE SIMILAR_TO([1, 0], k=2) USING HNSW WITH METRIC=cosine"
+        )
+        self.assertTrue(resultado.success, resultado.error)
+        self.assertEqual(resultado.columns, ["id", "score"])
+        self.assertGreater(resultado.rows[0]["score"], 0)
+
     def test_ivf_euclidiana(self):
         resultado = self.engine.run(
             "SELECT * FROM imagenes WHERE SIMILAR_TO([2, 0], k=3) "

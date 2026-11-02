@@ -11,14 +11,31 @@ import tempfile
 import unittest
 import uuid
 
-from backend.engine import DemoEngine
+from query.catalog import Catalog
+from query.query_executor import QueryExecutor
 from query.vector_queries import VectorQueryError, parse_vector
 
 
 def _temp_dir(prefix):
-    path = os.path.join(tempfile.gettempdir(), f"{prefix}{uuid.uuid4().hex}")
+    base = tempfile.gettempdir()
+    if os.path.abspath(base) == os.path.abspath(os.getcwd()):
+        local = os.environ.get("LOCALAPPDATA")
+        base = os.path.join(local, "Temp") if local else base
+    base = os.path.join(base, "bd2-tests")
+    os.makedirs(base, exist_ok=True)
+    path = os.path.join(base, f"{prefix}{uuid.uuid4().hex}")
     os.makedirs(path)
     return path
+
+
+class _Engine:
+    """QueryExecutor sobre un catálogo propio (sin las tablas demo de DemoEngine)."""
+
+    def __init__(self, directory):
+        self._executor = QueryExecutor(Catalog(data_dir=directory))
+
+    def run(self, sql):
+        return self._executor.execute(sql)
 
 
 class TestParseVector(unittest.TestCase):
@@ -49,7 +66,7 @@ class TestEjecucionVectorial(unittest.TestCase):
 
     def setUp(self):
         self._dir = _temp_dir("bd2-vec-")
-        self.engine = DemoEngine(data_dir=self._dir, seed=False)
+        self.engine = _Engine(self._dir)
         self.engine.run(
             "CREATE TABLE imagenes (id INT PRIMARY KEY, embedding VARCHAR(500))"
         )
@@ -137,7 +154,7 @@ class TestTablaSinVectores(unittest.TestCase):
     def test_error_claro_sin_columna_de_vectores(self):
         directory = _temp_dir("bd2-vec-")
         try:
-            engine = DemoEngine(data_dir=directory, seed=False)
+            engine = _Engine(directory)
             engine.run("CREATE TABLE t (id INT PRIMARY KEY, nombre VARCHAR(10))")
             engine.run("INSERT INTO t VALUES (1, 'hola')")
             resultado = engine.run(

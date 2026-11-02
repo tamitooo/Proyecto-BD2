@@ -15,15 +15,32 @@ import tempfile
 import unittest
 import uuid
 
-from backend.engine import DemoEngine
+from query.catalog import Catalog
+from query.query_executor import QueryExecutor
 from query.query_planner import SimilaritySpec
 from query.sql_parser import SQLParser, SQLParseError
 
 
 def _temp_dir(prefix):
-    path = os.path.join(tempfile.gettempdir(), f"{prefix}{uuid.uuid4().hex}")
+    base = tempfile.gettempdir()
+    if os.path.abspath(base) == os.path.abspath(os.getcwd()):
+        local = os.environ.get("LOCALAPPDATA")
+        base = os.path.join(local, "Temp") if local else base
+    base = os.path.join(base, "bd2-tests")
+    os.makedirs(base, exist_ok=True)
+    path = os.path.join(base, f"{prefix}{uuid.uuid4().hex}")
     os.makedirs(path)
     return path
+
+
+class _Engine:
+    """QueryExecutor sobre un catálogo propio (sin las tablas demo de DemoEngine)."""
+
+    def __init__(self, directory):
+        self._executor = QueryExecutor(Catalog(data_dir=directory))
+
+    def run(self, sql):
+        return self._executor.execute(sql)
 
 
 class TestParserSimilarTo(unittest.TestCase):
@@ -176,7 +193,7 @@ class TestEjecutorSinSoporteTodavia(unittest.TestCase):
     def test_select_similar_to_por_archivo_pide_extractfeatures(self):
         directory = _temp_dir("bd2-sim-")
         try:
-            engine = DemoEngine(data_dir=directory, seed=False)
+            engine = _Engine(directory)
             engine.run("CREATE TABLE imagenes (id INT PRIMARY KEY, embedding VARCHAR(100))")
             engine.run("INSERT INTO imagenes VALUES (1, '[1, 0]')")
             resultado = engine.run(

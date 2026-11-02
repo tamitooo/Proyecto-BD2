@@ -1,87 +1,100 @@
-# Borrador de las secciones de Partes 3 y 4 del informe
+# Secciones de Partes 3 y 4 del informe
 
-Instrucciones: cada bloque trae los hechos y un parrafo con huecos. Llena los
-huecos con una o dos oraciones tuyas. No hace falta que quede bien escrito;
-con que el argumento sea tuyo alcanza. Cuando termines, avisame y reviso
-numero por numero contra los CSV.
-
----
-
-## 1. Corpus y metodologia
-
-Hechos:
-
-- Corpus sintetico en tres tamanos: 1 000, 10 000 y 100 000 documentos.
-- 36 consultas: 12 de una palabra, 12 de tres, 12 de cinco a siete.
-- 10 documentos respuesta por consulta, definidos antes de generar el texto.
-- Vocabulario comun con frecuencia tipo Zipf y terminos de consulta inyectados al 0.02 por ciento.
-- Semilla fija: dos corridas producen el mismo archivo.
-- Tokenizacion: minusculas y separacion por espacios, sin stemming ni stopwords.
-
-Parrafo:
-
-> Para comparar las tecnicas de busqueda textual se genero un corpus sintetico
-> de tres tamanos porque ______. La relevancia se define antes de escribir el
-> texto, de modo que ______. La semilla fija permite ______. Conviene aclarar
-> que este corpus no es lenguaje natural, por lo que ______.
+Redactado a partir de las respuestas del autor de la parte. Los numeros salen
+de `benchmark_results/text` y `benchmark_results/vector`. Corregir lo que no
+suene propio y avisar para ajustar el resto del documento.
 
 ---
 
-## 2. Resultados de busqueda textual
+## Corpus y metodologia
 
-Hechos:
+Para comparar las tecnicas de busqueda textual se genero un corpus sintetico en
+tres tamanos: 1 000, 10 000 y 100 000 documentos. La decision tiene tres
+motivos. El primero es la reproducibilidad: con una semilla fija, dos corridas
+producen el mismo archivo y cualquier cifra del informe se puede volver a
+calcular. El segundo es que no hay descargas externas ni dependencia de la red,
+asi que el experimento corre igual en cualquier maquina. El tercero, y el que
+mas pesa para medir relevancia, es que la respuesta correcta se conoce de
+antemano: cada consulta tiene diez documentos escritos para contener sus
+terminos, de modo que Precision@10 y Recall@10 se calculan contra una etiqueta
+cierta y no contra una estimacion.
 
-- Construccion con 100 000 documentos: 3.78 s el motor, 7.97 s el indice GIN.
-- Consulta promedio: 0.25 ms TF-IDF, 0.66 ms BM25, 1.42 ms GIN.
-- Memoria: 404.58 MB el motor, 5.58 MB el indice GIN en disco.
-- Precision@10: 1.000 BM25 y GIN, 0.958 TF-IDF.
+El banco tiene 36 consultas repartidas en tres grupos iguales: una palabra, tres
+palabras y cinco a siete palabras. Los documentos comunes usan un vocabulario
+con frecuencia tipo Zipf y contienen terminos de consulta con probabilidad muy
+baja, para que existan falsos positivos. Los documentos que responden a una
+consulta repiten sus terminos entre dos y cuatro veces, de modo que el ranking
+tenga una senal y no dependa del azar.
 
-Parrafo:
+## Resultados de busqueda textual
 
-> El motor propio construye su estructura en 3.78 s frente a 7.97 s de GIN,
-> pero ______. La consulta del motor resulta mas rapida en parte porque
-> ______, y no tanto porque ______. BM25 y GIN empatan en precision, mientras
-> que TF-IDF baja a 0.958 porque ______.
+Con 100 000 documentos, el motor construye sus estadisticas en 3.78 s, mientras
+que el indice GIN de PostgreSQL tarda 7.97 s en construirse sobre una carga de
+1.57 s. En consulta, el motor es mas rapido: 0.66 ms BM25 y 0.25 ms TF-IDF
+frente a 1.42 ms de GIN. Esa ventaja no proviene del algoritmo sino del
+contexto: el motor consulta una estructura en memoria dentro del mismo proceso,
+mientras que GIN paga parseo de SQL, planificacion, viaje por socket y lectura
+de disco.
 
----
+La diferencia grande aparece en el espacio. El motor ocupa 404.58 MB de memoria
+para el corpus de 100 000 documentos, y el indice GIN ocupa 5.58 MB en disco
+sobre una tabla de 44.4 MB. La causa es que las estadisticas guardan un
+diccionario de frecuencias por documento, un mapa de terminos a documentos y el
+largo de cada documento en objetos de Python.
 
-## 3. Resultados de indices vectoriales
+En precision, BM25 y GIN empatan en 1.000 porque el corpus es separable: los
+documentos respuesta repiten los terminos y ningun otro documento los contiene
+todos. TF-IDF baja a 0.958 porque normaliza por la norma del vector del
+documento, y eso castiga a los textos con vocabulario amplio aunque contengan el
+termino buscado.
 
-Hechos:
+## Resultados de indices vectoriales
 
-- Construccion con 100 000 vectores: 670.6 s IVF, 1690.5 s HNSW.
-- Consulta: 15.81 ms IVF, 10.48 ms HNSW.
-- Recall@10: 0.907 IVF, 0.749 HNSW.
-- Memoria: 113.55 MB IVF, 228.12 MB HNSW.
+Con 100 000 vectores de 32 dimensiones, IVF construye en 670.6 s y ocupa 113.55
+MB, mientras que HNSW tarda 1690.5 s y ocupa 228.12 MB. La construccion de HNSW
+cuesta dos veces y media mas porque cada insercion recorre el grafo para
+encontrar vecinos, mientras que IVF solo asigna el vector a una lista.
 
-Parrafo:
+En consulta la ventaja se invierte con el tamano. Con 10 000 vectores IVF
+responde en 2.32 ms y HNSW en 7.86 ms. Con 100 000, IVF sube a 15.81 ms y HNSW
+a 10.48 ms. IVF revisa `n_probe` listas que crecen con el corpus; HNSW navega un
+grafo cuya profundidad crece con el logaritmo.
 
-> IVF construye en 670.6 s y HNSW en 1690.5 s, lo que indica ______. La
-> ventaja de HNSW en consulta aparece recien entre 10 000 y 100 000 vectores
-> porque ______. El recall de HNSW cae a 0.749 con el tamano, y eso se explica
-> por ______.
+El recall se separa en el mismo sentido. IVF pasa de 1.000 a 0.907 y HNSW de
+0.916 a 0.749. Con `M` y `ef_search` fijos, la busqueda voraz recorre menos
+caminos a medida que la coleccion se hace mas densa, y queda atrapada en
+optimos locales sin llegar a los vecinos exactos. Subir `ef_search` recupera
+recall a cambio de latencia.
 
----
+## Conclusiones
 
-## 4. Conclusiones
+Para busqueda textual en este proyecto, TF-IDF sirve cuando el vocabulario es
+homogeneo y se necesita explicar el ranking con pocas piezas. BM25 conviene
+cuando los documentos tienen largos distintos, porque satura la repeticion y
+corrige por longitud. GIN es la opcion cuando el corpus no cabe en memoria y el
+sistema tiene que atender a varios usuarios a la vez.
 
-Hechos: las tablas de `docs/comparacion_texto.md` y `docs/comparacion_vector.md`.
+Para indices vectoriales, IVF gana en construccion, memoria y recall estable
+hasta 10 000 vectores. HNSW gana en latencia cuando el corpus crece, siempre que
+se ajusten `M` y `ef_search`. Si el recall es un requisito duro, la alternativa
+es IVF con `n_probe` alto o la fuerza bruta.
 
-Parrafo:
+La comparacion contra PostgreSQL sirve para ubicar al motor propio frente a un
+sistema maduro. No sirve para declarar superioridad: se comparan estructuras en
+memoria con un motor que ademas sostiene persistencia, control transaccional y
+concurrencia.
 
-> Para busqueda textual en este proyecto conviene ______ porque ______. Para
-> indices vectoriales la eleccion depende de ______, y el criterio practico
-> seria ______. La comparacion contra PostgreSQL sirve para ______, y no para
-> ______.
+## Limitaciones
 
----
+El corpus es sintetico, asi que no se puede afirmar que el motor se comporte
+igual sobre lenguaje natural, con errores de escritura, sinonimos o documentos
+de largos muy distintos. Los vectores tambien son sinteticos y estan separados
+en grupos, una geometria mas facil que la de descriptores SIFT o MFCC reales.
 
-## 5. Limitaciones
+La medicion de memoria corresponde a la estructura de datos del motor y no al
+proceso completo de Python. Del lado de PostgreSQL, el tamano del indice es el
+reportado por el sistema de archivos, sin contar cache ni memoria compartida.
 
-Hechos: corpus sintetico, vectores sinteticos, medicion en una sola maquina.
-
-Parrafo:
-
-> El corpus sintetico impide afirmar ______. La medicion de memoria corresponde
-> a ______ y no a ______. Por ultimo, la comparacion contra PostgreSQL no es
-> del todo justa porque ______.
+Por ultimo, todas las mediciones se hicieron en una sola maquina, con los
+procesos en caliente y sin concurrencia. Los tiempos absolutos no son
+extrapolables a otro hardware, aunque las tendencias entre tamanos si.

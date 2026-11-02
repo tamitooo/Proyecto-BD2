@@ -6,46 +6,14 @@ Cubre la sintaxis del enunciado:
 * ``USING TF_IDF`` / ``USING BM25``
 * ``SCORE() AS relevancia`` en las columnas y ``ORDER BY relevancia``
 
-#56 es solo el parser: el ejecutor textual llega con #60 y el plan con #61.
+#56 es solo el parser: la ejecución de MATCH vive en query/text_queries.py
+(#60) y el plan de ejecución textual llega con #61.
 """
 
-import os
-import shutil
-import tempfile
 import unittest
-import uuid
 
-from query.catalog import Catalog
-from query.query_executor import QueryExecutor
 from query.query_planner import MatchSpec
 from query.sql_parser import SQLParser, SQLParseError
-
-
-_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-
-def _temp_dir(prefix):
-    base = os.environ.get("BD2_TEST_DIR") or os.path.join(_REPO_ROOT, ".bd2-tests")
-    os.makedirs(base, exist_ok=True)
-    path = os.path.join(base, f"{prefix}{uuid.uuid4().hex}")
-    os.makedirs(path)
-    return path
-
-
-class _Engine:
-    """Catálogo propio (sin tablas demo ni índices persistentes para las pruebas)."""
-
-    def __init__(self, directory):
-        self.catalog = Catalog(data_dir=directory)
-        self._executor = QueryExecutor(self.catalog)
-
-    def run(self, sql):
-        return self._executor.execute(sql)
-
-    def create_table(self, name, columns, primary_key="id"):
-        return self.catalog.create_table(
-            name, columns, primary_key=primary_key, primary_key_index=False
-        )
 
 
 class TestParserMatch(unittest.TestCase):
@@ -166,25 +134,6 @@ class TestParserMatchErrores(unittest.TestCase):
         self.assertParseError(
             "SELECT * FROM documentos WHERE MATCH(a, 'x') AND MATCH(b, 'y')"
         )
-
-
-class TestEjecutorSinSoporteTodavia(unittest.TestCase):
-    """Mientras #60 no exista, el motor debe fallar con un mensaje explícito."""
-
-    def test_select_match_devuelve_error_claro(self):
-        directory = _temp_dir("bd2-match-")
-        try:
-            engine = _Engine(directory)
-            engine.create_table(
-                "documentos", [("id", "INT"), ("contenido", "VARCHAR(200)")]
-            )
-            resultado = engine.run(
-                "SELECT * FROM documentos WHERE MATCH(contenido, 'hola') USING BM25"
-            )
-            self.assertFalse(resultado.success)
-            self.assertIn("issue #60", resultado.error or "")
-        finally:
-            shutil.rmtree(directory, ignore_errors=True)
 
 
 if __name__ == "__main__":

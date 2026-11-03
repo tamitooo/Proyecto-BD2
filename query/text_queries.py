@@ -81,6 +81,23 @@ class TextExecutor:
             out.append(row)
         return out, self._plan(table, column, ranking, k, len(rows), len(query_terms), build_ms, search_ms, len(out))
 
+    def plan(self, table, spec, *, limit: Optional[int] = None):
+        """Plan que usaría la consulta, sin ejecutar la búsqueda."""
+        column = spec.predicate.column
+        if column not in table.schema.col_names():
+            raise TextQueryError(f"la columna '{column}' no existe en '{table.name}'")
+        documents = sum(1 for _ in table.storage.scan())
+        if not documents:
+            raise TextQueryError(f"la tabla '{table.name}' está vacía")
+        terms = tokenize(spec.predicate.query)
+        if not terms:
+            raise TextQueryError("MATCH requiere al menos un término de búsqueda")
+        ranking = (spec.ranking or _DEFAULT_RANKING).lower()
+        if ranking not in {"bm25", "tf_idf"}:
+            raise TextQueryError(f"modelo de ranking no soportado: {ranking}")
+        k = limit if limit is not None else documents
+        return self._plan(table, column, ranking, k, documents, len(terms), 0.0, 0.0, 0)
+
     @staticmethod
     def _plan(table, column, ranking, k, documents, terms, build_ms, search_ms, rows_out):
         operator = "TEXT_TF_IDF" if ranking == "tf_idf" else "TEXT_BM25"

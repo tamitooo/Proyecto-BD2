@@ -101,6 +101,27 @@ class VectorExecutor:
             out.append(row)
         return out, self._plan(table, column, kind, metric, k, dimension, len(vectors), build_ms, search_ms, len(out))
 
+    def plan(self, table, spec):
+        """Plan que usaría la consulta, sin construir el índice ni buscar."""
+        predicate = spec.predicate
+        column = self._resolve_column(table, predicate.column)
+        target = self._resolve_target(table, predicate, column)
+        _, vectors = self._load_vectors(table, column)
+        if not vectors:
+            raise VectorQueryError(f"la columna '{column}' de '{table.name}' no tiene vectores válidos")
+        dimension = len(vectors[0][1])
+        if len(target) != dimension:
+            raise VectorQueryError(
+                f"el vector de consulta tiene dimensión {len(target)} y la columna "
+                f"'{column}' dimensión {dimension}"
+            )
+        kind = (spec.index_kind or "hnsw").lower()
+        metric = (spec.metric or _DEFAULT_METRIC).lower()
+        if kind not in {"hnsw", "ivf"}:
+            raise VectorQueryError(f"índice no soportado en SIMILAR_TO: {kind}; usa HNSW o IVF")
+        k = max(1, min(predicate.k, len(vectors)))
+        return self._plan(table, column, kind, metric, k, dimension, len(vectors), 0.0, 0.0, 0)
+
     # ------------------------------------------------------------- resolución
     @staticmethod
     def _resolve_column(table, requested: Optional[str]) -> str:

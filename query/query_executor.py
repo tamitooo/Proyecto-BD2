@@ -10,6 +10,8 @@ from query.query_planner import EQUALITY_OPERATORS, OrderBy, Predicate, QueryPla
 from query.query_result import QueryResult
 from query.spatial_queries import SpatialExecutor, SpatialQueryError, find_distance_predicate, find_polygon_predicate, \
     find_spatial_order_by, spatial_kind
+from query.vector_queries import VectorExecutor, VectorQueryError
+from query.text_queries import TextExecutor, TextQueryError
 from query.sql_parser import *
 from spatial.geo import euclidean, haversine
 from transactions.lock_manager import LockManager
@@ -31,6 +33,7 @@ class TransactionState:
 _AGG = re.compile(
     r"^\s*(COUNT|SUM|AVG|MIN|MAX)\s*\(\s*(\*|[A-Za-z_][A-Za-z0-9_]*)\s*\)(?:\s+AS\s+([A-Za-z_][A-Za-z0-9_]*))?\s*$",
     re.I)
+_SCORE = re.compile(r"^\s*(SCORE|SIMILARITY_SCORE)\s*\(\s*\)\s*(?:AS\s+([A-Za-z_][A-Za-z0-9_]*))?\s*$", re.I)
 
 
 class QueryExecutor:
@@ -92,6 +95,10 @@ class QueryExecutor:
         self._resolve_named_points(q);
         t = self.catalog.get_table(q.table);
         self._validate_select(s, t)
+        if getattr(q, "similarity", None):
+            return self._vector(s, t, q.similarity)
+        if getattr(q, "match", None):
+            return self._text(s, t, q.match)
         kind = spatial_kind(q)
         if kind:
             r = self._spatial(s, t, kind)
@@ -149,6 +156,37 @@ class QueryExecutor:
         projected, cols = self._project(rows, s.columns)
         return QueryResult.ok("SELECT", columns=cols, rows=projected, affected_rows=len(projected),
                               execution_plan={**plan, "spatial": True, "kind": kind})
+
+    def _vector(self, s, t, spec):
+        try:
+            rows, plan = VectorExecutor(self.catalog).execute(t, spec, limit=s.limit)
+        except VectorQueryError as e:
+            raise QueryExecutionError(str(e))
+        projected, cols = self._project(rows, s.columns)
+        if s.limit is not None: projected = projected[:s.limit]
+        return QueryResult.ok("SELECT", columns=cols, rows=projected, affected_rows=len(projected),
+                              execution_plan={**plan, "similarity": True})
+
+    def _text(self, s, t, spec):
+        try:
+            rows, plan = TextExecutor(self.catalog).execute(t, spec, limit=s.limit)
+        except TextQueryError as e:
+            raise QueryExecutionError(str(e))
+        q = s.query_spec
+        alias = self._score_alias(s.columns)
+        if q.order_by and alias and q.order_by[0].column == alias:
+            rows.sort(key=lambda r: r["_score"], reverse=not q.order_by[0].descending)
+        projected, cols = self._project(rows, s.columns)
+        if s.limit is not None: projected = projected[:s.limit]
+        return QueryResult.ok("SELECT", columns=cols, rows=projected, affected_rows=len(projected),
+                              execution_plan={**plan, "text": True})
+
+    @staticmethod
+    def _score_alias(columns):
+        for x in columns:
+            m = _SCORE.match(x)
+            if m: return m.group(2) or "score"
+        return None
 
     def _filter_spatial_linear(self, rows, preds):
         out = list(rows)
@@ -361,6 +399,10 @@ class QueryExecutor:
             self._resolve_named_points(q);
             t = self.catalog.get_table(q.table);
             kind = spatial_kind(q)
+            if getattr(q, "similarity", None):
+                raise QueryExecutionError("EXPLAIN de SIMILAR_TO llega con el issue #91 (plan vectorial)")
+            if getattr(q, "match", None):
+                raise QueryExecutionError("EXPLAIN de MATCH llega con el issue #61 (plan textual)")
             if kind and self.catalog.spatial_index_for(t.name, (
             find_spatial_order_by(q).distance.column if kind == "knn" else (
             find_polygon_predicate(q).column if kind == "polygon" else find_distance_predicate(q).distance.column))):
@@ -533,14 +575,27 @@ class QueryExecutor:
 
     def _project(self, rows, columns):
         if columns == ("*",): return [dict(r) for r in rows], (list(rows[0].keys()) if rows else [])
-        agg = self._aggregates(columns);
-        names = [];
-        out = []
+        targets = [];
+        star = False
         for x in columns:
-            m = _AGG.match(x);
-            names.append((m.group(3) or f"{m.group(1).lower()}_{'all' if m.group(2) == '*' else m.group(2)}") if m else
-                         x.split('.')[-1])
-        for r in rows: out.append({n: r.get(n) for n in names})
+            if x == "*":
+                star = True
+                continue
+            m = _AGG.match(x)
+            if m:
+                targets.append((m.group(3) or f"{m.group(1).lower()}_{'all' if m.group(2) == '*' else m.group(2)}", None))
+                continue
+            sm = _SCORE.match(x)
+            if sm:
+                targets.append((sm.group(2) or "score", "_score"))
+                continue
+            targets.append((x.split('.')[-1], x.split('.')[-1]))
+        names = (list(rows[0].keys()) if star and rows else []) + [name for name, _ in targets]
+        out = []
+        for r in rows:
+            row = dict(r) if star else {}
+            for name, source in targets: row[name] = r.get(source)
+            out.append(row)
         return out, names
 
     # ---------- validation/helpers ----------

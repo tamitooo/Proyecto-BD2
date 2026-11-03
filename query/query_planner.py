@@ -70,13 +70,85 @@ class JoinSpec:
 
 
 @dataclass(frozen=True)
+class SimilarityPredicate:
+    """Predicado ``SIMILAR_TO(objetivo, k=N)`` de la búsqueda vectorial (Parte 4)."""
+
+    target: Any;
+    k: int = 10;
+    column: Optional[str] = None
+
+    @property
+    def is_similarity(self): return True
+
+    @property
+    def is_match(self): return False
+
+    @property
+    def is_spatial(self): return False
+
+    @property
+    def operator(self): return "similar_to"
+
+    @property
+    def value(self): return self.target
+
+    @property
+    def distance(self): return None
+
+
+@dataclass(frozen=True)
+class SimilaritySpec:
+    """Búsqueda vectorial completa: predicado + índice + métrica (USING ...)."""
+
+    predicate: SimilarityPredicate;
+    index_kind: Optional[str] = None;
+    metric: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class MatchPredicate:
+    """Predicado ``MATCH(columna, 'texto')`` de la búsqueda textual (Parte 3)."""
+
+    column: str;
+    query: str
+
+    @property
+    def is_match(self): return True
+
+    @property
+    def is_similarity(self): return False
+
+    @property
+    def is_spatial(self): return False
+
+    @property
+    def operator(self): return "match"
+
+    @property
+    def value(self): return self.query
+
+    @property
+    def distance(self): return None
+
+
+@dataclass(frozen=True)
+class MatchSpec:
+    """Búsqueda textual completa: predicado + modelo de ranking (USING ...)."""
+
+    predicate: MatchPredicate;
+    ranking: Optional[str] = None
+
+
+@dataclass(frozen=True)
 class QuerySpec:
     table: str;
     predicates: Tuple[Predicate, ...] = ();
     order_by: Tuple[OrderBy, ...] = ();
     group_by: Tuple[str, ...] = ();
     joins: Tuple[JoinSpec, ...] = ();
-    or_groups: Tuple[Tuple[Predicate, ...], ...] = ()
+    or_groups: Tuple[Tuple[Predicate, ...], ...] = ();
+    similarity: Optional[SimilaritySpec] = None;
+    match: Optional[MatchSpec] = None
 
     @property
     def has_disjunction(self): return bool(self.or_groups)

@@ -2,7 +2,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from typing import Any, List, Optional, Tuple
-from query.query_planner import DistanceExpression, JoinSpec, OrderBy, PolygonPredicate, Predicate, QuerySpec
+from query.query_planner import DistanceExpression, JoinSpec, MatchPredicate, MatchSpec, OrderBy, PolygonPredicate, Predicate, QuerySpec, SimilarityPredicate, SimilaritySpec
 
 _ID = r"[A-Za-z_][A-Za-z0-9_]*";
 _QID = rf"{_ID}(?:\.{_ID})?"
@@ -192,6 +192,10 @@ class SQLParser:
                 depth += 1
             elif c == ')':
                 depth -= 1
+            elif c == '[':
+                depth += 1
+            elif c == ']':
+                depth -= 1
             elif c == sep and depth == 0:
                 out.append(text[start:i].strip());start = i + 1
             i += 1
@@ -209,7 +213,7 @@ class SQLParser:
         if not m: raise SQLParseError("FROM requires table")
         table = m.group(1);
         rest = tail[m.end():]
-        marks = self._scan_top(rest, ["WHERE", "GROUP BY", "ORDER BY", "LIMIT"]);
+        marks = self._scan_top(rest, ["WHERE", "USING", "GROUP BY", "ORDER BY", "LIMIT"]);
         marks.sort()
         join_text = rest[:marks[0][0]].strip() if marks else rest.strip();
         clauses = {}
@@ -218,11 +222,31 @@ class SQLParser:
         joins = self._joins(join_text);
         groups = self._where_groups(clauses["WHERE"]) if "WHERE" in clauses else ();
         preds = tuple(p for g in groups for p in g)
+        index_kind, metric = self._using(clauses["USING"]) if clauses.get("USING") else (None, None)
+        similar = tuple(p for p in preds if getattr(p, "is_similarity", False))
+        matched = tuple(p for p in preds if getattr(p, "is_match", False))
+        if len(similar) > 1:
+            raise SQLParseError("solo se admite un SIMILAR_TO por consulta")
+        if len(matched) > 1:
+            raise SQLParseError("solo se admite un MATCH por consulta")
+        if similar and matched:
+            raise SQLParseError("no se puede combinar SIMILAR_TO con MATCH en la misma consulta")
+        if similar or matched:
+            preds = tuple(p for p in preds if not getattr(p, "is_similarity", False) and not getattr(p, "is_match", False))
+        if index_kind and not (similar or matched):
+            raise SQLParseError(f"USING {index_kind} requiere SIMILAR_TO(...) o MATCH(...)")
+        if similar and index_kind not in (None, "hnsw", "ivf"):
+            raise SQLParseError(f"USING {index_kind} no aplica a SIMILAR_TO; usa HNSW o IVF")
+        if matched and index_kind not in (None, "tf_idf", "bm25"):
+            raise SQLParseError(f"USING {index_kind} no aplica a MATCH; usa TF_IDF o BM25")
+        similarity = SimilaritySpec(similar[0], index_kind, metric) if similar else None
+        match_spec = MatchSpec(matched[0], index_kind) if matched else None
         group = tuple(x.split('.')[-1] for x in self._split(clauses.get("GROUP BY", ""))) if clauses.get(
             "GROUP BY") else ()
         order = self._order(clauses.get("ORDER BY"));
         limit = int(clauses["LIMIT"]) if clauses.get("LIMIT") else None
-        return SelectStatement(columns, QuerySpec(table, preds, order, group, joins, groups if len(groups) > 1 else ()),
+        return SelectStatement(columns, QuerySpec(table=table, predicates=preds, order_by=order, group_by=group, joins=joins,
+                                                  or_groups=groups if len(groups) > 1 else (), similarity=similarity, match=match_spec),
                                limit)
 
     def _joins(self, text):
@@ -379,6 +403,10 @@ class SQLParser:
             pos = self._ws(text, pos)
             poly = self._polygon(text, pos)
             if poly: out.append(poly[0]); pos = poly[1]; pos = self._consume_and(text, pos); continue
+            sim = self._similar_expr(text, pos)
+            if sim: out.append(sim[0]); pos = sim[1]; pos = self._consume_and(text, pos); continue
+            matched = self._match_expr(text, pos)
+            if matched: out.append(matched[0]); pos = matched[1]; pos = self._consume_and(text, pos); continue
             dist = self._distance_expr(text[pos:])
             if dist:
                 expr, end = dist;
@@ -468,6 +496,77 @@ class SQLParser:
             ring.append((float(self._literal(xy[0])), float(self._literal(xy[1]))))
         if len(ring) < 3: raise SQLParseError("polígono necesita 3 vértices")
         return PolygonPredicate(col, tuple(ring)), ci + 1
+
+    def _similar_expr(self, text, pos):
+        m = re.match(r"SIMILAR_TO\s*\(", text[pos:], re.I)
+        if not m: return None
+        oi = pos + text[pos:].find('(');
+        ci = self._match_paren(text, oi)
+        if ci is None: raise SQLParseError("SIMILAR_TO sin paréntesis de cierre")
+        parts = self._split(text[oi + 1:ci])
+        if not parts or not parts[0].strip():
+            raise SQLParseError("SIMILAR_TO requiere un objetivo: archivo, columna o vector literal")
+        target = self._similar_target(parts[0]);
+        k = 10
+        for extra in parts[1:]:
+            mm = re.fullmatch(r"k\s*=\s*(\d+)", extra.strip(), re.I)
+            if not mm: raise SQLParseError(f"argumento inválido en SIMILAR_TO: {extra}; usa k=N")
+            k = int(mm.group(1))
+        if k <= 0: raise SQLParseError("k de SIMILAR_TO debe ser mayor que 0")
+        return SimilarityPredicate(target, k), ci + 1
+
+    @classmethod
+    def _similar_target(cls, tok):
+        tok = tok.strip()
+        if len(tok) >= 2 and tok[0] == tok[-1] and tok[0] in "'\"":
+            return tok[1:-1].replace(tok[0] * 2, tok[0])
+        if tok.startswith('[') and tok.endswith(']'):
+            raw = [x for x in (y.strip() for y in tok[1:-1].split(',')) if x]
+            if not raw: raise SQLParseError("vector literal vacío en SIMILAR_TO")
+            vals = []
+            for x in raw:
+                v = cls._literal(x)
+                if not isinstance(v, (int, float)):
+                    raise SQLParseError(f"vector literal inválido en SIMILAR_TO: {tok}")
+                vals.append(float(v))
+            return tuple(vals)
+        if re.fullmatch(_QID, tok): return tok.split('.')[-1]
+        raise SQLParseError(f"objetivo inválido en SIMILAR_TO: {tok}")
+
+    def _match_expr(self, text, pos):
+        m = re.match(r"MATCH\s*\(", text[pos:], re.I)
+        if not m: return None
+        oi = pos + text[pos:].find('(');
+        ci = self._match_paren(text, oi)
+        if ci is None: raise SQLParseError("MATCH sin paréntesis de cierre")
+        parts = self._split(text[oi + 1:ci])
+        if len(parts) != 2: raise SQLParseError("MATCH usa MATCH(columna, 'texto')")
+        col = parts[0].strip()
+        if not re.fullmatch(_QID, col): raise SQLParseError(f"columna inválida en MATCH: {col}")
+        raw = parts[1].strip()
+        if len(raw) < 2 or raw[0] not in "'\"" or raw[-1] != raw[0]:
+            raise SQLParseError("MATCH requiere el texto entre comillas: MATCH(columna, 'texto')")
+        query = raw[1:-1].replace(raw[0] * 2, raw[0])
+        if not query.strip(): raise SQLParseError("MATCH requiere un texto no vacío")
+        return MatchPredicate(col.split('.')[-1], query), ci + 1
+
+    def _using(self, raw):
+        m = re.fullmatch(r"(?:USING\s+)?([A-Za-z_][A-Za-z0-9_]*)(?:\s+WITH\s+METRIC\s*=\s*([A-Za-z_][A-Za-z0-9_]*))?", raw.strip(), re.I)
+        if not m: raise SQLParseError(f"cláusula USING inválida: {raw}")
+        kind = m.group(1).lower();
+        kind = {"tfidf": "tf_idf"}.get(kind, kind)
+        if kind not in {"hnsw", "ivf", "tf_idf", "bm25"}:
+            raise SQLParseError(f"índice desconocido en USING: {m.group(1)}; usa HNSW, IVF, TF_IDF o BM25")
+        metric = m.group(2)
+        if metric:
+            metric = {"dot": "dot_product", "producto_punto": "dot_product", "dot_product": "dot_product",
+                      "coseno": "cosine", "cosine": "cosine", "euclidiana": "euclidean",
+                      "euclidean": "euclidean"}.get(metric.lower())
+            if metric is None:
+                raise SQLParseError(f"métrica desconocida: {m.group(2)}; usa euclidean, cosine o dot_product")
+            if kind in {"tf_idf", "bm25"}:
+                raise SQLParseError("WITH METRIC solo aplica a USING HNSW/IVF")
+        return kind, metric
 
     @staticmethod
     def _ws(t, p):

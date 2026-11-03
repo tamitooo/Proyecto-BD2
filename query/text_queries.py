@@ -1,6 +1,4 @@
-"""Ejecución de ``MATCH`` con BM25 y TF-IDF + coseno (Parte 3).
-
-Issues #57 (selección del modelo de ranking), #58 (``SCORE()``) y #60
+"""Issues #57 (selección del modelo de ranking), #58 (``SCORE()``) y #60
 (integración con el Query Executor). El tokenizador es provisional hasta que
 el pipeline de SPIMI (#44-#48) defina el preprocesamiento oficial.
 """
@@ -14,6 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from text.bm25 import BM25Ranker
 from text.statistics import BM25Statistics
 from text.tfidf import TFIDFRanker
+from text.preprocessing import tokenize
 
 
 class TextQueryError(Exception):

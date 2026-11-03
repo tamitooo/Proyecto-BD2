@@ -1,0 +1,150 @@
+{
+  "meta": {
+    "sizes": [
+      1000,
+      10000,
+      100000
+    ],
+    "metricas": [
+      "euclidean",
+      "cosine"
+    ],
+    "k": 10,
+    "consultas": 100,
+    "dim": 32,
+    "grupos": 8,
+    "nota": "en 100000 solo se midio euclidean, cosine se omite por costo de construccion"
+  },
+  "results": [
+    {
+      "dataset_size": "1000",
+      "indice": "hnsw",
+      "metrica": "cosine",
+      "construccion_s": "4.399",
+      "consulta_ms": "3.486",
+      "recall10": "0.777",
+      "memoria_mb": "2.31",
+      "n_lists": "",
+      "n_probe": "",
+      "M": "16",
+      "ef_search": "50"
+    },
+    {
+      "dataset_size": "1000",
+      "indice": "hnsw",
+      "metrica": "euclidean",
+      "construccion_s": "2.599",
+      "consulta_ms": "3.345",
+      "recall10": "0.916",
+      "memoria_mb": "2.31",
+      "n_lists": "",
+      "n_probe": "",
+      "M": "16",
+      "ef_search": "50"
+    },
+    {
+      "dataset_size": "1000",
+      "indice": "ivf",
+      "metrica": "cosine",
+      "construccion_s": "0.753",
+      "consulta_ms": "2.718",
+      "recall10": "1.0",
+      "memoria_mb": "1.15",
+      "n_lists": "31",
+      "n_probe": "6",
+      "M": "",
+      "ef_search": ""
+    },
+    {
+      "dataset_size": "1000",
+      "indice": "ivf",
+      "metrica": "euclidean",
+      "construccion_s": "0.26",
+      "consulta_ms": "0.393",
+      "recall10": "1.0",
+      "memoria_mb": "1.15",
+      "n_lists": "31",
+      "n_probe": "6",
+      "M": "",
+      "ef_search": ""
+    },
+    {
+      "dataset_size": "10000",
+      "indice": "hnsw",
+      "metrica": "cosine",
+      "construccion_s": "95.864",
+      "consulta_ms": "7.55",
+      "recall10": "0.692",
+      "memoria_mb": "22.82",
+      "n_lists": "",
+      "n_probe": "",
+      "M": "16",
+      "ef_search": "50"
+    },
+    {
+      "dataset_size": "10000",
+      "indice": "hnsw",
+      "metrica": "euclidean",
+      "construccion_s": "117.09",
+      "consulta_ms": "7.862",
+      "recall10": "0.856",
+      "memoria_mb": "22.82",
+      "n_lists": "",
+      "n_probe": "",
+      "M": "16",
+      "ef_search": "50"
+    },
+    {
+      "dataset_size": "10000",
+      "indice": "ivf",
+      "metrica": "cosine",
+      "construccion_s": "34.004",
+      "consulta_ms": "13.121",
+      "recall10": "0.951",
+      "memoria_mb": "11.17",
+      "n_lists": "100",
+      "n_probe": "10",
+      "M": "",
+      "ef_search": ""
+    },
+    {
+      "dataset_size": "10000",
+      "indice": "ivf",
+      "metrica": "euclidean",
+      "construccion_s": "27.49",
+      "consulta_ms": "2.321",
+      "recall10": "0.949",
+      "memoria_mb": "11.19",
+      "n_lists": "100",
+      "n_probe": "10",
+      "M": "",
+      "ef_search": ""
+    },
+    {
+      "dataset_size": "100000",
+      "indice": "hnsw",
+      "metrica": "euclidean",
+      "construccion_s": "1690.539",
+      "consulta_ms": "10.475",
+      "recall10": "0.749",
+      "memoria_mb": "228.12",
+      "n_lists": "",
+      "n_probe": "",
+      "M": "16",
+      "ef_search": "50"
+    },
+    {
+      "dataset_size": "100000",
+      "indice": "ivf",
+      "metrica": "euclidean",
+      "construccion_s": "670.63",
+      "consulta_ms": "15.814",
+      "recall10": "0.907",
+      "memoria_mb": "113.55",
+      "n_lists": "316",
+      "n_probe": "18",
+      "M": "",
+      "ef_search": ""
+    }
+  ]
+}

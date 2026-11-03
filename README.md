@@ -142,6 +142,46 @@ PostgreSQL debe tener PostGIS disponible:
 CREATE EXTENSION IF NOT EXISTS postgis;
 ```
 
+### Búsqueda textual y vectorial (Partes 3 y 4)
+
+El corpus de los experimentos se genera en local con semilla fija. No requiere
+descargas, no se versiona y dos corridas producen el mismo archivo.
+
+```powershell
+python -m benchmarks.text_corpus --sizes 1000 10000 100000
+```
+
+Escribe `data/text/<tamano>/corpus.jsonl` y `queries.json`, este ultimo con los
+documentos que responden a cada consulta.
+
+Motor propio:
+
+```powershell
+python -m benchmarks.benchmark_text_motor --sizes 1000 10000 100000
+python -m benchmarks.benchmark_vector_ivf_hnsw --sizes 1000 10000
+python -m benchmarks.benchmark_vector_ivf_hnsw --sizes 100000 --metricas euclidean
+```
+
+Baseline GIN de PostgreSQL (opcional). La base indicada en el DSN debe existir;
+el script crea y reemplaza sus propias tablas:
+
+```powershell
+python -m benchmarks.benchmark_text_gin --pg-dsn "host=localhost port=5432 user=postgres password=postgres dbname=bd2_experimentos"
+```
+
+Los resultados quedan en `benchmark_results/text` y `benchmark_results/vector`,
+con un CSV y un JSON por experimento. Las figuras se regeneran con:
+
+```powershell
+python -m benchmarks.generate_text_charts
+python -m benchmarks.generate_vector_charts
+```
+
+Nota de datos: el corpus y los vectores son sinteticos, con semilla fija. La
+relevancia esta definida por construccion, no por juicio humano. Esa decision
+se justifica en `docs/borrador_informe_parte3_4.md` y no se presenta como una
+medicion sobre datos reales.
+
 ### Nota metodológica de Parte 1
 
 El dataset llega a 100 000 registros para búsqueda y espacio. En la corrida histórica usada por el equipo, las mutaciones uno-a-uno (inserción/eliminación/reorganización) se limitaron a una escala menor por el costo de E/S del host; esto se declara como limitación y no se presenta como una medición a 100 000 cuando no lo fue.

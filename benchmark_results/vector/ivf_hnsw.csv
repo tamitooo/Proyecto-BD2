@@ -1,0 +1,11 @@
+dataset_size,indice,metrica,construccion_s,consulta_ms,recall10,memoria_mb,n_lists,n_probe,M,ef_search
+1000,hnsw,cosine,4.399,3.486,0.777,2.31,,,16,50
+1000,hnsw,euclidean,2.599,3.345,0.916,2.31,,,16,50
+1000,ivf,cosine,0.753,2.718,1.0,1.15,31,6,,
+1000,ivf,euclidean,0.26,0.393,1.0,1.15,31,6,,
+10000,hnsw,cosine,95.864,7.55,0.692,22.82,,,16,50
+10000,hnsw,euclidean,117.09,7.862,0.856,22.82,,,16,50
+10000,ivf,cosine,34.004,13.121,0.951,11.17,100,10,,
+10000,ivf,euclidean,27.49,2.321,0.949,11.19,100,10,,
+100000,hnsw,euclidean,1690.539,10.475,0.749,228.12,,,16,50
+100000,ivf,euclidean,670.63,15.814,0.907,113.55,316,18,,

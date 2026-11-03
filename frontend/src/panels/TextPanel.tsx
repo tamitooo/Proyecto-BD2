@@ -21,9 +21,13 @@ export default function TextPanel({ tables, selectedTable, onSelectTable, onRun,
   const [limit, setLimit] = useState(10);
 
   const table = tables.find((t) => t.name === selectedTable) ?? tables[0] ?? null;
-  const columns = table ? table.schema.columnas.map(([name]) => name) : [];
-  const activeColumn = columns.includes(column) ? column : columns[0] ?? '';
-  const canRun = Boolean(table && activeColumn && text.trim() && limit > 0);
+  const schema = table?.schema.columnas ?? [];
+  const columns = schema.map(([name]) => name);
+  const textColumns = schema.filter(([, type]) => /^(VARCHAR|CHAR|TEXT|CLOB|STRING)/i.test(type)).map(([name]) => name);
+  const defaultColumn = textColumns[0] ?? columns[0] ?? '';
+  const activeColumn = columns.includes(column) ? column : defaultColumn;
+  const typeOf = (name: string) => schema.find(([n]) => n === name)?.[1] ?? '';
+  const canRun = Boolean(table && textColumns.length > 0 && activeColumn && text.trim() && limit > 0);
 
   const buildSql = (): string => {
     if (!table) return '';
@@ -49,9 +53,12 @@ export default function TextPanel({ tables, selectedTable, onSelectTable, onRun,
         <label className="field">
           <span>Columna de texto</span>
           <select className="select" value={activeColumn} onChange={(e) => setColumn(e.target.value)}>
-            {columns.map((c) => <option key={c} value={c}>{c}</option>)}
+            {columns.map((c) => <option key={c} value={c}>{c} · {typeOf(c)}</option>)}
           </select>
         </label>
+        {table && textColumns.length === 0 && (
+          <p className="panel__hint alert alert--error">Esta tabla no tiene columnas de texto (VARCHAR).</p>
+        )}
         <label className="field">
           <span>Ranking</span>
           <select className="select" value={ranking} onChange={(e) => setRanking(e.target.value)}>

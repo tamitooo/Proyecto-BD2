@@ -3,6 +3,11 @@
 from .bm25 import BM25Ranker
 from .statistics import BM25Statistics
 from .tfidf import TFIDFRanker, TFIDFWeighter, sparse_cosine_similarity
+from .preprocessing import (
+    DEFAULT_PREPROCESSOR,
+    TextPreprocessor,
+    tokenize,
+)
 
 __all__ = [
     "BM25Statistics",
@@ -10,4 +15,7 @@ __all__ = [
     "TFIDFRanker",
     "TFIDFWeighter",
     "sparse_cosine_similarity",
+    "DEFAULT_PREPROCESSOR",
+    "TextPreprocessor",
+    "tokenize"
 ]

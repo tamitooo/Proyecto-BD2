@@ -19,7 +19,7 @@ export default function QueryPanel({ sql, onChangeSql, onRun, running }: Props) 
       <p className="panel__hint">Ejecuta SQL contra el motor y observa la ruta de acceso elegida.</p>
       <textarea className="sql-editor" value={sql} onChange={(e) => onChangeSql(e.target.value)} />
       <div className="button-row">
-        <button className="button button--primary" type="button" disabled={running} onClick={onRun}>
+        <button className="button button--primary" type="button" disabled={running} onClick={() => onRun()}>
           {running ? 'Ejecutando…' : 'Ejecutar'}
         </button>
         <select className="select" defaultValue="" onChange={(e) => { if (e.target.value) onChangeSql(e.target.value); e.target.value = ''; }}>

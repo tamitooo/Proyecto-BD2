@@ -400,10 +400,10 @@ class QueryExecutor:
             t = self.catalog.get_table(q.table);
             kind = spatial_kind(q)
             if getattr(q, "similarity", None):
-                raise QueryExecutionError("EXPLAIN de SIMILAR_TO llega con el issue #91 (plan vectorial)")
-            if getattr(q, "match", None):
-                raise QueryExecutionError("EXPLAIN de MATCH llega con el issue #61 (plan textual)")
-            if kind and self.catalog.spatial_index_for(t.name, (
+                payload = VectorExecutor(self.catalog).plan(t, q.similarity)
+            elif getattr(q, "match", None):
+                payload = TextExecutor(self.catalog).plan(t, q.match, limit=inner.limit)
+            elif kind and self.catalog.spatial_index_for(t.name, (
             find_spatial_order_by(q).distance.column if kind == "knn" else (
             find_polygon_predicate(q).column if kind == "polygon" else find_distance_predicate(q).distance.column))):
                 op = {"range": "RTREE_RANGE_SCAN", "knn": "RTREE_KNN", "polygon": "RTREE_POLYGON"}[kind];

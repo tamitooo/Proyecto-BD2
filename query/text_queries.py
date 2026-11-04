@@ -1,11 +1,10 @@
 """Issues #57 (selección del modelo de ranking), #58 (``SCORE()``) y #60
-(integración con el Query Executor). El tokenizador es provisional hasta que
-el pipeline de SPIMI (#44-#48) defina el preprocesamiento oficial.
+(integración con el Query Executor). El preprocesamiento viene de
+:mod:`text.preprocessing` para que SQL y motor usen la misma tokenización.
 """
 
 from __future__ import annotations
 
-import re
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -19,15 +18,7 @@ class TextQueryError(Exception):
     pass
 
 
-_TOKEN = re.compile(r"[0-9a-záéíóúüñ]+", re.I)
 _DEFAULT_RANKING = "bm25"
-
-
-def tokenize(value: Any) -> List[str]:
-    """Tokeniza en minúsculas y sin signos; provisional hasta #44-#48."""
-    if value is None:
-        return []
-    return [token.lower() for token in _TOKEN.findall(str(value))]
 
 
 class TextExecutor:

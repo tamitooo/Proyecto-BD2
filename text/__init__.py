@@ -3,6 +3,7 @@
 from .bm25 import BM25Ranker
 from .statistics import BM25Statistics
 from .tfidf import TFIDFRanker, TFIDFWeighter, sparse_cosine_similarity
+from .spimi import SPIMIBlock, SPIMIBlockBuilder
 from .preprocessing import (
     DEFAULT_PREPROCESSOR,
     TextPreprocessor,

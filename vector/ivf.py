@@ -190,6 +190,14 @@ class IVFIndex:
         self._assignments[vector_id] = list_id
         return list_id
 
+    def remove(self, vector_id: Hashable) -> bool:
+        list_id = self._assignments.pop(vector_id, None)
+        if list_id is None:
+            return False
+        del self.lists[list_id][vector_id]
+        self.persist()
+        return True
+
     @staticmethod
     def _as_vector(vector: Iterable[float]) -> Vector:
         values = tuple(float(value) for value in vector)

@@ -144,6 +144,17 @@ CREATE EXTENSION IF NOT EXISTS postgis;
 
 ### Búsqueda textual y vectorial (Partes 3 y 4)
 
+El índice IVF se crea una vez, se guarda en `data/indexes/` y `SIMILAR_TO` lo usa
+mientras la métrica coincida; INSERT, UPDATE y DELETE lo mantienen al día:
+
+```sql
+CREATE INDEX idx_img ON imagenes (embedding) USING IVF WITH METRIC=cosine;
+SELECT id, SIMILARITY_SCORE() AS score FROM imagenes
+    WHERE SIMILAR_TO([0.1, 0.2, 0.3], k=10) USING IVF WITH METRIC=cosine;
+```
+
+Sin ese índice, o con otra métrica, la consulta construye uno temporal.
+
 El corpus de los experimentos se genera en local con semilla fija. No requiere
 descargas, no se versiona y dos corridas producen el mismo archivo.
 

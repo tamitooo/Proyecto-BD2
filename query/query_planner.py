@@ -163,7 +163,7 @@ class IndexMetadata:
     unique: bool = False
 
     def __post_init__(self):
-        if self.kind not in {"hash", "bplus_clustered", "bplus_unclustered", "rtree"}: raise ValueError(
+        if self.kind not in {"hash", "bplus_clustered", "bplus_unclustered", "rtree", "ivf"}: raise ValueError(
             f"unsupported index kind: {self.kind}")
 
 

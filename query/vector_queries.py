@@ -56,6 +56,9 @@ class VectorExecutor:
         predicate = spec.predicate
         column = self._resolve_column(table, predicate.column)
         target = self._resolve_target(table, predicate, column)
+        stored = self._stored_index(table, spec, column)
+        if stored is not None:
+            return self._execute_stored(table, stored, column, target, predicate.k, limit, row_filter)
         rows, vectors = self._load_vectors(table, column, row_filter)
         if not vectors:
             if row_filter is not None:
@@ -97,6 +100,13 @@ class VectorExecutor:
         predicate = spec.predicate
         column = self._resolve_column(table, predicate.column)
         target = self._resolve_target(table, predicate, column)
+        stored = self._stored_index(table, spec, column)
+        if stored is not None:
+            index = stored.implementation
+            self._check_dimension(target, index.dimension, column)
+            k = max(1, min(predicate.k, len(index)))
+            return self._plan(table, column, "ivf", index.metric_name, k, index.dimension, len(index), 0.0, 0.0, 0,
+                              stored=stored)
         _, vectors = self._load_vectors(table, column, row_filter)
         if not vectors:
             if row_filter is not None:
@@ -114,6 +124,57 @@ class VectorExecutor:
             raise VectorQueryError(f"índice no soportado en SIMILAR_TO: {kind}; usa HNSW o IVF")
         k = max(1, min(predicate.k, len(vectors)))
         return self._plan(table, column, kind, metric, k, dimension, len(vectors), 0.0, 0.0, 0)
+
+    def _stored_index(self, table, spec, column):
+        """IVF creado con CREATE INDEX sobre la columna y con la misma métrica, si existe."""
+        if (spec.index_kind or "").lower() != "ivf" or not hasattr(self.catalog, "vector_index_for"):
+            return None
+        metric = (spec.metric or _DEFAULT_METRIC).lower()
+        stored = self.catalog.vector_index_for(table.name, column, metric)
+        return stored if stored is not None and stored.implementation.is_trained else None
+
+    @staticmethod
+    def _check_dimension(target, dimension, column):
+        if len(target) != dimension:
+            raise VectorQueryError(
+                f"el vector de consulta tiene dimensión {len(target)} y la columna "
+                f"'{column}' dimensión {dimension}"
+            )
+
+    def _execute_stored(self, table, stored, column, target, k, limit, row_filter):
+        index = stored.implementation
+        self._check_dimension(target, index.dimension, column)
+        n = len(index)
+        k = max(1, min(k, n))
+        if limit is not None:
+            k = max(1, min(k, int(limit)))
+        started = time.perf_counter()
+        # Con más filtros en el WHERE se amplía la búsqueda hasta reunir k filas que los cumplan.
+        wanted = k if row_filter is None else min(n, 4 * k)
+        while True:
+            try:
+                results = index.search_similar(target, k=wanted)
+            except ValueError as exc:
+                raise VectorQueryError(str(exc)) from None
+            out: List[Dict[str, Any]] = []
+            for result in results:
+                row = dict(table.read_rid(result.vector_id))
+                if row_filter is not None and not row_filter(row):
+                    continue
+                row["_score"] = result.score
+                row["_raw_metric"] = result.raw_metric
+                row["_metric"] = result.metric
+                out.append(row)
+                if len(out) == k:
+                    break
+            if len(out) == k or wanted >= n:
+                break
+            wanted = min(n, 4 * wanted)
+        search_ms = (time.perf_counter() - started) * 1000
+        if row_filter is not None and not out:
+            raise VectorQueryError("ninguna fila cumple el resto del WHERE")
+        return out, self._plan(table, column, "ivf", index.metric_name, k, index.dimension, n, 0.0, search_ms,
+                               len(out), stored=stored)
 
     @staticmethod
     def _resolve_column(table, requested: Optional[str]) -> str:
@@ -208,29 +269,32 @@ class VectorExecutor:
         raise VectorQueryError(f"índice no soportado en SIMILAR_TO: {kind}; usa HNSW o IVF")
 
     @staticmethod
-    def _plan(table, column, kind, metric, k, dimension, n_vectors, build_ms, search_ms, rows_out):
+    def _plan(table, column, kind, metric, k, dimension, n_vectors, build_ms, search_ms, rows_out, stored=None):
         operator = "HNSW_KNN" if kind == "hnsw" else "IVF_KNN"
+        details = {"k": k, "metric": metric, "dimension": dimension, "vectors": n_vectors,
+                   "build_ms": round(build_ms, 3)}
+        index_name = column
+        reason = f"{kind.upper()} con métrica {metric} sobre '{column}'"
+        if stored is not None:
+            index_name = stored.metadata.name
+            reason = f"índice IVF persistido '{index_name}' (métrica {metric}) sobre '{column}'"
+            details.update({"persistent": True, "n_lists": stored.implementation.n_lists,
+                            "n_probe": stored.implementation.n_probe})
         return {
             "table": table.name,
             "planner_type": "vector_index",
             "access_path": operator,
-            "used_indexes": [column],
+            "used_indexes": [index_name],
             "steps": [
                 {
                     "operator": operator,
                     "table": table.name,
-                    "index": column,
-                    "reason": f"{kind.upper()} con métrica {metric} sobre '{column}'",
-                    "details": {
-                        "k": k,
-                        "metric": metric,
-                        "dimension": dimension,
-                        "vectors": n_vectors,
-                        "build_ms": round(build_ms, 3),
-                    },
+                    "index": index_name,
+                    "reason": reason,
+                    "details": details,
                 }
             ],
             "runtime_steps": [
-                {"operator": operator, "elapsed_ms": round(search_ms, 3), "rows_out": rows_out, "index": column}
+                {"operator": operator, "elapsed_ms": round(search_ms, 3), "rows_out": rows_out, "index": index_name}
             ],
         }

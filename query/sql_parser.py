@@ -33,7 +33,7 @@ class DropTableStatement: table: str; if_exists: bool = False
 @dataclass(frozen=True)
 class CreateIndexStatement: table: str; column: str; name: Optional[
     str] = None; unique: bool = False; kind: str = "bplus_unclustered"; if_not_exists: bool = False; column2: Optional[
-    str] = None
+    str] = None; metric: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -121,7 +121,9 @@ class SQLParser:
     _KINDS = {"HASH": "hash", "EXTENDIBLE_HASH": "hash", "BPLUS": "bplus_unclustered",
               "BPLUS_UNCLUSTERED": "bplus_unclustered", "UNCLUSTERED": "bplus_unclustered",
               "BPLUS_CLUSTERED": "bplus_clustered", "CLUSTERED": "bplus_clustered", "RTREE": "rtree", "R_TREE": "rtree",
-              "GIST": "rtree"}
+              "GIST": "rtree", "IVF": "ivf"}
+    _METRICS = {"dot": "dot_product", "producto_punto": "dot_product", "dot_product": "dot_product",
+                "coseno": "cosine", "cosine": "cosine", "euclidiana": "euclidean", "euclidean": "euclidean"}
 
     def parse(self, sql):
         if not isinstance(sql, str): raise SQLParseError("SQL statement must be a string")
@@ -357,15 +359,22 @@ class SQLParser:
         if close is None: raise SQLParseError("CREATE INDEX requiere (columna)")
         cols = self._split(rest[1:close]);
         tail = rest[close + 1:].strip();
-        kind = "bplus_unclustered"
+        kind = "bplus_unclustered";
+        metric = None
         if tail:
-            u = re.fullmatch(r"USING\s+([A-Za-z_][A-Za-z0-9_]*)", tail, re.I)
+            u = re.fullmatch(r"USING\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s+WITH\s+METRIC\s*=\s*([A-Za-z_][A-Za-z0-9_]*))?",
+                             tail, re.I)
             if not u or u.group(1).upper() not in self._KINDS: raise SQLParseError("técnica de índice desconocida")
             kind = self._KINDS[u.group(1).upper()]
+            if u.group(2):
+                if kind != "ivf": raise SQLParseError("WITH METRIC solo aplica a USING IVF")
+                metric = self._METRICS.get(u.group(2).lower())
+                if metric is None: raise SQLParseError(
+                    f"métrica desconocida: {u.group(2)}; usa euclidean, cosine o dot_product")
         if kind == "rtree" and len(cols) != 2: raise SQLParseError("RTREE necesita (lat, lon)")
         if kind != "rtree" and len(cols) != 1: raise SQLParseError("índice no espacial usa una columna")
         return CreateIndexStatement(m.group(4), cols[0], m.group(3), bool(m.group(1)), kind, bool(m.group(2)),
-                                    cols[1] if len(cols) > 1 else None)
+                                    cols[1] if len(cols) > 1 else None, metric)
 
     def _drop_index(self, s):
         m = re.fullmatch(rf"DROP\s+INDEX\s+(IF\s+EXISTS\s+)?({_ID})(?:\s+ON\s+({_ID}))?", s, re.I)
@@ -563,9 +572,7 @@ class SQLParser:
             raise SQLParseError(f"índice desconocido en USING: {m.group(1)}; usa HNSW, IVF, TF_IDF o BM25")
         metric = m.group(2)
         if metric:
-            metric = {"dot": "dot_product", "producto_punto": "dot_product", "dot_product": "dot_product",
-                      "coseno": "cosine", "cosine": "cosine", "euclidiana": "euclidean",
-                      "euclidean": "euclidean"}.get(metric.lower())
+            metric = self._METRICS.get(metric.lower())
             if metric is None:
                 raise SQLParseError(f"métrica desconocida: {m.group(2)}; usa euclidean, cosine o dot_product")
             if kind in {"tf_idf", "bm25"}:

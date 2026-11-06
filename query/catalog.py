@@ -1,5 +1,5 @@
 from __future__ import annotations
-import os
+import math, os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
@@ -11,6 +11,7 @@ from spatial.index import SpatialIndex
 from storage.heap_file import HeapFile
 from storage.sequential_file import SequentialFile
 from storage.record import Schema
+from vector.ivf import IVFIndex
 
 
 class CatalogError(Exception): pass
@@ -33,7 +34,7 @@ class TableMetadata:
 
 
 class Catalog:
-    _SUFFIX = {"hash": "hash", "bplus_clustered": "bpc", "bplus_unclustered": "bpu", "rtree": "rtree"}
+    _SUFFIX = {"hash": "hash", "bplus_clustered": "bpc", "bplus_unclustered": "bpu", "rtree": "rtree", "ivf": "ivf"}
 
     def __init__(self, data_dir=None, on_change: Optional[Callable] = None, *, rtree_max_entries=16):
         self._tables = {};
@@ -131,7 +132,7 @@ class Catalog:
         return next((r for r in t.indexes.values() if r.metadata.kind == "bplus_clustered"), None)
 
     def create_index(self, table, column, *, kind="bplus_unclustered", unique=False, name=None, if_not_exists=False,
-                     lon_column=None):
+                     lon_column=None, metric=None):
         t = self.get_table(table);
         kind = (kind or "").lower();
         col = self._norm(column)
@@ -154,6 +155,8 @@ class Catalog:
             impl = UnclusteredBPlusIndex(col, order=4, unique=unique)
         elif kind == "hash":
             impl = ExtendibleHash(bucket_capacity=4, unique=unique)
+        elif kind == "ivf":
+            impl = IVFIndex(n_lists=1, metric_name=metric or "euclidean", random_seed=0)
         else:
             if not lon_column: raise CatalogError("RTREE necesita (lat, lon)")
             lon = self._norm(lon_column)
@@ -242,6 +245,8 @@ class Catalog:
         m = reg.metadata;
         old = reg.implementation
         path = self._index_path(t.name, index_name)
+        if m.kind == "ivf":
+            return self._rebuild_ivf(t, reg, path)
         if m.kind == "bplus_clustered":
             new = ClusteredBPlusIndex(m.column, order=getattr(old, "order", 4), unique=m.unique)
         elif m.kind == "bplus_unclustered":
@@ -267,6 +272,41 @@ class Catalog:
         if hasattr(new, "persist"): new.persist()
         reg.implementation = new;
         return reg
+
+    @staticmethod
+    def column_vectors(t, column):
+        """(RID, vector) de las filas cuya columna tiene un vector válido."""
+        from query.vector_queries import VectorQueryError, parse_vector
+        out = []
+        for rid, row in t.storage.scan():
+            try:
+                vector = parse_vector(row.get(column))
+            except VectorQueryError:
+                continue
+            if out and len(vector) != len(out[0][1]):
+                raise CatalogError(f"la columna '{column}' mezcla vectores de distinta dimensión")
+            out.append((rid, vector))
+        return out
+
+    def _rebuild_ivf(self, t, reg, path):
+        items = self.column_vectors(t, reg.metadata.column)
+        # sqrt(N) listas, la referencia habitual de IVF.
+        new = IVFIndex(n_lists=max(1, math.isqrt(len(items))), metric_name=reg.implementation.metric_name,
+                       random_seed=0)
+        if path is not None: new.attach_file(path, load_existing=False)
+        if items:
+            new.build(items)
+        else:
+            new.persist()
+        reg.implementation = new
+        return reg
+
+    def vector_index_for(self, table, column, metric):
+        t = self.get_table(table)
+        for r in t.indexes.values():
+            if r.metadata.kind == "ivf" and r.metadata.column == column and r.implementation.metric_name == metric:
+                return r
+        return None
 
     def rebuild_indexes(self, table):
         for name in list(self.get_table(table).indexes): self.rebuild_index(table, name)
@@ -302,6 +342,9 @@ class Catalog:
                 if r.metadata.kind == "rtree": d.update(
                     {"lon_column": r.implementation.lon_column, "metric": r.implementation.metric,
                      "max_entries": r.implementation.max_entries})
+                if r.metadata.kind == "ivf": d.update(
+                    {"metric": r.implementation.metric_name, "n_lists": r.implementation.n_lists,
+                     "n_probe": r.implementation.n_probe, "vectors": len(r.implementation)})
                 idx.append(d)
             out.append({"name": t.name, "columns": [tuple(c) for c in t.schema.to_dict()["columnas"]],
                         "primary_key": t.schema.primary_key, "storage_kind": t.storage_kind, "indexes": idx})
@@ -327,6 +370,8 @@ class Catalog:
                 impl = UnclusteredBPlusIndex(d["column"], order=4, unique=bool(d.get("unique")))
             elif k == "hash":
                 impl = ExtendibleHash(bucket_capacity=4, unique=bool(d.get("unique")))
+            elif k == "ivf":
+                impl = IVFIndex(n_lists=1, metric_name=d.get("metric", "euclidean"), random_seed=0)
             else:
                 continue
             self.register_index(name=d["name"], table=name, column=d["column"], kind=k, implementation=impl,

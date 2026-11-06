@@ -10,7 +10,7 @@ from query.query_planner import EQUALITY_OPERATORS, OrderBy, Predicate, QueryPla
 from query.query_result import QueryResult
 from query.spatial_queries import SpatialExecutor, SpatialQueryError, find_distance_predicate, find_polygon_predicate, \
     find_spatial_order_by, spatial_kind
-from query.vector_queries import VectorExecutor, VectorQueryError
+from query.vector_queries import VectorExecutor, VectorQueryError, parse_vector
 from query.text_queries import TextExecutor, TextQueryError
 from query.sql_parser import *
 from spatial.geo import euclidean, haversine
@@ -341,7 +341,8 @@ class QueryExecutor:
         self._snapshot(t);
         st = time.perf_counter();
         r = self.catalog.create_index(s.table, s.column, kind=s.kind, unique=s.unique, name=s.name,
-                                      if_not_exists=s.if_not_exists, lon_column=s.column2);
+                                      if_not_exists=s.if_not_exists, lon_column=s.column2,
+                                      metric=getattr(s, "metric", None));
         self._touch();
         ms = self._ms(st)
         return QueryResult.ok("CREATE INDEX", columns=["indice", "tabla", "columna", "tecnica", "filas"], rows=[
@@ -509,6 +510,8 @@ class QueryExecutor:
                     i.insert(row[r.metadata.column], rid)
                 elif k == "rtree":
                     i.insert(row, rid)
+                elif k == "ivf":
+                    QueryExecutor._ivf_insert(i, row.get(r.metadata.column), rid)
                 done.append(r)
         except Exception:
             for r in reversed(done):
@@ -519,9 +522,24 @@ class QueryExecutor:
                         r.implementation.delete(row[r.metadata.column], rid)
                     elif r.metadata.kind == "rtree":
                         r.implementation.delete(rid)
+                    elif r.metadata.kind == "ivf":
+                        r.implementation.remove(rid)
                 except Exception:
                     pass
             raise
+
+    @staticmethod
+    def _ivf_insert(index, value, rid):
+        try:
+            vector = parse_vector(value)
+        except VectorQueryError:
+            return
+        if not index.is_trained:
+            # Índice creado sobre una tabla vacía: se entrena con el primer vector.
+            index.n_lists = 1
+            index.build([(rid, vector)])
+        else:
+            index.insert(rid, vector)
 
     @staticmethod
     def _index_delete(t, row, rid):
@@ -532,6 +550,8 @@ class QueryExecutor:
                 r.implementation.delete(row[r.metadata.column], rid)
             elif r.metadata.kind == "rtree":
                 r.implementation.delete(rid)
+            elif r.metadata.kind == "ivf":
+                r.implementation.remove(rid)
 
     @classmethod
     def matches_all(cls, row, preds):

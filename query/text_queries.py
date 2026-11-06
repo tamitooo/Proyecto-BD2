@@ -27,7 +27,7 @@ class TextExecutor:
     def __init__(self, catalog):
         self.catalog = catalog
 
-    def execute(self, table, spec, *, limit: Optional[int] = None):
+    def execute(self, table, spec, *, limit: Optional[int] = None, row_filter=None):
         predicate = spec.predicate
         column = predicate.column
         if column not in table.schema.col_names():
@@ -36,9 +36,13 @@ class TextExecutor:
         documents: Dict[int, List[str]] = {}
         for _, raw in table.storage.scan():
             row = dict(raw)
+            if row_filter is not None and not row_filter(row):
+                continue
             documents[len(rows)] = tokenize(row.get(column))
             rows.append(row)
         if not rows:
+            if row_filter is not None:
+                raise TextQueryError("ninguna fila cumple el resto del WHERE")
             raise TextQueryError(f"la tabla '{table.name}' está vacía")
         query_terms = tokenize(predicate.query)
         if not query_terms:
@@ -71,12 +75,12 @@ class TextExecutor:
             out.append(row)
         return out, self._plan(table, column, ranking, k, len(rows), len(query_terms), build_ms, search_ms, len(out))
 
-    def plan(self, table, spec, *, limit: Optional[int] = None):
+    def plan(self, table, spec, *, limit: Optional[int] = None, row_filter=None):
         """Plan que usaría la consulta, sin ejecutar la búsqueda."""
         column = spec.predicate.column
         if column not in table.schema.col_names():
             raise TextQueryError(f"la columna '{column}' no existe en '{table.name}'")
-        documents = sum(1 for _ in table.storage.scan())
+        documents = sum(1 for _, raw in table.storage.scan() if row_filter is None or row_filter(dict(raw)))
         if not documents:
             raise TextQueryError(f"la tabla '{table.name}' está vacía")
         terms = tokenize(spec.predicate.query)

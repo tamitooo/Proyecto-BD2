@@ -135,6 +135,11 @@ class TestParserMatchErrores(unittest.TestCase):
             "SELECT * FROM documentos WHERE MATCH(a, 'x') AND MATCH(b, 'y')"
         )
 
+    def test_match_con_or_no_soportado(self):
+        self.assertParseError(
+            "SELECT * FROM documentos WHERE MATCH(contenido, 'x') OR idioma = 'es'"
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

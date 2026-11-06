@@ -63,12 +63,14 @@ class VectorExecutor:
     def __init__(self, catalog):
         self.catalog = catalog
 
-    def execute(self, table, spec, *, limit: Optional[int] = None):
+    def execute(self, table, spec, *, limit: Optional[int] = None, row_filter=None):
         predicate = spec.predicate
         column = self._resolve_column(table, predicate.column)
         target = self._resolve_target(table, predicate, column)
-        rows, vectors = self._load_vectors(table, column)
+        rows, vectors = self._load_vectors(table, column, row_filter)
         if not vectors:
+            if row_filter is not None:
+                raise VectorQueryError("ninguna fila cumple el resto del WHERE")
             raise VectorQueryError(f"la columna '{column}' de '{table.name}' no tiene vectores válidos")
         dimension = len(vectors[0][1])
         if len(target) != dimension:
@@ -101,13 +103,15 @@ class VectorExecutor:
             out.append(row)
         return out, self._plan(table, column, kind, metric, k, dimension, len(vectors), build_ms, search_ms, len(out))
 
-    def plan(self, table, spec):
+    def plan(self, table, spec, row_filter=None):
         """Plan que usaría la consulta, sin construir el índice ni buscar."""
         predicate = spec.predicate
         column = self._resolve_column(table, predicate.column)
         target = self._resolve_target(table, predicate, column)
-        _, vectors = self._load_vectors(table, column)
+        _, vectors = self._load_vectors(table, column, row_filter)
         if not vectors:
+            if row_filter is not None:
+                raise VectorQueryError("ninguna fila cumple el resto del WHERE")
             raise VectorQueryError(f"la columna '{column}' de '{table.name}' no tiene vectores válidos")
         dimension = len(vectors[0][1])
         if len(target) != dimension:
@@ -176,11 +180,13 @@ class VectorExecutor:
         raise VectorQueryError(f"objetivo inválido en SIMILAR_TO: {target!r}")
 
     @staticmethod
-    def _load_vectors(table, column: str):
+    def _load_vectors(table, column: str, row_filter=None):
         rows: List[Dict[str, Any]] = []
         vectors: List[Tuple[int, Tuple[float, ...]]] = []
         for _, raw in table.storage.scan():
             row = dict(raw)
+            if row_filter is not None and not row_filter(row):
+                continue
             try:
                 vector = parse_vector(row.get(column))
             except VectorQueryError:

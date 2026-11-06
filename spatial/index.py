@@ -1,10 +1,4 @@
-"""Índice espacial R-Tree para latitud/longitud con Euclidiana y Haversine.
-
-La implementación mantiene dos representaciones R-Tree de las mismas entradas:
-una en grados (Euclidiana) y otra en una proyección local a metros (Haversine).
-Así MINDIST y la distancia exacta usan la misma unidad en cada consulta. El
-usuario sigue viendo un único índice lógico RTREE en el catálogo.
-"""
+"""Índice espacial R-Tree para latitud/longitud con Euclidiana y Haversine."""
 
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
@@ -267,7 +261,6 @@ class SpatialIndex:
             }
         )
         return data
-
 
     def attach_file(self, file_path, load_existing=True):
         self.file_path = str(file_path)

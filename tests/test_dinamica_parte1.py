@@ -1,20 +1,4 @@
-"""Pruebas de las capacidades dinámicas de la Parte 1.
-
-Cubre lo que la cátedra pidió explícitamente en la demo y lo que faltaba:
-
-* ``CREATE INDEX`` / ``DROP INDEX`` desde SQL, incluidas las tres técnicas y
-  los errores previsibles (columna inexistente, técnica desconocida, duplicado).
-* Que un índice creado por el usuario **cambia el plan** de la consulta: el
-  caso que permite demostrar la mejora de rendimiento.
-* ``BEGIN TRANSACTION`` / ``END TRANSACTION`` / ``ROLLBACK`` integrados en el
-  mismo ejecutor que usan el API REST y la interfaz, con ROLLBACK de INSERT,
-  UPDATE, DELETE y DDL.
-* Las mejoras del planner: rango con los dos extremos y unión de índices en OR.
-
-Cada prueba trabaja sobre su **propia copia** de un directorio de datos
-plantilla, así que el orden de ejecución no importa y ninguna prueba puede
-contaminar a otra.
-"""
+"""Pruebas de las capacidades dinámicas de la Parte 1."""
 
 import shutil
 import unittest
@@ -27,9 +11,6 @@ CSV_ALUMNOS = Path(__file__).resolve().parent / "fixtures" / "alumnos_prueba_bd2
 
 
 class MotorAislado(unittest.TestCase):
-    """Motor real sobre una copia limpia del directorio de datos plantilla."""
-
-    #: Directorio de datos compartido, construido una sola vez por proceso.
     _plantilla: str | None = None
     _temporal_plantilla: TemporaryDirectory | None = None
 
@@ -60,8 +41,6 @@ class MotorAislado(unittest.TestCase):
             dirs_exist_ok=True,
         )
         self.engine = DemoEngine(data_dir=self.datos.name, seed=True)
-
-    # -------------------------------------------------------------- ayudas
 
     def contar(self, tabla: str = "alumnos") -> int:
         return self.engine.table_info(tabla)["row_count"]
@@ -103,7 +82,6 @@ class TestDinamicaDeIndices(MotorAislado):
         self.assertEqual(resultado.rows[0]["filas"], 12)
         self.assertIn("idx_alumnos_nota", self.indices())
 
-        # La MISMA consulta ahora usa el índice: esto es lo demostrable.
         plan = self.plan("SELECT * FROM alumnos WHERE nota >= 14 ORDER BY id")
         self.assertEqual(plan["access_path"], "BPLUS_UNCLUSTERED_RANGE_SCAN")
         self.assertEqual(plan["used_indexes"], ["idx_alumnos_nota"])
@@ -442,8 +420,6 @@ class TestPlannerMejorado(MotorAislado):
         self.assertEqual([fila["id"] for fila in resultado.rows], [1, 5])
 
     def test_04_or_entre_columnas_distintas_no_pierde_filas(self):
-        # No hay un índice común a los dos grupos: debe caer a escaneo y aun
-        # así devolver todas las filas que cumplen cualquiera de las dos.
         resultado = self.engine.run(
             "SELECT * FROM alumnos WHERE id = 1 OR nota = 20 ORDER BY id"
         )
@@ -484,7 +460,6 @@ class TestLineaBaseDelBenchmark(unittest.TestCase):
         self.assertTrue(lineales[0].supported)
         self.assertEqual(lineales[0].operations, config.exact_queries)
 
-        # Mide el mismo trabajo que la búsqueda indexada por igualdad.
         indexadas = [r for r in resultados if r.metric == "exact_hit"]
         self.assertTrue(indexadas)
         for fila in indexadas:

@@ -1,6 +1,6 @@
 """Gráficas comparativas de la Parte 2 (datos espaciales).
 
-A partir de ``benchmark_results/spatial_benchmark.json`` (que genera
+A partir de ``benchmarks/results/spatial_benchmark.json`` (que genera
 ``benchmarks/benchmark_spatial.py``) produce:
 
     spatial_range.png        consultas por rango (1, 5, 10 km)
@@ -33,7 +33,6 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt  # noqa: E402
 
-#: Colores por técnica, estables en todas las gráficas.
 TECHNIQUE_LABELS = {
     "secuencial": "Secuencial (sin índice)",
     "rtree": "R-Tree propio",
@@ -152,7 +151,6 @@ def charts_for_spatial(payload: dict, output_dir: Path) -> None:
                 series[tecnica] = valores
         return series
 
-    # 1) Una gráfica por radio, con las tres técnicas.
     for radio in radios:
         etiqueta = f"{radio // 1000} km"
         series = recolectar("range", etiqueta)
@@ -165,7 +163,6 @@ def charts_for_spatial(payload: dict, output_dir: Path) -> None:
                 output_dir / f"spatial_range_{radio // 1000}km.png",
             )
 
-    # 2) k-NN: una gráfica por k.
     for k in ks:
         series = recolectar("knn", f"k={k}")
         if series:
@@ -177,7 +174,6 @@ def charts_for_spatial(payload: dict, output_dir: Path) -> None:
                 output_dir / f"spatial_knn_k{k}.png",
             )
 
-    # 3) Gráfica resumen: radio 5 km y k = 10 en un panel 2x2.
     figura, ejes = plt.subplots(2, 2, figsize=(13, 9))
 
     def panel(eje, consulta, parametro, titulo):
@@ -216,7 +212,6 @@ def charts_for_spatial(payload: dict, output_dir: Path) -> None:
     plt.close(figura)
     print(f"[ok] {output_dir / 'spatial_dashboard.png'}")
 
-    # 4) Tiempo de construcción del índice (una barra por técnica y tamaño).
     construir: Dict[str, List[Optional[float]]] = {}
     for tecnica in ORDER:
         valores = []
@@ -243,7 +238,6 @@ def charts_for_spatial(payload: dict, output_dir: Path) -> None:
             output_dir / "spatial_build.png",
         )
 
-    # 5) Espacio del índice.
     espacio: Dict[str, List[Optional[float]]] = {}
     for tecnica in ORDER:
         valores = []
@@ -285,7 +279,6 @@ def charts_for_spatial(payload: dict, output_dir: Path) -> None:
             formato="{:,.2f}",
         )
 
-    # 6) Mejora frente a la secuencial (cuántas veces más rápido).
     for consulta, parametros, nombre in (
         ("range", [f"{r // 1000} km" for r in radios], "rango"),
         ("knn", [f"k={k}" for k in ks], "k-NN"),
@@ -353,7 +346,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Genera las gráficas comparativas de la Parte 2",
     )
-    parser.add_argument("--results-dir", default="benchmark_results")
+    parser.add_argument("--results-dir", default="benchmarks/results")
     parser.add_argument("--output-dir", default="")
     return parser.parse_args()
 

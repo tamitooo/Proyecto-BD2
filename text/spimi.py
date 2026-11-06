@@ -1,8 +1,4 @@
-""" Builds bounded inverted-index blocks from a stream of ``(doc_id, text)``
-records.
-Unlike a corpus-wide inverted index, the builder never retains previous
-blocks or all document identifiers. DEPENDS OF ISSUE #47
-"""
+"""In-memory SPIMI block construction from a stream of ``(doc_id, text)`` records."""
 
 from __future__ import annotations
 
@@ -16,12 +12,7 @@ from .statistics import DocumentId
 
 @dataclass(frozen=True, slots=True)
 class SPIMIBlock:
-    """One completed block, with terms in lexicographic insertion order.
-
-    ``postings[term][doc_id]`` is the frequency within this block, not
-    necessarily the whole document. The mappings belong to this block and
-    must be treated as read-only by consumers.
-    """
+    """One completed block; frequencies are per block, not per whole document."""
 
     block_id: int
     postings: dict[str, dict[DocumentId, int]]
@@ -39,17 +30,7 @@ class SPIMIBlock:
 
 
 class SPIMIBlockBuilder:
-    """Construct SPIMI blocks while processing documents only once.
-
-    ``max_postings`` caps distinct ``(term, doc_id)`` pairs per block. The
-    optional ``max_memory_bytes`` is a *heuristic* budget: estimates include
-    keys and entry overhead, but not Python dict allocator/capacity changes.
-    It is not a strict resident-memory limit. One oversized posting is always
-    allowed so that the builder can make progress.
-
-    Each call to :meth:`iter_blocks` has independent state. Only one block is
-    returned at a time; avoid ``list(iter_blocks(...))`` for large corpora.
-    """
+    """One-pass SPIMI builder; ``max_memory_bytes`` is a heuristic budget, not a hard limit."""
 
     def __init__(
         self,
@@ -73,7 +54,6 @@ class SPIMIBlockBuilder:
 
     @staticmethod
     def _entry_bytes(term: str, doc_id: DocumentId, new_term: bool) -> int:
-        # Conservative O(1) estimate, not an exact Python heap measurement.
         size = 80 + sys.getsizeof(doc_id)
         if new_term:
             size += 112 + sys.getsizeof(term)
@@ -100,13 +80,7 @@ class SPIMIBlockBuilder:
     def iter_blocks(
         self, documents: Iterable[tuple[DocumentId, object]],
     ) -> Iterator[SPIMIBlock]:
-        """Yield finished blocks from a one-pass document stream.
-
-        Documents are tokenized by the same configurable preprocessor used by
-        text queries. Repeated document IDs are treated as additional text
-        fragments; no global ID set is retained. Empty documents add no
-        postings. The consumer must merge repeated pairs across blocks.
-        """
+        """Yield blocks lazily; pairs repeated across blocks are merged later."""
         postings: dict[str, dict[DocumentId, int]] = {}
         posting_count = 0
         token_count = 0

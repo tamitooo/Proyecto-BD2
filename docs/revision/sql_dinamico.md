@@ -493,7 +493,7 @@ Hay **dos ejecutores** y **dos catálogos** distintos:
 | | `query/query_executor.py` (nuevo) | `query/executor.py` (viejo) |
 |---|---|---|
 | Clases | `QueryExecutor` + `query/catalog.py::Catalog` | `QueryExecutor` + su propio `Catalog`/`TableDefinition`/`IndexHandle` (`query/executor.py:90-281`) |
-| Lo usa | **API/GUI** (`backend/engine.py:22,101`), `query/test_query_executor.py:6` | `examples/demo_parte1.py:26-28`, `tests/test_end_to_end.py:22-24`, `tests/test_storage_integration.py:24` |
+| Lo usa | **API/GUI** (`backend/engine.py:22,101`), `tests/test_query_executor.py:6` | `examples/demo_parte1.py:26-28`, `tests/test_end_to_end.py:22-24`, `tests/test_storage_integration.py:24` |
 | Entrada | `execute(sql_o_ast)` y `execute_sql` | sólo `execute_sql` (su `execute()` rechaza strings: `TypeError: sentencia no soportada: str`) |
 | DDL | CREATE/DROP TABLE, **CREATE/DROP INDEX**, transacciones | ❌ `TypeError: sentencia no soportada: CreateTableStatement` (excepción sin capturar, `query/executor.py:345`) |
 | UPDATE / LIMIT | ✅ UPDATE, ✅ LIMIT | ❌ `TypeError: … UpdateStatement`; **LIMIT se ignora en silencio** (`query/executor.py:356-400` nunca lee `statement.limit`) |
@@ -527,7 +527,7 @@ Prueba literal sobre el **mismo SQL** (ambos ejecutores, mismos datos):
 2. **Resultados silenciosamente incorrectos en el camino viejo:** `DELETE … WHERE a=1 OR b=2` no borra nada y no avisa (afectados=0); `LIMIT n` devuelve todo.
 3. **Caída con traceback** en el camino viejo (`TypeError` crudo) para UPDATE/DDL/transacciones, mientras el nuevo devuelve `success=false` con mensaje. El README promete "Mensajes de error claros y sin excepciones hacia el API" (`README.md:~300`) — cierto solo en el camino nuevo.
 4. **Riesgo de "dice índice pero escanea":** en el viejo, si el planner elige un índice que la `TableDefinition` no tiene, `query/executor.py:405-410` **cae a `table.scan()` en silencio** mientras `result.stats["access_path"]` sigue anunciando `BPLUS_*`/`HASH_INDEX_LOOKUP`. En el nuevo, `_execute_access_path` **lanza** (`query_executor.py:1284-1350`), así que no puede mentir. (No logré reproducirlo con la configuración por defecto —el planner se construye del mismo catálogo—, pero el código lo permite y es la peor clase de bug para una demo de planes.)
-5. **Divergencia de comportamiento ya visible en los tests:** `tests/test_end_to_end.py` prueba el ejecutor viejo y `query/test_query_executor.py` el nuevo; un cambio en uno no se valida en el otro.
+5. **Divergencia de comportamiento ya visible en los tests:** `tests/test_end_to_end.py` prueba el ejecutor viejo y `tests/test_query_executor.py` el nuevo; un cambio en uno no se valida en el otro.
 
 **Recomendación:** consolidar en `query/query_executor.py` + `query/catalog.py`; migrar `examples/demo_parte1.py`, `tests/test_end_to_end.py` y `tests/test_storage_integration.py` al ejecutor nuevo; y dejar `query/executor.py` como *shim* de compatibilidad (o borrarlo) para que no existan dos semánticas de `LIMIT`/`OR`/DDL. Un comentario en `query/executor.py:1-24` ("Fuera de alcance: CREATE TABLE … transacciones (issue aparte)") es hoy **falso** y engaña al lector y al evaluador.
 
@@ -582,7 +582,7 @@ Orden: primero lo que puede romper la demo en vivo.
 ### Estado de la suite de pruebas en el momento del informe
 
 ```
-$ python .review_tmp/run_tests_sql.py --tb=line -rf tests query/test_query_executor.py
+$ python .review_tmp/run_tests_sql.py --tb=line -rf tests tests/test_query_executor.py
 1 failed, 297 passed, 1 skipped in 21.53s
 FAILED tests/test_benchmark_indexes.py::test_all_expected_metrics_are_present
 ```

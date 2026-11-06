@@ -1,16 +1,4 @@
-"""Baseline de PostgreSQL con indice GIN para la Parte 3.
-
-Carga el corpus sintetico en una tabla, construye el indice GIN y corre las
-mismas consultas y las mismas etiquetas que usa el motor propio, para que la
-comparacion sea sobre el mismo trabajo.
-
-Se mide con dos configuraciones de busqueda de Postgres:
-``simple`` no aplica stemming ni quita stopwords, que es lo mismo que hace el
-motor propio. ``spanish`` si normaliza morfologia, asi que se reporta aparte.
-
-Uso:
-    python -m benchmarks.benchmark_text_gin --pg-dsn "host=localhost user=postgres password=postgres dbname=bd2_experimentos"
-"""
+"""Baseline GIN de PostgreSQL (Parte 3). Uso: ``python -m benchmarks.benchmark_text_gin --pg-dsn "host=localhost user=postgres dbname=bd2_experimentos"``."""
 
 from __future__ import annotations
 
@@ -171,7 +159,7 @@ def main() -> None:
     ap.add_argument("--configs", nargs="+", default=["simple", "spanish"])
     ap.add_argument("--pg-dsn", default=os.environ.get("BD2_PG_DSN", ""))
     ap.add_argument("--data", default="data/text")
-    ap.add_argument("--output", default="benchmark_results/text")
+    ap.add_argument("--output", default="benchmarks/results/text")
     args = ap.parse_args()
 
     if not args.pg_dsn:

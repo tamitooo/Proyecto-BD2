@@ -1,21 +1,4 @@
-"""Índice IVF (Inverted File Index) para vectores multimedia (issue #108).
-
-IVF particiona el espacio en ``n_lists`` celdas: K-Means entrena un centroide
-por celda y cada vector se guarda en la lista invertida de su centroide más
-cercano. Una búsqueda solo necesita revisar las listas más prometedoras.
-
-El entrenamiento, la inserción y la persistencia corresponden al issue #108; la
-búsqueda k-NN aproximada, al #109.
-
-Solo ``train`` agrupa según la geometría de cada métrica:
-
-* euclidean: K-Means estándar.
-* cosine: K-Means esférico; se agrupan direcciones, no magnitudes.
-* dot_product: K-Means Euclidiano. El producto punto no es una distancia y
-  agrupar con él concentra casi todo en los centroides de mayor norma.
-
-La asignación de un vector a su lista siempre usa la métrica del índice.
-"""
+"""Índice IVF (Inverted File Index) para vectores multimedia (Parte 4)."""
 
 from __future__ import annotations
 
@@ -36,27 +19,6 @@ Vector = Tuple[float, ...]
 
 
 class IVFIndex:
-    """Índice IVF con listas invertidas en RAM sincronizadas a un archivo.
-
-    Parameters
-    ----------
-    n_lists:
-        Número de centroides. La referencia habitual es ``sqrt(N)``.
-    metric_name:
-        ``euclidean``, ``cosine`` o ``dot_product`` (o sus alias).
-    max_iterations:
-        Tope de iteraciones de K-Means; termina antes si las asignaciones dejan
-        de cambiar.
-    training_points_per_list:
-        Máximo de vectores de entrenamiento por centroide. Los centroides no
-        mejoran mucho con más puntos y K-Means cuesta O(puntos * n_lists).
-    n_probe:
-        Listas revisadas por defecto en cada búsqueda. Más listas dan mejor
-        recall a cambio de más tiempo. Si se omite se usa ``sqrt(n_lists)``.
-    random_seed:
-        Semilla para que el entrenamiento sea reproducible en tests.
-    """
-
     def __init__(
         self,
         *,
@@ -100,7 +62,6 @@ class IVFIndex:
     def is_trained(self) -> bool:
         return bool(self.centroids)
 
-    # ---------------------------------------------------------- entrenamiento
 
     def train(self, vectors: Iterable[Iterable[float]]) -> None:
         """Calcula los centroides con K-Means a partir de una muestra."""
@@ -129,11 +90,7 @@ class IVFIndex:
         self.persist()
 
     def _kmeans(self, points: Sequence[Vector]) -> List[Vector]:
-        """Algoritmo de Lloyd con inicialización K-Means++.
-
-        En K-Means esférico puntos y centroides son unitarios, y ahí Euclidiana
-        ordena igual que coseno a una fracción de su costo.
-        """
+        """Lloyd con K-Means++; con vectores unitarios Euclidiana ordena igual que coseno y es más barata."""
         centroids = self._initial_centroids(points)
         assignments: Optional[List[int]] = None
 
@@ -166,7 +123,6 @@ class IVFIndex:
             if sum(weights) > 0.0:
                 centroid = self._rng.choices(points, weights=weights)[0]
             else:
-                # Quedan solo puntos repetidos: no hay distancia que ponderar.
                 centroid = self._rng.choice(points)
             centroids.append(centroid)
             weights = [
@@ -177,10 +133,7 @@ class IVFIndex:
 
     @staticmethod
     def _nearest(point: Vector, centroids: Sequence[Vector]) -> int:
-        """Centroide Euclidiano más cercano; los empates van al primero.
-
-        ``math.dist`` directo: los vectores ya se validaron al entrar.
-        """
+        """Índice del centroide más cercano; los empates van al primero."""
         costs = list(map(math.dist, repeat(point), centroids))
         return costs.index(min(costs))
 
@@ -197,10 +150,8 @@ class IVFIndex:
     @staticmethod
     def _unit_vector(vector: Vector) -> Vector:
         norm = math.hypot(*vector)
-        # El vector nulo no tiene dirección y se conserva tal cual.
         return vector if norm == 0.0 else tuple(value / norm for value in vector)
 
-    # -------------------------------------------------------------- inserción
 
     def assign(self, vector: Iterable[float]) -> int:
         """Devuelve la lista invertida que corresponde a ``vector``."""
@@ -210,16 +161,11 @@ class IVFIndex:
         if self.metric_name == "euclidean":
             return self._nearest(query, self.centroids)
         if self.metric_name == "cosine":
-            # Los centroides del K-Means esférico ya son unitarios.
             query = self._unit_vector(query)
         return self._most_similar(query, self.centroids)
 
     def insert(self, vector_id: Hashable, vector: Iterable[float]) -> int:
-        """Inserta un vector y sincroniza el archivo; devuelve su lista.
-
-        ``persist`` reescribe el archivo completo: para carga masiva usar
-        :meth:`build`, que sincroniza una sola vez al final.
-        """
+        """Reescribe el archivo completo; para carga masiva usar ``build``."""
         list_id = self._insert(vector_id, vector)
         self.persist()
         return list_id
@@ -261,7 +207,6 @@ class IVFIndex:
             )
         return values
 
-    # ---------------------------------------------------------- issue #109
 
     def knn(
         self,
@@ -270,15 +215,7 @@ class IVFIndex:
         k: int = 10,
         n_probe: Optional[int] = None,
     ) -> List[Tuple[Hashable, float]]:
-        """Busca los ``k`` vecinos aproximados más cercanos.
-
-        Ordena las listas por la cercanía de su centroide a la consulta y solo
-        compara los vectores de las ``n_probe`` primeras. Las listas vacías no
-        cuentan, y se siguen abriendo listas hasta reunir ``k`` candidatos para
-        no devolver menos resultados de los que el índice puede dar.
-
-        Como en HNSW, el contrato de la métrica es **menor = mejor**.
-        """
+        """k vecinos aproximados revisando las ``n_probe`` listas más cercanas (menor = mejor)."""
         if k <= 0 or not self._assignments:
             return []
 
@@ -317,11 +254,7 @@ class IVFIndex:
     def brute_force_knn(
         self, query_vector: Iterable[float], *, k: int = 10
     ) -> List[Tuple[Hashable, float]]:
-        """Referencia exacta para tests/benchmarks de Recall@k.
-
-        No forma parte del camino de consulta IVF; existe para verificar la
-        calidad de la búsqueda aproximada de manera reproducible.
-        """
+        """Búsqueda exacta, referencia para medir Recall@k."""
         if k <= 0 or not self._assignments:
             return []
         query = self._as_query(query_vector)
@@ -342,7 +275,6 @@ class IVFIndex:
         """Top-k por costo; ``repr`` hace deterministas los empates."""
         return heapq.nsmallest(k, candidates, key=lambda item: (item[1], repr(item[0])))
 
-    # ------------------------------------------------------------ persistencia
 
     def attach_file(self, file_path, load_existing: bool = True) -> bool:
         self.file_path = str(file_path)
@@ -397,7 +329,6 @@ class IVFIndex:
             return Path(self.file_path).stat().st_size
         return 0
 
-    # ------------------------------------------------------------ diagnóstico
 
     def validate(self) -> bool:
         """Comprueba invariantes estructurales del índice."""

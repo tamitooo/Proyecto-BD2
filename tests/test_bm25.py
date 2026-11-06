@@ -144,7 +144,6 @@ def test_search_top_k_usa_candidatos_de_postings_y_ordena_descendente():
     assert [score for _, score in results] == sorted(
         [score for _, score in results], reverse=True
     )
-    # doc 4 está vacío y no pertenece a ninguna posting list.
     assert 4 not in [doc_id for doc_id, _ in results]
 
 

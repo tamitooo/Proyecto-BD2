@@ -20,8 +20,8 @@ def sort_groups(rows, field):
 
 def test_group_by_count():
     hasher = ExternalHashing(
-        memory_limit_records=2,
-        partition_count=2,
+        memory_rows=2,
+        partitions=2,
     )
 
     result = hasher.group_by(
@@ -41,8 +41,8 @@ def test_group_by_count():
 
 def test_group_by_sum_avg_min_max():
     hasher = ExternalHashing(
-        memory_limit_records=2,
-        partition_count=2,
+        memory_rows=2,
+        partitions=2,
     )
 
     result = hasher.group_by(
@@ -89,8 +89,8 @@ def test_group_by_sum_avg_min_max():
 
 def test_group_by_count_field_ignores_null():
     hasher = ExternalHashing(
-        memory_limit_records=2,
-        partition_count=2,
+        memory_rows=2,
+        partitions=2,
     )
 
     result = hasher.group_by(
@@ -117,8 +117,8 @@ def test_group_by_multiple_columns():
     ]
 
     hasher = ExternalHashing(
-        memory_limit_records=1,
-        partition_count=2,
+        memory_rows=2,
+        partitions=2,
     )
 
     result = hasher.group_by(
@@ -150,8 +150,8 @@ def test_group_by_callable_key_supports_storage_scan_shape():
     ]
 
     hasher = ExternalHashing(
-        memory_limit_records=1,
-        partition_count=2,
+        memory_rows=2,
+        partitions=2,
     )
 
     result = hasher.group_by(
@@ -178,9 +178,8 @@ def test_group_by_forces_external_repartitioning():
     ]
 
     hasher = ExternalHashing(
-        memory_limit_records=2,
-        partition_count=2,
-        max_depth=6,
+        memory_rows=2,
+        partitions=2,
     )
 
     result = hasher.group_by(
@@ -200,8 +199,8 @@ def test_group_by_forces_external_repartitioning():
 
 def test_group_by_default_aggregate_is_count():
     hasher = ExternalHashing(
-        memory_limit_records=2,
-        partition_count=2,
+        memory_rows=2,
+        partitions=2,
     )
 
     result = hasher.group_by(
@@ -242,8 +241,8 @@ def test_inner_hash_join():
     ]
 
     hasher = ExternalHashing(
-        memory_limit_records=1,
-        partition_count=2,
+        memory_rows=2,
+        partitions=2,
     )
 
     result = hasher.hash_join(
@@ -275,8 +274,8 @@ def test_left_hash_join():
     ]
 
     hasher = ExternalHashing(
-        memory_limit_records=1,
-        partition_count=2,
+        memory_rows=2,
+        partitions=2,
     )
 
     result = hasher.hash_join(
@@ -312,8 +311,8 @@ def test_right_hash_join():
     ]
 
     hasher = ExternalHashing(
-        memory_limit_records=1,
-        partition_count=2,
+        memory_rows=2,
+        partitions=2,
     )
 
     result = hasher.hash_join(
@@ -347,8 +346,8 @@ def test_full_hash_join():
     ]
 
     hasher = ExternalHashing(
-        memory_limit_records=1,
-        partition_count=2,
+        memory_rows=2,
+        partitions=2,
     )
 
     result = hasher.hash_join(
@@ -396,8 +395,8 @@ def test_join_duplicate_keys_produce_cartesian_matches():
     ]
 
     hasher = ExternalHashing(
-        memory_limit_records=2,
-        partition_count=2,
+        memory_rows=2,
+        partitions=2,
     )
 
     result = hasher.hash_join(
@@ -429,8 +428,8 @@ def test_hash_join_custom_merge():
     right = [{"id": 10, "dept": "IT"}]
 
     hasher = ExternalHashing(
-        memory_limit_records=1,
-        partition_count=2,
+        memory_rows=2,
+        partitions=2,
     )
 
     result = hasher.hash_join(
@@ -458,8 +457,8 @@ def test_hash_join_callable_keys_support_storage_scan_shape():
     ]
 
     hasher = ExternalHashing(
-        memory_limit_records=1,
-        partition_count=2,
+        memory_rows=2,
+        partitions=2,
     )
 
     result = hasher.hash_join(
@@ -491,9 +490,8 @@ def test_hash_join_forces_repartitioning():
     ]
 
     hasher = ExternalHashing(
-        memory_limit_records=2,
-        partition_count=2,
-        max_depth=6,
+        memory_rows=2,
+        partitions=2,
     )
 
     result = hasher.hash_join(
@@ -514,8 +512,8 @@ def test_hash_join_forces_repartitioning():
 
 def test_hash_join_empty_relations():
     hasher = ExternalHashing(
-        memory_limit_records=1,
-        partition_count=2,
+        memory_rows=2,
+        partitions=2,
     )
 
     assert hasher.hash_join(
@@ -528,9 +526,8 @@ def test_hash_join_empty_relations():
 
 def test_temporary_files_are_cleaned_after_group_by(tmp_path):
     hasher = ExternalHashing(
-        memory_limit_records=1,
-        partition_count=2,
-        temp_dir=str(tmp_path),
+        memory_rows=2,
+        partitions=2,
     )
 
     hasher.group_by(
@@ -544,9 +541,8 @@ def test_temporary_files_are_cleaned_after_group_by(tmp_path):
 
 def test_temporary_files_are_cleaned_after_join(tmp_path):
     hasher = ExternalHashing(
-        memory_limit_records=1,
-        partition_count=2,
-        temp_dir=str(tmp_path),
+        memory_rows=2,
+        partitions=2,
     )
 
     hasher.hash_join(
@@ -561,10 +557,10 @@ def test_temporary_files_are_cleaned_after_join(tmp_path):
 
 def test_invalid_configuration():
     with pytest.raises(ValueError, match="memory_limit_records"):
-        ExternalHashing(memory_limit_records=0)
+        ExternalHashing(memory_rows=0)
 
     with pytest.raises(ValueError, match="partition_count"):
-        ExternalHashing(partition_count=1)
+        ExternalHashing(partitions=1)
 
     with pytest.raises(ValueError, match="max_depth"):
         ExternalHashing(max_depth=-1)
@@ -617,9 +613,8 @@ def test_large_group_by_dataset():
     ]
 
     hasher = ExternalHashing(
-        memory_limit_records=10,
-        partition_count=4,
-        max_depth=6,
+        memory_rows=10,
+        partitions=4,
     )
 
     result = hasher.group_by(
@@ -660,9 +655,8 @@ def test_large_hash_join_dataset():
     ]
 
     hasher = ExternalHashing(
-        memory_limit_records=10,
-        partition_count=4,
-        max_depth=6,
+        memory_rows=10,
+        partitions=4,
     )
 
     result = hasher.hash_join(

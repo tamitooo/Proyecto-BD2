@@ -1,8 +1,4 @@
-"""Pruebas de la extensión SQL espacial (Parte 2, sección 2.2.3).
-
-Cubre las sintaxis del enunciado, que el motor resuelva con el R-Tree y que el
-**resultado sea el mismo** que el de un escaneo secuencial con filtro.
-"""
+"""Pruebas de la extensión SQL espacial (Parte 2, sección 2.2.3)."""
 
 import unittest
 
@@ -14,8 +10,6 @@ from spatial.geo import haversine, point_in_polygon
 
 
 class TestParserEspacial(unittest.TestCase):
-    """Las tres sintaxis del enunciado y sus errores."""
-
     def setUp(self):
         self.parser = SQLParser()
 
@@ -104,8 +98,6 @@ class TestParserEspacial(unittest.TestCase):
 
 
 class TestEjecucionEspacial(unittest.TestCase):
-    """El motor resuelve las consultas espaciales con el R-Tree."""
-
     @classmethod
     def setUpClass(cls):
         import tempfile
@@ -140,8 +132,6 @@ class TestEjecucionEspacial(unittest.TestCase):
             )
             self.assertTrue(resultado.success, resultado.error)
 
-    # ------------------------------------------------------------- el índice
-
     def test_create_index_rtree(self):
         resultado = self.engine.run(
             "CREATE INDEX IF NOT EXISTS idx_tiendas_ubicacion "
@@ -168,8 +158,6 @@ class TestEjecucionEspacial(unittest.TestCase):
         indices = self.engine.table_info("tiendas")["indexes"]
         tecnicas = {i["name"]: i["kind"] for i in indices}
         self.assertEqual(tecnicas.get("idx_tiendas_ubicacion"), "rtree")
-
-    # ------------------------------------------------------------- consultas
 
     def test_rango_usa_el_rtree_y_coincide_con_fuerza_bruta(self):
         self._cargar_indice()
@@ -228,7 +216,6 @@ class TestEjecucionEspacial(unittest.TestCase):
         self.assertEqual(del_indice, [rid for _, rid in esperados])
 
     def test_knn_da_lo_mismo_que_el_escaneo_con_external_sort(self):
-        """Sin R-Tree el resultado debe ser idéntico (sólo cambia el plan)."""
         self._cargar_indice()
         centro = (-12.0464, -77.0428)
         con_indice = self.engine.run(
@@ -238,7 +225,6 @@ class TestEjecucionEspacial(unittest.TestCase):
         self.assertTrue(con_indice.success, con_indice.error)
         self.assertEqual(con_indice.execution_plan["access_path"], "RTREE_KNN")
 
-        # Fuerza bruta pura: las 5 distancias menores.
         esperados = sorted(
             (
                 (haversine(centro, punto), i)
@@ -283,17 +269,11 @@ class TestEjecucionEspacial(unittest.TestCase):
         self.assertEqual(del_indice, de_fuerza)
 
     def test_sin_indice_espacial_la_consulta_sigue_siendo_correcta(self):
-        """Si no hay R-Tree, se puede resolver por escaneo (más lento) o avisar.
-
-        Lo que **no** puede pasar es devolver un resultado incorrecto.
-        """
-        # Se elimina el índice para forzar el camino sin R-Tree.
         self.engine.run("DROP INDEX IF EXISTS idx_tiendas_ubicacion")
         resultado = self.engine.run(
             "SELECT id FROM tiendas WHERE "
             "distancia(lat, POINT(-12.0464, -77.0428)) < 3000"
         )
-        # Sin índice espacial, el motor avisa en lugar de inventar un plan.
         if resultado.success:
             de_fuerza = {
                 i for i, punto in enumerate(self.ciudad, start=1)

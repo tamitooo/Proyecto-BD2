@@ -254,7 +254,6 @@ class ExtendibleHash:
             raise AssertionError("stored entry count does not match hash size")
         return True
 
-
     def attach_file(self, file_path, load_existing=True):
         self.file_path=str(file_path)
         if load_existing and Path(self.file_path).exists():

@@ -65,10 +65,10 @@ git push -u origin feat/benchmark-heap-vs-secuencial
 
 | Issue | Título | Entregable en el repositorio |
 |---|---|---|
-| #29 | Benchmark Heap vs Sequential | `benchmarks/benchmark_heap_vs_sequential.py`, `benchmark_results/storage_benchmark.{csv,json}` |
-| #31 | Generación de gráficas | `benchmarks/generate_charts.py`, `benchmark_results/plots/*.png` |
-| #32 | Tabla ventajas/desventajas | `docs/comparacion_ventajas_desventajas.md` |
-| #33 | Conclusiones experimentales | `docs/conclusiones_experimentales.md` |
+| #29 | Benchmark Heap vs Sequential | `benchmarks/benchmark_heap_vs_sequential.py`, `benchmarks/results/storage_benchmark.{csv,json}` |
+| #31 | Generación de gráficas | `benchmarks/generate_charts.py`, `benchmarks/results/plots/*.png` |
+| #32 | Tabla ventajas/desventajas | `docs/informe/comparacion_ventajas_desventajas.md` |
+| #33 | Conclusiones experimentales | `docs/informe/conclusiones_experimentales.md` |
 | #34 | Tests unitarios/integración | `tests/test_record.py`, `tests/test_storage_integration.py`, `tests/test_benchmark_heap_vs_sequential.py` |
 | #37 | End-to-end integration test | `query/executor.py`, `tests/test_end_to_end.py`, `examples/demo_parte1.py` |
 
@@ -248,8 +248,8 @@ comando para reproducirlo, por ejemplo en #29:
 
 ```
 Implementado en benchmarks/benchmark_heap_vs_sequential.py.
-Resultados en benchmark_results/storage_benchmark.{csv,json} y gráficas en
-benchmark_results/plots/.
+Resultados en benchmarks/results/storage_benchmark.{csv,json} y gráficas en
+benchmarks/results/plots/.
 Reproducir con:
 python benchmarks/benchmark_heap_vs_sequential.py --sizes 1000 10000 100000
 ```
@@ -267,7 +267,7 @@ python benchmarks/benchmark_heap_vs_sequential.py --sizes 1000 10000 100000
    igualdad, y cuando **evita** el External Sort porque el B+ agrupado ya
    entrega el orden.
 3. **Experimentos (60 s):** abrir
-   `benchmark_results/plots/storage_dashboard.png` e
+   `benchmarks/results/plots/storage_dashboard.png` e
    `index_dashboard.png`; mencionar los dos hallazgos fuertes: búsqueda por
    clave ~700× más rápida en el Archivo Secuencial y el intercambio
    espacio/velocidad del B+ agrupado.

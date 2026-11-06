@@ -25,7 +25,6 @@ def test_create_manual_heap_table_and_query_it(tmp_path):
     assert table["source"] == "manual"
     assert table["schema"]["primary_key"] == "id"
 
-    # Toda tabla dinámica recibe índice Hash único sobre la PK.
     assert table["indexes"] == [
         {
             "name": "idx_productos_id_hash",

@@ -4,7 +4,6 @@ from indexes.unclustered_bplus import UnclusteredBPlusIndex
 
 
 def rid(page, slot):
-    """RID simple para probar el indice sin acoplarlo al storage."""
     return (page, slot)
 
 
@@ -42,7 +41,6 @@ def test_index_stores_rid_not_full_record():
 
     record["name"] = "Nombre modificado"
 
-    # El indice depende solo de la clave y el RID.
     assert index.search(10) == [record_rid]
     assert index.scan_entries() == [(10, record_rid)]
 

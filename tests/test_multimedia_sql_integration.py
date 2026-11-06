@@ -1,0 +1,129 @@
+"""ExtractFeatures -> SIMILAR_TO con vectores literales (aún no se aceptan rutas de archivo)."""
+
+from __future__ import annotations
+
+import json
+import tempfile
+import unittest
+
+import numpy as np
+
+from multimedia import MultimediaFeaturePipeline, MultimediaObject
+from query.catalog import Catalog
+from query.query_executor import QueryExecutor
+
+
+class _DeterministicExtractor:
+    """Stand in for decoding; keep vocabulary and SQL integration deterministic."""
+
+    def extract(self, source, **kwargs):
+        return np.asarray(source, dtype=np.float32)
+
+
+def _cluster(center: tuple[float, ...]) -> np.ndarray:
+    base = np.asarray(center, dtype=np.float32)
+    return np.stack((base, base + 0.1, base + 0.2))
+
+
+class TestMultimediaSQLIntegration(unittest.TestCase):
+    def setUp(self):
+        self._data = tempfile.TemporaryDirectory(prefix="bd2-multimedia-sql-")
+        self.catalog = Catalog(data_dir=self._data.name)
+        self.executor = QueryExecutor(self.catalog)
+
+        self.images = [
+            MultimediaObject("image", _cluster(point))
+            for point in ((0.0, 0.0), (10.0, 0.0), (0.0, 10.0), (10.0, 10.0))
+        ]
+        self.audio = [
+            MultimediaObject("audio", _cluster(point), sample_rate=16_000)
+            for point in ((0.0, 0.0, 0.0), (10.0, 0.0, 0.0),
+                          (0.0, 10.0, 0.0), (0.0, 0.0, 10.0))
+        ]
+        self.pipeline = MultimediaFeaturePipeline(
+            n_visual_words=4,
+            n_audio_words=3,
+            random_state=7,
+            sift=_DeterministicExtractor(),
+            mfcc=_DeterministicExtractor(),
+        ).fit(self.images + self.audio)
+
+    def tearDown(self):
+        self._data.cleanup()
+
+    def _create_and_populate(self, name, objects):
+        self.catalog.create_table(
+            name,
+            [("id", "INT"), ("embedding", "VARCHAR(2000)")],
+            primary_key="id",
+            primary_key_index=False,
+        )
+        vectors = [self.pipeline.extract_features(item) for item in objects]
+        for identifier, vector in enumerate(vectors, start=1):
+            serialized = json.dumps(vector.tolist(), allow_nan=False)
+            inserted = self.executor.execute(
+                f"INSERT INTO {name} VALUES ({identifier}, '{serialized}')"
+            )
+            self.assertTrue(inserted.success, inserted.error)
+        return vectors
+
+    def test_extract_features_through_sql_hnsw_and_ivf(self):
+        for table, documents in (("images", self.images), ("sounds", self.audio)):
+            vectors = self._create_and_populate(table, documents)
+            for kind, metric in (("HNSW", "cosine"), ("IVF", "euclidean")):
+                with self.subTest(table=table, index=kind):
+                    target = json.dumps(vectors[0].tolist(), allow_nan=False)
+                    result = self.executor.execute(
+                        f"SELECT id, SIMILARITY_SCORE() AS score FROM {table} "
+                        f"WHERE SIMILAR_TO({target}, k=2) "
+                        f"USING {kind} WITH METRIC={metric}"
+                    )
+                    self.assertTrue(result.success, result.error)
+                    self.assertEqual(len(result.rows), 2)
+                    self.assertEqual(result.rows[0]["id"], 1)
+                    self.assertGreaterEqual(
+                        result.rows[0]["score"], result.rows[1]["score"]
+                    )
+                    self.assertEqual(
+                        result.execution_plan["access_path"], f"{kind}_KNN"
+                    )
+                    self.assertEqual(
+                        result.execution_plan["steps"][0]["details"]["dimension"],
+                        len(vectors[0]),
+                    )
+
+    def test_saved_vocabularies_preserve_sql_query_coordinates(self):
+        vectors = self._create_and_populate("images", self.images)
+        with tempfile.TemporaryDirectory(prefix="bd2-media-model-") as directory:
+            path = self.pipeline.save(f"{directory}/model.npz")
+            restored = MultimediaFeaturePipeline.load(
+                path,
+                sift=_DeterministicExtractor(),
+                mfcc=_DeterministicExtractor(),
+            )
+            query = restored.extract_features(self.images[2])
+            np.testing.assert_array_equal(query, vectors[2])
+            literal = json.dumps(query.tolist(), allow_nan=False)
+            result = self.executor.execute(
+                "SELECT id FROM images "
+                f"WHERE SIMILAR_TO({literal}, k=1) USING HNSW WITH METRIC=cosine"
+            )
+            self.assertTrue(result.success, result.error)
+            self.assertEqual(result.rows[0]["id"], 3)
+
+    def test_mixed_modalities_have_incompatible_vector_dimensions(self):
+        self._create_and_populate("images", self.images)
+        wrong_modality = json.dumps(
+            self.pipeline.extract_features(self.audio[0]).tolist(),
+            allow_nan=False,
+        )
+        result = self.executor.execute(
+            "SELECT id FROM images "
+            f"WHERE SIMILAR_TO({wrong_modality}, k=1) USING HNSW"
+        )
+        self.assertFalse(result.success)
+        self.assertIn("dimensión", result.error or "")
+
+
+if __name__ == "__main__":
+    unittest.main()

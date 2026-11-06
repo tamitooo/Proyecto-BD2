@@ -41,7 +41,7 @@ internals de PostgreSQL; más 7 experimentos ejecutados en modo lectura (scripts
 - **El índice no se queda "viejo" en las rutas normales del ejecutor**: con `DELETE` + reuso de
   slot del heap y con `UPDATE`, los índices quedan coherentes (probado, §3.5).
 - Los **7 ejes** que pide el enunciado están presentes como métricas en
-  `benchmark_results/index_benchmark.{csv,json}`: `build`, `exact_hit`, `exact_miss`,
+  `benchmarks/results/index_benchmark.{csv,json}`: `build`, `exact_hit`, `exact_miss`,
   `range_search` (+`_materialized`, `_raw_index`), `ordered_scan`, `insert`, `delete`,
   `serialized_size`, en N = 1 000 / 10 000 / 100 000.
 
@@ -55,7 +55,7 @@ internals de PostgreSQL; más 7 experimentos ejecutados en modo lectura (scripts
 | **A4** | Media-alta (correctitud de borde) | Clave `NULL` en una columna indexada: el parser acepta `NULL` (`sql_parser.py:994`) pero **ningún índice tiene semántica de NULL**. Verificado: `BPlusTree.search(None)` → `TypeError: '<' not supported between instances of 'NoneType' and 'int'` (el `bisect` de `_find_leaf`, `bplus_tree.py:56`) y `insert(None, v)` → el mismo `TypeError`; el hash, en cambio, **acepta** `None` como clave normal (`hash(None)` → 0) y `WHERE col = NULL` devolvería filas insertadas con NULL, violando la lógica de 3 valores. En el motor integrado, `INSERT ... NULL` en columna indexada INT muere antes, en `int(v)` de `storage/record.py:58` (no en el índice). | verificado con `.review_tmp`; `bplus_tree.py:53-64`, `extendible_hash.py:45-53, 94`, `query_executor.py:1065`, `storage/record.py:58` |
 | **A5** | Media (correctitud del planner) | El modelo de costo no valoriza "el orden ya viene resuelto": una igualdad por hash (110 puntos) gana a un escaneo ordenado B+ (70) aunque el `ORDER BY` sea obligatorio. Caso verificado: con `ix_id_hash(id)` y `ix_sal` B+ agrupado sobre `salary`, `WHERE id = 3 ORDER BY salary` produce `HASH_INDEX_LOOKUP + EXTERNAL_SORT` en lugar de `BPLUS_CLUSTERED_INDEX_SCAN + FILTER` (sin sort). | `query_planner.py:324-332` (`kind_priority`/`max`), `:373-382` (`_order_bonus`), `:299-310` (candidato de orden, 70) |
 | **B1** | **Alta (enunciado)** | Los experimentos **no tienen baseline de scan lineal/secuencial** en igualdad ni en rango. Sin baseline no se puede afirmar "mejora X×", que es justo lo que exige la comparación experimental. La comparación de **espacio** también es injusta de base: el B+ agrupado se mide *pickleando los registros completos* que ya viven en el heap. | `benchmark_indexes.py` (no existe métrica `linear_scan`), `conclusiones_experimentales.md:125-152` |
-| **B2** | Media | Números del informe (`docs/conclusiones_experimentales.md:125-140`) **no coinciden** con el JSON vigente (p. ej. construcción a 100 000: doc 14 566 ms vs JSON 12 760 ms; igualdad hit 100 000 B+ no agrupado: doc 2,72 vs JSON 2,13 µs; borrado 100 000: doc 36,89/47,57 vs JSON 33,30/50,45 µs). El JSON no registra máquina, CPU, hora ni desviación estándar. | `benchmark_results/index_benchmark.json` vs `docs/conclusiones_experimentales.md` |
+| **B2** | Media | Números del informe (`docs/informe/conclusiones_experimentales.md:125-140`) **no coinciden** con el JSON vigente (p. ej. construcción a 100 000: doc 14 566 ms vs JSON 12 760 ms; igualdad hit 100 000 B+ no agrupado: doc 2,72 vs JSON 2,13 µs; borrado 100 000: doc 36,89/47,57 vs JSON 33,30/50,45 µs). El JSON no registra máquina, CPU, hora ni desviación estándar. | `benchmarks/results/index_benchmark.json` vs `docs/informe/conclusiones_experimentales.md` |
 | **B3** | Media | La "recuperación de fila" del no agrupado se mide contra un **`dict` en memoria** (`rid_to_record`), no contra `HeapFile`: subestima la ventaja real del agrupado ~19×. El equipo lo midió aparte a mano y lo menciona (`conclusiones_experimentales.md:204-208`), pero la métrica publicada sigue siendo la del dict. | `benchmark_indexes.py:186-191, 671-676` |
 | **B4** | Media | Falta la comparación **directa** `BPLUS_*_INDEX_SCAN` (evitar sort) vs `EXTERNAL_SORT` con el mismo N y la misma selectividad, y `LIMIT` no se empuja al índice (se materializa todo y luego se recorta). | `query_executor.py:209-231`, `query_planner.py:249-267` |
 | **C1** | Media (defensa oral) | `ExtendibleHash._try_merge` (fusión de *buddies* + *shrink* del directorio, `:194-268`) **no es texto estándar**: el hashing extendible de libro no fusiona en `delete`. Es la construcción más difícil de justificar del repo. Además `_split_bucket` y `_try_merge` recorren el directorio completo (`:147`, `:241`), y `max_depth=64` por defecto permitiría un directorio de 2^64 entradas si el hash es malo (`_double_directory` sólo se protege con `OverflowError`). | `extendible_hash.py:116-268` |
@@ -332,7 +332,7 @@ Dos detalles:
 Gráficas: `generate_charts.py` regenera `index_build_time`, `index_exact_lookup`,
 `index_range_search`, `index_range_search_fair`, `index_ordered_scan`, `index_size`,
 `index_mutations`, `index_dashboard` (`:281-435`). La gráfica *fair* existe y muestra las tres
-variantes de rango (verificada, `benchmark_results/plots/index_range_search_fair.png`), pero
+variantes de rango (verificada, `benchmarks/results/plots/index_range_search_fair.png`), pero
 **no** incluye ninguna barra de scan lineal, que es la referencia que pide el enunciado.
 
 ### 4.2 Problemas metodológicos concretos
@@ -448,7 +448,7 @@ similares.
    Propuesta: `inferred_unique = getattr(implementation, "unique", False)` **siempre** y lanzar
    `CatalogError` si `unique is not None and bool(unique) != inferred_unique`.
 7. **Documentar el contrato índice↔almacenamiento** — nuevo bloque en
-   `docs/guia_issues_y_entregables.md` (sección "contrato de integración", ya existe para el
+   `docs/material/guia_issues_y_entregables.md` (sección "contrato de integración", ya existe para el
    secuencial) y comentario en `clustered_bplus.py:1-10`: *el B+ agrupado es la fuente de verdad
    de sus registros; ninguna mutación puede tocar el almacenamiento sin actualizar/reconstruir el
    índice*. Añadir un test que lo demuestre (estilo `.review_tmp/probe_misc.py`).
@@ -466,7 +466,7 @@ similares.
 12. **Espacio en dos columnas** (estructura vs estructura+payload) y nota explícita de que el
     agrupado reemplaza al heap.
 13. **Robustez estadística**: *warm-up*, `stdev`/`cv`, y metadatos de máquina/fecha/versión de
-    Python en el JSON; regenerar `docs/conclusiones_experimentales.md` desde el JSON vigente
+    Python en el JSON; regenerar `docs/informe/conclusiones_experimentales.md` desde el JSON vigente
     (los números actuales no coinciden).
 14. **`_split_bucket` con `assert` defensivo** (`extendible_hash.py:155-157`): antes de asignar,
     comprobar que la clave no existe ya en `target.records` (protege contra futuros cambios de la
@@ -511,7 +511,7 @@ similares.
 | *"¿Cuál es el mínimo de claves de una hoja y por qué `ceil((order-1)/2)`?"* | Explicar que con esa fórmula el split `(n+1)//2` nunca deja un lado por debajo del mínimo; señalar la asimetría con `min_internal_children = ceil(order/2)` (`:29-34`) y normalizarla si se quiere una respuesta limpia. |
 | *"Muéstrame un `EXPLAIN` que demuestre que evitas el sort."* | `ORDER BY age` sobre `idx_probe_age_bplus` da `BPLUS_CLUSTERED_INDEX_SCAN` sin `EXTERNAL_SORT`; `ORDER BY age DESC` da `HEAP_SCAN + EXTERNAL_SORT`. **Cuidado:** no existe *reverse scan* (`query_planner.py:294-298`), así que `DESC` siempre ordena; decirlo antes de que lo pregunten. Y si aparece un `WHERE` de igualdad por hash junto a un `ORDER BY` con índice B+ en otra columna, el plan **sí** ordena (ver §3.4): hay que saber explicar por qué. |
 | *"¿Por qué el `delete` de tu B+ a 100 000 crece más que el del hash?"* | Responder con el rebalanceo (redistribución/fusión en cascada, `bplus_tree.py:183-273`) contra O(1) del hash; los números del JSON (33,30/50,45/7,77 µs) y la nota de que la altura es logarítmica. |
-| *"¿Cómo sé que tus números del informe son los del benchmark?"* | Hoy **no** coinciden con el JSON (B2). Regenerar el documento desde `benchmark_results/index_benchmark.json` antes de la entrega. |
+| *"¿Cómo sé que tus números del informe son los del benchmark?"* | Hoy **no** coinciden con el JSON (B2). Regenerar el documento desde `benchmarks/results/index_benchmark.json` antes de la entrega. |
 | *"Enséñame el índice en la GUI."* | El panel de plan muestra ruta de acceso, índices usados, plan lógico con justificación y traza real (`PlanPanel.tsx:27-77`); el panel de archivos muestra índices por tabla (`README.md:322`). Ojo con los chips engañosos del INSERT (§6, pregunta 10). |
 
 ---

@@ -14,7 +14,7 @@ def mean_us(xs):return statistics.fmean(xs)/1000 if xs else None
 def run(sizes=(1000,10000,100000),queries=100,mutations=50,seed=42):
  rng=random.Random(seed);out=[]
  for n in sizes:
-  recs=[{'id':i,'value':i//3} for i in range(n)] # duplicates exercise RID lists
+  recs=[{'id':i,'value':i//3} for i in range(n)]
   specs=[
    ('bplus_clustered',lambda:ClusteredBPlusIndex('value',order=32)),
    ('bplus_unclustered',lambda:UnclusteredBPlusIndex('value',order=32)),
@@ -44,7 +44,6 @@ def run(sizes=(1000,10000,100000),queries=100,mutations=50,seed=42):
    else:
     out.append({'dataset_size':n,'index_type':name,'metric':'range_search','build_ms':build,'avg_us':None,'operations':0,'result_items':None,'size_bytes':memory,'supported':False,'notes':'Hash no preserva orden ni soporta rango.'})
     out.append({'dataset_size':n,'index_type':name,'metric':'ordered_scan','build_ms':build,'avg_us':None,'operations':0,'result_items':None,'size_bytes':memory,'supported':False,'notes':'Hash no preserva orden.'})
-   # mutations on keys guaranteed to be new
    muts=[]
    for j in range(mutations):
       row={'id':n+j,'value':n+j};t=time.perf_counter_ns()
@@ -55,5 +54,5 @@ def run(sizes=(1000,10000,100000),queries=100,mutations=50,seed=42):
  return out
 
 def main():
- p=argparse.ArgumentParser();p.add_argument('--sizes',nargs='+',type=int,default=[1000,10000,100000]);p.add_argument('--queries',type=int,default=100);p.add_argument('--mutations',type=int,default=50);p.add_argument('--output-dir',default='benchmark_results');a=p.parse_args();rows=run(a.sizes,a.queries,a.mutations);out=Path(a.output_dir);write_rows(rows,out/'index_benchmark.csv',out/'index_benchmark.json',{'sizes':a.sizes,'queries':a.queries,'mutations':a.mutations});[print(r) for r in rows]
+ p=argparse.ArgumentParser();p.add_argument('--sizes',nargs='+',type=int,default=[1000,10000,100000]);p.add_argument('--queries',type=int,default=100);p.add_argument('--mutations',type=int,default=50);p.add_argument('--output-dir',default='benchmarks/results');a=p.parse_args();rows=run(a.sizes,a.queries,a.mutations);out=Path(a.output_dir);write_rows(rows,out/'index_benchmark.csv',out/'index_benchmark.json',{'sizes':a.sizes,'queries':a.queries,'mutations':a.mutations});[print(r) for r in rows]
 if __name__=='__main__':main()

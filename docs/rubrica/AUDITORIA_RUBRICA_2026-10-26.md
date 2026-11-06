@@ -54,7 +54,7 @@ El feedback señala que `serialize()/deserialize()` servían para benchmarks, pe
 | B+ clustered vs unclustered vs Hash | ✅ | benchmark de índices |
 | Igualdad, rango y ordenamiento | ✅ | benchmark de índices |
 | Build time, consulta, espacio y mutaciones | ✅ | benchmark de índices |
-| Gráficas + ventajas/desventajas + conclusiones | ✅ | `benchmark_results/`, docs |
+| Gráficas + ventajas/desventajas + conclusiones | ✅ | `benchmarks/results/`, docs |
 
 ### 2.2 Parte 2 · Base espacial
 

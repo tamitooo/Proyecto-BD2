@@ -1,8 +1,4 @@
-"""Pruebas unitarias de `storage/record.py` (Field y Schema).
-
-Cubren la capa mas basica del motor: serializacion de registros en bytes
-de tamano fijo, que es la base de Heap File, Archivo Secuencial e indices.
-"""
+"""Pruebas unitarias de `storage/record.py` (Field y Schema)."""
 
 import unittest
 

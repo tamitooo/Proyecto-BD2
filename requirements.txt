@@ -30,13 +30,17 @@ psycopg2-binary>=2.9
 # Benchmark espacial vectorizado / medición secuencial
 numpy>=1.26
 
-# Extracción de características de imágenes para SIMILAR_TO('foto.jpg')
-# (Parte 4, issue #107). El motor y los índices siguen funcionando sin ella;
-# solo la búsqueda por archivo de imagen la necesita.
-Pillow>=10.0
+# SIFT con OpenCV (Parte 4). Instalar solo una familia de OpenCV:
+# opencv-python-headless sirve para servidores y no necesita GUI.
+opencv-python-headless>=4.8,<5
 
-# Opcional: SIFT estándar de OpenCV. Si no está, se usa el SIFT denso propio.
-# opencv-python-headless>=4.10
+# MFCC con librosa/soundfile (Parte 4). El fallback propio usa numpy + wave.
+librosa>=0.10.2,<1
+soundfile>=0.12
+
+# Pillow: decodificación de imágenes y SIFT denso de respaldo cuando OpenCV no
+# está instalado (SIMILAR_TO('foto.jpg')).
+Pillow>=10.0
 
 # MP3/OGG/FLAC/M4A: no es un paquete de pip. Instalar ffmpeg y agregarlo al
 # PATH; el extractor lo invoca para convertir a WAV antes de calcular MFCC.

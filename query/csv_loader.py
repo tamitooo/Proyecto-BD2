@@ -1,5 +1,6 @@
 from __future__ import annotations
-import csv, io
+import csv, io, os
+from pathlib import Path
 from dataclasses import dataclass, field
 
 
@@ -52,7 +53,8 @@ def _coerce(v, typ):
 
 
 def import_csv(executor, table_name, source, *, has_header=True, delimiter=",", encoding="utf-8", max_errors=10, **_):
-    text = source.read() if hasattr(source, "read") else str(source);
+    if isinstance(source, os.PathLike): text = Path(source).read_bytes()
+    else: text = source.read() if hasattr(source, "read") else str(source);
     text = text.decode(encoding) if isinstance(text, bytes) else text
     t = executor.catalog.get_table(table_name);
     cols = t.schema.col_names();

@@ -53,7 +53,6 @@ def test_heap_is_paged_reuses_deleted_slots_and_spans_pages(tmp_path):
 def test_sequential_main_order_search_range_lazy_delete_and_reorganization(tmp_path):
     schema = Schema([("id", "INT"), ("v", "INT")], "id")
     seq = SequentialFile(str(tmp_path / "seq"), schema)
-    # Construir un main estable y luego probar overflow.
     seq.replace_all([{"id": i, "v": i * 10} for i in range(1, 21)])
     for i in (27, 24, 22, 25, 23):
         seq.insert({"id": i, "v": i * 10})
@@ -141,7 +140,6 @@ def test_dynamic_clustered_index_physically_reorders_and_dml_keeps_it(engine):
     assert engine.run("UPDATE demo SET score = 5 WHERE id = 1").success
     physical = [row["score"] for _, row in engine.catalog.get_table("demo").storage.scan()]
     assert physical == [5, 10, 15, 20]
-    # Hash de PK debe seguir apuntando a RIDs válidos tras cada reclustering.
     row = engine.run("SELECT * FROM demo WHERE id = 1")
     assert row.rows[0]["score"] == 5
 

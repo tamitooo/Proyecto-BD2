@@ -1,9 +1,4 @@
-"""Banco de consultas para los experimentos de la Parte 3.
-
-Las consultas salen de una lista de terminos del curso y se agrupan por
-cantidad de palabras: una, tres y cinco o mas, que es lo que pide el
-enunciado. La semilla fija hace que el banco sea siempre el mismo.
-"""
+"""Banco de consultas de 1, 3 y 5+ palabras para la Parte 3 (semilla fija)."""
 
 from __future__ import annotations
 
@@ -42,11 +37,7 @@ instantanea auditoria bitacora trazabilidad
 
 
 def construir_consultas(semilla: int = SEMILLA, por_grupo: int = POR_GRUPO) -> list[dict]:
-    """Devuelve el banco completo. Ningun termino se comparte entre consultas.
-
-    Si dos consultas compartieran terminos, sus documentos respuesta se
-    mezclarian y la relevancia dejaria de estar bien definida.
-    """
+    """Ninguna consulta comparte términos, para que la relevancia quede bien definida."""
     rng = random.Random(semilla)
     disponibles = list(TERMINOS)
     rng.shuffle(disponibles)

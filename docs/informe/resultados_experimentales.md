@@ -1,10 +1,10 @@
 # Resultados experimentales (generado)
 
-Archivo generado automáticamente desde los CSV de `benchmark_results/`. Las mismas tablas aparecen en el informe y en el README.
+Archivo generado automáticamente desde los CSV de `benchmarks/results/`. Las mismas tablas aparecen en el informe y en el README.
 
 ## Parte 1 · Heap File vs Archivo Secuencial Paginado
 
-_Generado por `python -m benchmarks.generate_report_tables` desde `benchmark_results/*.csv`. No editar a mano._
+_Generado por `python -m benchmarks.generate_report_tables` desde `benchmarks/results/*.csv`. No editar a mano._
 
 Entorno de la corrida: Windows-11-10.0.26200-SP0 · Python 3.13.7.
 
@@ -21,7 +21,7 @@ Inserción y borrado uno a uno medidos hasta **10 000** registros.
 
 ## Parte 1 · B+ agrupado vs B+ no agrupado vs Hash Extendible
 
-_Generado por `python -m benchmarks.generate_report_tables` desde `benchmark_results/*.csv`. No editar a mano._
+_Generado por `python -m benchmarks.generate_report_tables` desde `benchmarks/results/*.csv`. No editar a mano._
 
 **Comparación con 50 000 claves** (tiempos promedio por operación)
 
@@ -48,7 +48,7 @@ _Generado por `python -m benchmarks.generate_report_tables` desde `benchmark_res
 
 ## Parte 2 · Secuencial vs R-Tree vs GiST (PostGIS)
 
-_Generado por `python -m benchmarks.generate_report_tables` desde `benchmark_results/*.csv`. No editar a mano._
+_Generado por `python -m benchmarks.generate_report_tables` desde `benchmarks/results/*.csv`. No editar a mano._
 
 Entorno de la corrida: Linux-6.18.44-fc-v70-x86_64-with-glibc2.39 · Python 3.12.3 · PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1) + PostGIS 3.4.2.
 

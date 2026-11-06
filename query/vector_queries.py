@@ -58,11 +58,7 @@ _DEFAULT_METRIC = "euclidean"
 
 
 def parse_vector(value: Any) -> Tuple[float, ...]:
-    """Convierte una celda o un literal en un vector de ``float``.
-
-    Acepta listas/tuplas, JSON (``[0.1, 0.2]``) o texto separado por comas
-    (``0.1,0.2``). Lanza :class:`VectorQueryError` con un mensaje claro.
-    """
+    """Convierte una lista, JSON (``[0.1, 0.2]``) o texto ``0.1,0.2`` en un vector de ``float``."""
     if isinstance(value, (list, tuple)):
         raw: Sequence[Any] = list(value)
     elif isinstance(value, str):
@@ -168,7 +164,6 @@ class VectorExecutor:
             table, column, kind, metric, k, dimension, len(vectors), 0.0, 0.0, 0, target
         )
 
-    # ------------------------------------------------------------- resolución
     @staticmethod
     def _resolve_column(table, requested: Optional[str]) -> str:
         names = list(table.schema.col_names())
@@ -261,7 +256,6 @@ class VectorExecutor:
             rows.append(row)
         return rows, vectors
 
-    # --------------------------------------------------------------- índices
     @staticmethod
     def _build(kind: str, metric: str, vectors):
         n = len(vectors)

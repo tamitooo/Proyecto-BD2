@@ -1,9 +1,4 @@
-"""Pruebas de EXPLAIN para búsquedas textuales y vectoriales (#61 y #91).
-
-El plan debe describir la ruta que usaría la consulta (TEXT_BM25, TEXT_TF_IDF,
-HNSW_KNN o IVF_KNN) sin ejecutar la búsqueda, y con ANALYZE debe incluir las
-filas y el tiempo reales.
-"""
+"""EXPLAIN de MATCH y SIMILAR_TO sin ejecutar; con ANALYZE, filas y tiempo reales."""
 
 import os
 import shutil

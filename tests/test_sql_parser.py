@@ -66,8 +66,6 @@ def test_parse_delete_with_where(parser):
 
 
 def test_syntax_error_raises_exception(parser):
-    # UPDATE si esta soportado; el error debe venir de una sentencia realmente
-    # invalida o de un comando fuera del subconjunto SQL del proyecto.
     with pytest.raises(SQLParseError):
         parser.parse("SELECT * FROM")
 

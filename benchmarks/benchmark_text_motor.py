@@ -1,13 +1,4 @@
-"""Medicion del motor propio sobre el corpus de la Parte 3.
-
-Corre las mismas 36 consultas y las mismas etiquetas que el baseline de
-PostgreSQL. La tokenizacion es la provisional del experimento: minusculas y
-separacion por espacios, sin stemming ni stopwords, para quedar al mismo
-nivel que la configuracion ``simple`` de Postgres.
-
-El indice que se mide es el que existe hoy: las estadisticas en memoria de
-``BM25Statistics``. SPIMI con bloques en disco es otra entrega.
-"""
+"""TF-IDF y BM25 del motor sobre el corpus de la Parte 3, con las mismas consultas que el baseline GIN."""
 
 from __future__ import annotations
 
@@ -106,7 +97,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Motor propio sobre el corpus de la Parte 3")
     ap.add_argument("--sizes", nargs="+", type=int, default=[1000, 10000, 100000])
     ap.add_argument("--data", default="data/text")
-    ap.add_argument("--output", default="benchmark_results/text")
+    ap.add_argument("--output", default="benchmarks/results/text")
     args = ap.parse_args()
 
     filas = run(tuple(args.sizes), Path(args.data))

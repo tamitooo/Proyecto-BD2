@@ -1,11 +1,4 @@
-"""B+ Tree agrupado.
-
-El árbol mantiene ``clave -> RID`` igual que un índice de disco real. La
-propiedad *clustered* no se obtiene duplicando registros en las hojas: la
-impone el catálogo reorganizando físicamente el archivo de datos por
-``key_field`` antes de construir/reconstruir este índice. Solo puede existir un
-índice agrupado por tabla.
-"""
+"""B+ Tree agrupado."""
 from pathlib import Path
 from .bplus_tree import BPlusTree
 from .persistence import atomic_pickle_write, pickle_read, remove_if_exists

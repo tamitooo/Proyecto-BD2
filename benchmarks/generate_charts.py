@@ -4,7 +4,7 @@ from collections import defaultdict
 from pathlib import Path
 import matplotlib.pyplot as plt
 
-ROOT=Path('benchmark_results');PLOTS=ROOT/'plots';PLOTS.mkdir(parents=True,exist_ok=True)
+ROOT=Path('benchmarks/results');PLOTS=ROOT/'plots';PLOTS.mkdir(parents=True,exist_ok=True)
 
 def load(name):
  p=ROOT/name

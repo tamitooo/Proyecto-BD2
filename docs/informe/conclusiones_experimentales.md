@@ -125,7 +125,7 @@ Heap File.
 
 ## 3. Resultados: estructuras de indexación
 
-> **Números regenerados** desde `benchmark_results/index_benchmark.json`
+> **Números regenerados** desde `benchmarks/results/index_benchmark.json`
 > (`python -m benchmarks.benchmark_indexes --sizes 1000 10000 50000`), semilla 42,
 > 3 repeticiones. Tamaños comparados: 1 000, 10 000 y 50 000 registros.
 > Incluye la **línea base sin índice** (búsqueda lineal) que exige el enunciado.
@@ -352,11 +352,11 @@ son mucho más compactos, pero cada fila recuperada cuesta una lectura por RID.
 ## 6. Cómo reproducir
 
 ```bash
-# 1) Benchmarks (generan CSV + JSON en benchmark_results/)
+# 1) Benchmarks (generan CSV + JSON en benchmarks/results/)
 python benchmarks/benchmark_heap_vs_sequential.py --sizes 1000 10000 100000
 python -m benchmarks.benchmark_indexes --sizes 1000 10000 50000
 
-# 2) Gráficas comparativas (PNG en benchmark_results/plots/)
+# 2) Gráficas comparativas (PNG en benchmarks/results/plots/)
 python -m benchmarks.generate_charts
 
 # 3) Verificación de la metodología (carga masiva == API pública)

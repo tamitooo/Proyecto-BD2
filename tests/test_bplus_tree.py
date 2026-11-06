@@ -6,7 +6,6 @@ from indexes.bplus_tree import BPlusTree
 
 
 def assert_valid(tree):
-    """Atajo para validar todas las invariantes del B+ Tree."""
     assert tree.validate() is True
 
 
@@ -180,7 +179,6 @@ def test_deletion_rebalances_internal_nodes_and_collapses_root():
     for key in range(1, 80):
         tree.insert(key, key)
 
-    # Fuerza múltiples merges tanto en hojas como en nodos internos.
     for key in range(1, 79):
         assert tree.delete(key) is True
         assert_valid(tree)

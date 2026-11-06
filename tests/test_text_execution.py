@@ -1,8 +1,4 @@
-"""Pruebas de ejecución de MATCH (Parte 3, issues #57, #58, #59 y #60).
-
-Cubren BM25, TF-IDF + coseno, SCORE() como columna, ORDER BY sobre el alias y
-LIMIT. El tokenizador es provisional hasta el pipeline de SPIMI (#44-#48).
-"""
+"""Ejecución de MATCH: BM25, TF-IDF, SCORE(), ORDER BY y LIMIT."""
 
 import os
 import shutil

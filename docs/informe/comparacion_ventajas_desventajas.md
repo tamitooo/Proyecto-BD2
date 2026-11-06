@@ -15,7 +15,7 @@ repositorio:
 ```bash
 python benchmarks/benchmark_heap_vs_sequential.py --sizes 1000 10000 100000
 python -m benchmarks.benchmark_indexes --sizes 1000 10000 100000
-python -m benchmarks.generate_charts      # -> benchmark_results/plots/*.png
+python -m benchmarks.generate_charts      # -> benchmarks/results/plots/*.png
 ```
 
 > **Nota sobre los tiempos absolutos.** Las mediciones se tomaron en un
@@ -25,7 +25,7 @@ python -m benchmarks.generate_charts      # -> benchmark_results/plots/*.png
 > equipo sin esa capa los valores absolutos bajan uno o dos órdenes de
 > magnitud. Por eso la comparación se apoya en **diferencias relativas**,
 > en la **tendencia con N** y en el **análisis de complejidad**, no en el
-> valor absoluto. Ver `docs/conclusiones_experimentales.md`.
+> valor absoluto. Ver `docs/informe/conclusiones_experimentales.md`.
 
 ---
 
@@ -60,7 +60,7 @@ python -m benchmarks.generate_charts      # -> benchmark_results/plots/*.png
 | Espacio 1 000 / 10 000 / 100 000 (bytes) | 44 935 / 433 010 / 4 301 505 | 43 000 / 430 000 / 4 300 000 |
 | Reutilización de espacio tras borrar | **300/300** y **3000/3000** slots liberados reutilizados | vía reorganización |
 
-Gráficas: `benchmark_results/plots/storage_insert.png`,
+Gráficas: `benchmarks/results/plots/storage_insert.png`,
 `storage_search.png`, `storage_space.png`, `storage_mutation.png`,
 `storage_dashboard.png`.
 
@@ -84,9 +84,9 @@ Gráficas: `benchmark_results/plots/storage_insert.png`,
 
 ### Evidencia medida (índices)
 
-Ver la tabla de resultados en `docs/conclusiones_experimentales.md`
+Ver la tabla de resultados en `docs/informe/conclusiones_experimentales.md`
 (sección de índices) y las gráficas
-`benchmark_results/plots/index_build_time.png`, `index_exact_lookup.png`,
+`benchmarks/results/plots/index_build_time.png`, `index_exact_lookup.png`,
 `index_range_search.png`, `index_ordered_scan.png`, `index_size.png` e
 `index_mutations.png`.
 

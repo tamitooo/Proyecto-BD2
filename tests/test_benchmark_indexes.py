@@ -78,13 +78,11 @@ def test_run_benchmarks_returns_all_expected_rows(tiny_results):
 
 
 def test_linear_scan_baseline_is_present_and_comparable(tiny_results, tiny_config):
-    """El enunciado exige comparar los índices contra la búsqueda sin índice."""
     baselines = [
         result for result in tiny_results
         if result.metric == "linear_scan"
     ]
 
-    # Una sola línea base por tamaño de dataset (no una por índice).
     assert len(baselines) == 1
 
     baseline = baselines[0]
@@ -94,7 +92,6 @@ def test_linear_scan_baseline_is_present_and_comparable(tiny_results, tiny_confi
     assert baseline.operations == tiny_config.exact_queries
     assert baseline.avg_us is not None
 
-    # Se mide sobre el mismo conjunto de claves que 'exact_hit'.
     hits = [
         result for result in tiny_results
         if result.metric == "exact_hit"
@@ -109,17 +106,12 @@ def test_all_expected_metrics_are_present(tiny_results):
         "build",
         "serialized_size",
         "exact_hit",
-        # Igualdad + traer la fila: es donde el B+ agrupado gana.
         "exact_hit_materialized",
         "exact_miss",
         "exact_miss_materialized",
-        # Solo el índice: el agrupado paga copia defensiva, el no agrupado RIDs.
         "range_search",
-        # Índice + recuperar la fila DESDE EL HEAP FILE (la comparación real).
         "range_search_materialized",
-        # La misma recuperación desde un dict: contraste metodológico.
         "range_search_inmemory",
-        # Recorrido crudo de las hojas, sin la copia defensiva del agrupado.
         "range_search_raw_index",
         "ordered_scan",
         "insert",
@@ -129,7 +121,6 @@ def test_all_expected_metrics_are_present(tiny_results):
     by_index = {}
 
     for result in tiny_results:
-        # La línea base sin índice no es una técnica de indexación.
         if result.index_type == "linear_scan":
             continue
         by_index.setdefault(
@@ -255,7 +246,6 @@ def test_bplus_range_queries_return_rows(tiny_results):
     assert unclustered.result_items is not None
     assert unclustered.result_items > 0
 
-    # Ambos B+ ejecutan exactamente los mismos rangos.
     assert clustered.result_items == unclustered.result_items
 
 
@@ -420,16 +410,6 @@ def test_multiple_dataset_sizes_generate_independent_results():
 
 
 def test_la_recuperacion_por_rid_cuesta_y_favorece_al_agrupado():
-    """Coherencia con la teoría del B+ agrupado.
-
-    Las hojas del índice agrupado ya contienen el registro, así que resolver una
-    consulta no cuesta lecturas extra. El no agrupado devuelve RIDs y cada uno
-    es una lectura en el Heap File. Por eso, midiendo la consulta REAL (índice +
-    traer la fila), el agrupado tiene que ganar por un margen amplio.
-
-    Si esta prueba falla, el benchmark volvió a medir la recuperación contra un
-    diccionario en memoria y las gráficas contradirán la teoría de clase.
-    """
     config = BenchmarkConfig(
         sizes=[2000],
         seed=11,
@@ -459,9 +439,6 @@ def test_la_recuperacion_por_rid_cuesta_y_favorece_al_agrupado():
             "desde el almacenamiento"
         )
 
-    # Y el contraste metodológico debe reproducir el efecto contrario: midiendo
-    # la recuperación contra un dict, el agrupado pierde porque paga la copia
-    # defensiva del registro y el no agrupado sólo mueve un RID.
     en_memoria_agrupado = resultados[
         ("bplus_clustered", "range_search_inmemory")
     ].avg_us

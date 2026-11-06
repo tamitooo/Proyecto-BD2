@@ -5,16 +5,16 @@ venían de una corrida distinta a la de los CSV/JSON (p. ej. "0.098 ms" en el
 informe frente a "0.122 ms" en el CSV). Desde ahora ningún número se escribe a
 mano: este script lee
 
-    benchmark_results/storage_benchmark.csv   (Parte 1 · Heap vs Secuencial)
-    benchmark_results/index_benchmark.csv     (Parte 1 · B+ / B+ / Hash)
-    benchmark_results/spatial_benchmark.csv   (Parte 2 · Secuencial / R-Tree / GiST)
+    benchmarks/results/storage_benchmark.csv   (Parte 1 · Heap vs Secuencial)
+    benchmarks/results/index_benchmark.csv     (Parte 1 · B+ / B+ / Hash)
+    benchmarks/results/spatial_benchmark.csv   (Parte 2 · Secuencial / R-Tree / GiST)
 
 y reemplaza los bloques marcados con
 
     <!-- BEGIN:AUTO:<nombre> -->  ...  <!-- END:AUTO:<nombre> -->
 
-en ``README.md``, ``docs/parte2_espacial.md`` y ``docs/informe_incremental.md``.
-Además escribe ``docs/resultados_experimentales.md`` completo.
+en ``README.md``, ``docs/informe/parte2_espacial.md`` y ``docs/informe/informe_incremental.md``.
+Además escribe ``docs/informe/resultados_experimentales.md`` completo.
 
 Uso (después de correr los benchmarks):
 
@@ -33,19 +33,15 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
 
 ROOT = Path(__file__).resolve().parents[1]
-RESULTS = ROOT / "benchmark_results"
+RESULTS = ROOT / "benchmarks/results"
 
 DOCS_WITH_BLOCKS = [
     ROOT / "README.md",
-    ROOT / "docs" / "parte2_espacial.md",
-    ROOT / "docs" / "informe_incremental.md",
+    ROOT / "docs" / "informe" / "parte2_espacial.md",
+    ROOT / "docs" / "informe" / "informe_incremental.md",
 ]
-FULL_REPORT = ROOT / "docs" / "resultados_experimentales.md"
+FULL_REPORT = ROOT / "docs" / "informe" / "resultados_experimentales.md"
 
-
-# ----------------------------------------------------------------------
-# Lectura y formato
-# ----------------------------------------------------------------------
 
 def _read(path: Path) -> List[Dict[str, str]]:
     if not path.exists():
@@ -114,10 +110,6 @@ def _table(header: List[str], rows: List[List[str]]) -> str:
     lines += ["| " + " | ".join(row) + " |" for row in rows]
     return "\n".join(lines)
 
-
-# ----------------------------------------------------------------------
-# Parte 2 · espacial
-# ----------------------------------------------------------------------
 
 class Spatial:
     def __init__(self, rows: List[Dict[str, str]]):
@@ -262,10 +254,6 @@ class Spatial:
         return out
 
 
-# ----------------------------------------------------------------------
-# Parte 1 · almacenamiento e índices
-# ----------------------------------------------------------------------
-
 class Storage:
     def __init__(self, rows):
         self.rows = rows
@@ -350,10 +338,6 @@ class Indexes:
         return _table(["N"] + [f"{label} (igualdad)" for _, label in self.LABELS] + ["Lineal"], rows)
 
 
-# ----------------------------------------------------------------------
-# Bloques
-# ----------------------------------------------------------------------
-
 def _env_line(path: Path) -> str:
     env = _env(path)
     if not env:
@@ -368,7 +352,7 @@ def build_blocks() -> Dict[str, str]:
     spatial = Spatial(_read(RESULTS / "spatial_benchmark.csv"))
     storage = Storage(_read(RESULTS / "storage_benchmark.csv"))
     indexes = Indexes(_read(RESULTS / "index_benchmark.csv"))
-    fuente = "_Generado por `python -m benchmarks.generate_report_tables` desde `benchmark_results/*.csv`. No editar a mano._"
+    fuente = "_Generado por `python -m benchmarks.generate_report_tables` desde `benchmarks/results/*.csv`. No editar a mano._"
     blocks: Dict[str, str] = {}
 
     if spatial.rows:
@@ -435,7 +419,7 @@ def full_report(blocks: Dict[str, str]) -> str:
     parts = [
         "# Resultados experimentales (generado)",
         "",
-        "Archivo generado automáticamente desde los CSV de `benchmark_results/`. "
+        "Archivo generado automáticamente desde los CSV de `benchmarks/results/`. "
         "Las mismas tablas aparecen en el informe y en el README.",
         "",
     ]

@@ -1,14 +1,4 @@
-"""External Hashing (Grace style) for GROUP BY and equi-JOIN.
-
-The implementation deliberately exposes the two phases taught in BD2:
-1) partition both input streams with a hash function into temporary files;
-2) process one partition at a time in RAM with a second in-memory hash table.
-
-For GROUP BY we aggregate while reading a partition instead of retaining every
-row.  For JOIN the smaller side of each partition is hashed in memory and the
-other side is streamed.  This is a real external path: the complete relation is
-never required in RAM when it exceeds ``memory_rows``.
-"""
+"""External Hashing (Grace style) for GROUP BY and equi-JOIN."""
 from __future__ import annotations
 
 import os
@@ -178,8 +168,6 @@ class ExternalHashing:
                 return data
 
         def in_memory_join(left_part, right_part):
-            # Hash the right side.  Partitions are normally <= memory_rows;
-            # correctness does not depend on that heuristic.
             table: Dict[Any, list] = {}
             for pos, row in enumerate(right_part):
                 table.setdefault(row[right_key], []).append((pos, row))

@@ -7,12 +7,12 @@
 > para la Parte 2.
 >
 > **Informes de detalle que acompañan a este documento** (en `docs/revision/`):
-> [`indices.md`](revision/indices.md) (corrección de las estructuras de indexación,
+> [`indices.md`](indices.md) (corrección de las estructuras de indexación,
 > uso de índices en el planner y metodología de los experimentos),
-> [`sql_dinamico.md`](revision/sql_dinamico.md) (superficie SQL, carga de CSV,
+> [`sql_dinamico.md`](sql_dinamico.md) (superficie SQL, carga de CSV,
 > transacciones y arquitectura de los dos ejecutores),
-> [`frontend.md`](revision/frontend.md) (tema, paneles, flujos de CSV y DDL) y
-> [`alineacion_clase.md`](revision/alineacion_clase.md) (comparación con la clase,
+> [`frontend.md`](frontend.md) (tema, paneles, flujos de CSV y DDL) y
+> [`alineacion_clase.md`](alineacion_clase.md) (comparación con la clase,
 > semana por semana, con el plan de repaso para la defensa).
 
 ---
@@ -310,7 +310,7 @@ natural."*
 ## 6. Alineación con la clase (semanas 1 a 7)
 
 La comparación completa, componente por componente con citas de las fuentes de clase,
-está en [`docs/revision/alineacion_clase.md`](revision/alineacion_clase.md) (1 026
+está en [`docs/revision/alineacion_clase.md`](alineacion_clase.md) (1 026
 líneas, con la tabla de 47 componentes y un plan de repaso con 20 preguntas). Resumen:
 
 | Semana / tema | Veredicto | Lo que hay que poder decir |
@@ -361,7 +361,7 @@ base del benchmark.
 
 Se regeneró el benchmark de índices con la **línea base sin índice** que exige el
 enunciado, y se regeneraron las gráficas y las tablas de
-[`docs/conclusiones_experimentales.md`](conclusiones_experimentales.md) **desde el
+[`docs/informe/conclusiones_experimentales.md`](../informe/conclusiones_experimentales.md) **desde el
 JSON**, así que ya no hay números que no cuadren.
 
 Resultado destacado (N = 50 000, igualdad exacta):
@@ -397,12 +397,12 @@ del *index clustering* y la contrapartida de no tener que ir al Heap File.
 
 1. **Entregable pendiente: el informe incremental.** El enunciado lo pide
    explícitamente (sección 3: "Informe incremental: diseño arquitectónico, dominio de
-   datos, explicación de algoritmos") y **`docs/informe_incremental.md` está vacío
+   datos, explicación de algoritmos") y **`docs/informe/informe_incremental.md` está vacío
    (0 bytes)**. Es, hoy, el único entregable de la Parte 1 que falta por completo. El
    material para escribirlo ya existe: `docs/revision/alineacion_clase.md` tiene el
    diseño y la explicación de algoritmos componente por componente con citas de clase,
-   `docs/revision_parte1.md` tiene la verificación y los hallazgos, y
-   `docs/conclusiones_experimentales.md` cubre la parte experimental. Es cuestión de
+   `docs/revision/revision_parte1.md` tiene la verificación y los hallazgos, y
+   `docs/informe/conclusiones_experimentales.md` cubre la parte experimental. Es cuestión de
    ensamblarlo, no de investigar de nuevo.
 2. **Migrar el material viejo al ejecutor vigente.** `examples/demo_parte1.py`,
    `tests/test_end_to_end.py` y `tests/test_storage_integration.py` usan
@@ -435,7 +435,7 @@ encajan sin tocar el ejecutor.
 | 4:00 | `SELECT * FROM alumnos WHERE nota = 14 OR nota = 20` | `BPLUS_INDEX_UNION`: dos búsquedas unidas por índice |
 | 4:20 | `BEGIN TRANSACTION` → `DELETE FROM alumnos WHERE nota < 14` → `SELECT` (se ven menos filas) → `ROLLBACK` → `SELECT` | Las filas vuelven; el panel de plan muestra `ROLLBACK` con las tablas restauradas |
 | 4:45 | `python -m transactions.demo_concurrencia` (o el archivo) | Varias transacciones con hilos, la *race condition* y cómo los locks la evitan |
-| 5:00 | Cerrar con la gráfica `benchmark_results/plots/index_dashboard.png` | Hash 17 208× más rápido que la búsqueda lineal a 50 000 claves |
+| 5:00 | Cerrar con la gráfica `benchmarks/results/plots/index_dashboard.png` | Hash 17 208× más rápido que la búsqueda lineal a 50 000 claves |
 
 ---
 
@@ -456,8 +456,8 @@ encajan sin tocar el ejecutor.
 
 **Experimentos**
 - `benchmarks/benchmark_indexes.py` — línea base `linear_scan`, `payload_bytes`, resumen con el desglose
-- `benchmark_results/` — JSON, CSV y las 13 gráficas regeneradas
-- `docs/conclusiones_experimentales.md` — tablas y conclusiones alineadas con el JSON
+- `benchmarks/results/` — JSON, CSV y las 13 gráficas regeneradas
+- `docs/informe/conclusiones_experimentales.md` — tablas y conclusiones alineadas con el JSON
 
 **Interfaz**
 - `frontend/src/styles.css`, `index.html` — tema claro con `color-scheme: light`
@@ -471,7 +471,7 @@ encajan sin tocar el ejecutor.
 - `tests/test_dinamica_parte1.py` — **nuevo**, 27 pruebas
 - `tests/test_benchmark_indexes.py`, `tests/test_sql_parser.py`, `tests/test_end_to_end.py` — expectativas actualizadas
 - `README.md` — subconjunto SQL, transacciones, paneles, números de los experimentos, recuento de la suite
-- `docs/revision_parte1.md` — **nuevo**, este documento
+- `docs/revision/revision_parte1.md` — **nuevo**, este documento
 - `docs/revision/indices.md`, `frontend.md`, `sql_dinamico.md`, `alineacion_clase.md` — **nuevos**, los cuatro informes de detalle
 - `.gitignore` — añadidas las carpetas temporales de pytest
 

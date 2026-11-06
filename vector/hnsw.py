@@ -1,4 +1,18 @@
-"""Estructura base de HNSW (Hierarchical Navigable Small World)."""
+"""Estructura base de HNSW (Hierarchical Navigable Small World).
+
+Este módulo corresponde al issue #113 y define únicamente la infraestructura
+jerárquica que usarán los issues posteriores:
+
+* nodos vectoriales con vecinos separados por nivel;
+* parámetros M, ef_construction y ef_search;
+* entry point y nivel máximo global;
+* generación probabilística y reproducible de niveles;
+* validación de invariantes estructurales.
+
+La inserción navegable/conexión de vecinos corresponde al issue #114; la
+búsqueda k-NN pública se completa en el #115. Mantener esa separación hace que cada issue sea
+pequeño, testeable y fácil de integrar.
+"""
 
 from __future__ import annotations
 
@@ -6,10 +20,13 @@ import heapq
 import itertools
 import math
 import random
+from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Callable, Dict, Hashable, Iterable, Optional, Sequence, Set, Tuple
 
 from .ranking import SearchResult, SimilarityRanking
+from .metrics import get_search_metric
+from indexes.persistence import atomic_pickle_write, pickle_read, remove_if_exists
 
 Vector = Tuple[float, ...]
 Metric = Callable[[Sequence[float], Sequence[float]], float]
@@ -17,7 +34,12 @@ Metric = Callable[[Sequence[float], Sequence[float]], float]
 
 @dataclass
 class HNSWNode:
-    """Nodo del grafo HNSW."""
+    """Nodo del grafo HNSW.
+
+    ``level`` indica el nivel superior en el que participa. Todo nodo participa
+    desde nivel 0 hasta ``level``. ``neighbors`` mantiene un conjunto de IDs por
+    nivel; los enlaces reales se crearán durante la inserción del issue #114.
+    """
 
     vector_id: Hashable
     vector: Vector
@@ -30,6 +52,7 @@ class HNSWNode:
         self.vector = tuple(float(value) for value in self.vector)
         if not self.vector:
             raise ValueError("vector no puede estar vacío")
+        # Todo nivel del nodo existe aunque todavía no tenga vecinos.
         for current in range(self.level + 1):
             self.neighbors.setdefault(current, set())
 
@@ -43,7 +66,27 @@ class HNSWNode:
 
 
 class HNSWIndex:
-    """Contenedor estructural de un índice HNSW."""
+    """Contenedor estructural de un índice HNSW.
+
+    Parameters
+    ----------
+    M:
+        Máximo de conexiones objetivo por nodo/nivel. La política exacta de
+        poda se añadirá en el issue #114.
+    ef_construction:
+        Tamaño de la lista dinámica de candidatos durante construcción.
+    ef_search:
+        Tamaño por defecto de la lista dinámica de candidatos durante búsqueda.
+    random_seed:
+        Semilla para que la asignación de niveles sea reproducible en tests.
+    level_multiplier:
+        Factor de la distribución exponencial usada para elegir niveles. Si se
+        omite se usa ``1 / log(M)``, convención habitual en HNSW.
+    metric:
+        Función de distancia/similitud compartida. El issue #113 no la ejecuta;
+        se almacena para que #114/#115 puedan consumir la interfaz común de
+        métricas sin acoplar HNSW a Euclidiana.
+    """
 
     def __init__(
         self,
@@ -84,16 +127,114 @@ class HNSWIndex:
         self._rng = random.Random(random_seed)
         self.random_seed = random_seed
         self._heap_counter = itertools.count()
+        self.file_path: Optional[Path] = None
+        self.source_signature: Optional[str] = None
 
     def __len__(self) -> int:
         return len(self.nodes)
+
+    # --------------------------------------------------------- persistencia
+
+    def _persistence_state(self) -> dict:
+        """Estado suficiente para recuperar el grafo sin reconstruirlo."""
+        return {
+            "M": self.M,
+            "ef_construction": self.ef_construction,
+            "ef_search": self.ef_search,
+            "random_seed": self.random_seed,
+            "level_multiplier": self.level_multiplier,
+            "metric_name": self.metric_name,
+            "dimension": self.dimension,
+            "entry_point": self.entry_point,
+            "max_level": self.max_level,
+            "nodes": self.nodes,
+            "rng_state": self._rng.getstate(),
+            "source_signature": self.source_signature,
+        }
+
+    def _restore_persistence_state(self, state: dict) -> None:
+        """Restaura un snapshot persistido y valida sus invariantes."""
+        required = {
+            "M", "ef_construction", "ef_search", "level_multiplier",
+            "metric_name", "dimension", "entry_point", "max_level", "nodes",
+        }
+        missing = required.difference(state)
+        if missing:
+            raise ValueError(
+                "snapshot HNSW incompleto: " + ", ".join(sorted(missing))
+            )
+
+        self.M = int(state["M"])
+        self.ef_construction = int(state["ef_construction"])
+        self.ef_search = int(state["ef_search"])
+        self.random_seed = state.get("random_seed")
+        self.level_multiplier = float(state["level_multiplier"])
+        self.metric_name = SimilarityRanking(state["metric_name"]).metric
+        self.metric = get_search_metric(self.metric_name)
+        self.dimension = state["dimension"]
+        self.entry_point = state["entry_point"]
+        self.max_level = int(state["max_level"])
+        self.nodes = dict(state["nodes"])
+        self.source_signature = state.get("source_signature")
+
+        self._rng = random.Random(self.random_seed)
+        if state.get("rng_state") is not None:
+            self._rng.setstate(state["rng_state"])
+        self._heap_counter = itertools.count()
+        self.validate()
+
+    def attach_file(self, file_path, load_existing: bool = True) -> bool:
+        """Asocia un archivo ``.idx`` y opcionalmente recupera el grafo."""
+        self.file_path = Path(file_path)
+        if load_existing and self.file_path.exists():
+            self._restore_persistence_state(pickle_read(self.file_path))
+            return True
+        return False
+
+    def persist(self) -> None:
+        """Sincroniza el índice completo al archivo asociado de forma atómica."""
+        if self.file_path is None:
+            return
+        atomic_pickle_write(self.file_path, self._persistence_state())
+
+    def save(self, file_path) -> None:
+        """Guarda explícitamente el índice y lo deja asociado a ese archivo."""
+        self.file_path = Path(file_path)
+        self.persist()
+
+    @classmethod
+    def load(cls, file_path) -> "HNSWIndex":
+        """Carga un HNSW persistido sin reinsertar sus vectores."""
+        path = Path(file_path)
+        state = pickle_read(path)
+        index = cls(
+            M=int(state["M"]),
+            ef_construction=int(state["ef_construction"]),
+            ef_search=int(state["ef_search"]),
+            random_seed=state.get("random_seed"),
+            level_multiplier=float(state["level_multiplier"]),
+            metric=get_search_metric(state["metric_name"]),
+            metric_name=state["metric_name"],
+        )
+        index.file_path = path
+        index._restore_persistence_state(state)
+        return index
+
+    def drop_persistent_file(self) -> None:
+        remove_if_exists(self.file_path)
+        self.file_path = None
 
     @property
     def is_empty(self) -> bool:
         return not self.nodes
 
     def random_level(self) -> int:
-        """Genera un nivel con distribución exponencial."""
+        """Genera un nivel con distribución exponencial.
+
+        ``U`` se toma en ``(0, 1]`` y se calcula
+        ``floor(-ln(U) * level_multiplier)``. La mayoría de nodos queda en
+        nivel 0 y cada nivel superior contiene progresivamente menos nodos.
+        """
         # random() puede devolver exactamente 0.0; se evita log(0).
         u = max(self._rng.random(), float.fromhex("0x1.0p-1022"))
         return int(math.floor(-math.log(u) * self.level_multiplier))
@@ -105,7 +246,12 @@ class HNSWIndex:
         *,
         level: Optional[int] = None,
     ) -> HNSWNode:
-        """Construye un nodo validado pero **no lo inserta en el grafo**."""
+        """Construye un nodo validado pero **no lo inserta en el grafo**.
+
+        Es deliberadamente una operación estructural. La inserción HNSW real
+        (navegación, selección de vecinos y enlaces bidireccionales) pertenece
+        al issue #114.
+        """
         values = tuple(float(value) for value in vector)
         if not values:
             raise ValueError("vector no puede estar vacío")
@@ -132,12 +278,19 @@ class HNSWIndex:
             self.entry_point = node.vector_id
             self.max_level = node.level
 
+    # ---------------------------------------------------------- issue #114
+
     @staticmethod
     def _euclidean(first: Sequence[float], second: Sequence[float]) -> float:
         return math.sqrt(sum((float(a) - float(b)) ** 2 for a, b in zip(first, second)))
 
     def _distance(self, first: Sequence[float], second: Sequence[float]) -> float:
-        """Distancia usada por construcción/navegación."""
+        """Distancia usada por construcción/navegación.
+
+        Persona B podrá inyectar una métrica común mediante ``metric``. Mientras
+        esa capa todavía no exista, Euclidiana es el fallback determinista.
+        El contrato de HNSW en esta etapa es "menor valor = más cercano".
+        """
         if len(first) != len(second):
             raise ValueError("los vectores deben tener la misma dimensión")
         fn = self.metric or self._euclidean
@@ -191,8 +344,8 @@ class HNSWIndex:
             raise ValueError("ef debe ser >= 1")
 
         visited: Set[Hashable] = set()
-        candidates = []
-        best = []
+        candidates = []  # min-heap por distancia
+        best = []        # max-heap simulado con distancia negativa
 
         for node_id in entry_ids:
             if node_id in visited:
@@ -284,14 +437,21 @@ class HNSWIndex:
         *,
         level: Optional[int] = None,
     ) -> HNSWNode:
-        """Inserta un vector siguiendo el flujo de construcción HNSW."""
+        """Inserta un vector siguiendo el flujo de construcción HNSW.
+
+        El parámetro ``level`` existe para pruebas reproducibles; en uso normal
+        se omite y se obtiene mediante la distribución probabilística definida
+        en :meth:`random_level`.
+        """
         if vector_id in self.nodes:
             raise ValueError(f"vector_id duplicado: {vector_id!r}")
 
         node = self.make_node(vector_id, vector, level=level)
 
+        # Primer vector: no hay navegación ni vecinos.
         if not self.nodes:
             self._register_structural_node(node)
+            self.persist()
             return node
 
         old_entry = self.entry_point
@@ -306,11 +466,14 @@ class HNSWIndex:
 
         entry_id = old_entry
 
+        # 1) Desde las capas que el nuevo nodo no alcanza, descenso greedy.
         for current_level in range(old_max_level, node.level, -1):
             entry_id = self._greedy_search_level(
                 node.vector, entry_id, current_level
             )
 
+        # 2) En cada capa compartida buscar candidatos con ef_construction,
+        # escoger los M más próximos y crear conexiones recíprocas.
         top_shared = min(node.level, old_max_level)
         for current_level in range(top_shared, -1, -1):
             candidates = self._search_layer(
@@ -336,6 +499,7 @@ class HNSWIndex:
             if candidates:
                 entry_id = candidates[0]
 
+        # 3) Un nodo que alcanza una capa nueva se vuelve entry point.
         if node.level > old_max_level:
             self.entry_point = vector_id
             self.max_level = node.level
@@ -345,6 +509,8 @@ class HNSWIndex:
 
         return node
 
+    # ---------------------------------------------------------- issue #115
+
     def knn(
         self,
         query_vector: Iterable[float],
@@ -352,7 +518,19 @@ class HNSWIndex:
         k: int = 10,
         ef_search: Optional[int] = None,
     ) -> list[tuple[Hashable, float]]:
-        """Busca los ``k`` vecinos aproximados más cercanos."""
+        """Busca los ``k`` vecinos aproximados más cercanos.
+
+        La búsqueda sigue el flujo HNSW clásico:
+
+        1. comienza en ``entry_point``;
+        2. desciende greedy desde ``max_level`` hasta nivel 1;
+        3. en nivel 0 ejecuta búsqueda best-first con ``ef_search``;
+        4. ordena los candidatos por la métrica configurada y retorna hasta ``k``.
+
+        En este issue el contrato de la métrica sigue siendo **menor = mejor**.
+        El issue #116 se encargará de normalizar distancia/similitud para la capa
+        SQL y ``SIMILARITY_SCORE()``.
+        """
         if k <= 0 or not self.nodes:
             return []
 
@@ -375,9 +553,11 @@ class HNSWIndex:
         assert self.entry_point is not None
         entry_id = self.entry_point
 
+        # Descenso greedy por las capas superiores.
         for level in range(self.max_level, 0, -1):
             entry_id = self._greedy_search_level(query, entry_id, level)
 
+        # Exploración best-first en la capa base.
         candidates = self._search_layer(
             query, [entry_id], effective_ef, 0
         )
@@ -396,14 +576,27 @@ class HNSWIndex:
         k: int = 10,
         ef_search: Optional[int] = None,
     ) -> list[SearchResult]:
-        """Retorna resultados con un ``score`` uniforme (mayor = mejor)."""
+        """Retorna resultados con un ``score`` uniforme (mayor = mejor).
+
+        ``knn`` conserva el costo interno de navegación, donde menor = mejor.
+        Esta vista pública lo transforma según ``metric_name`` para que la capa
+        SQL pueda exponer ``SIMILARITY_SCORE()`` sin recalcular la consulta.
+
+        Cuando se usa Coseno o Producto Punto, la función ``metric`` inyectada
+        debe seguir el contrato de costo mínimo documentado en
+        :mod:`vector.ranking`: ``1-cosine`` o ``-dot_product`` respectivamente.
+        """
         raw = self.knn(query_vector, k=k, ef_search=ef_search)
         return SimilarityRanking(self.metric_name).rank(raw, k=k)
 
     def brute_force_knn(
         self, query_vector: Iterable[float], *, k: int = 10
     ) -> list[tuple[Hashable, float]]:
-        """Referencia exacta para tests/benchmarks de Recall@k."""
+        """Referencia exacta para tests/benchmarks de Recall@k.
+
+        No forma parte del camino de consulta HNSW; existe para verificar la
+        calidad de la búsqueda aproximada de manera reproducible.
+        """
         if k <= 0 or not self.nodes:
             return []
         query = tuple(float(value) for value in query_vector)
@@ -421,7 +614,11 @@ class HNSWIndex:
         return ranked[: min(k, len(ranked))]
 
     def validate(self) -> bool:
-        """Comprueba invariantes estructurales del grafo."""
+        """Comprueba invariantes estructurales del grafo.
+
+        La validación es intencionalmente estricta para detectar corrupciones
+        antes de implementar la inserción y la búsqueda.
+        """
         if not self.nodes:
             if self.entry_point is not None or self.max_level != -1:
                 raise AssertionError(
@@ -470,6 +667,7 @@ class HNSWIndex:
                         raise AssertionError(
                             f"vecino {neighbor_id!r} no participa en nivel {level}"
                         )
+                    # HNSW usa enlaces bidireccionales en cada capa.
                     if node_id not in neighbor.neighbors[level]:
                         raise AssertionError(
                             f"enlace no recíproco {node_id!r}<->{neighbor_id!r} "

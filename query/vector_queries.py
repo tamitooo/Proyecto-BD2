@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import time
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from vector.hnsw import HNSWIndex
@@ -47,7 +49,7 @@ def parse_vector(value: Any) -> Tuple[float, ...]:
 
 
 class VectorExecutor:
-    """Ejecuta ``SIMILAR_TO`` construyendo el índice elegido sobre la tabla."""
+    """Ejecuta ``SIMILAR_TO`` reutilizando HNSW persistente cuando corresponde."""
 
     def __init__(self, catalog):
         self.catalog = catalog
@@ -77,8 +79,16 @@ class VectorExecutor:
             k = max(1, min(k, int(limit)))
 
         started = time.perf_counter()
-        index = self._build(kind, metric, vectors)
+        if kind == "hnsw":
+            index, reused, index_path = self._load_or_build_hnsw(
+                table.name, column, metric, vectors
+            )
+        else:
+            index = self._build(kind, metric, vectors)
+            reused = False
+            index_path = None
         build_ms = (time.perf_counter() - started) * 1000
+
         started = time.perf_counter()
         try:
             results = index.search_similar(target, k=k)
@@ -93,7 +103,10 @@ class VectorExecutor:
             row["_raw_metric"] = result.raw_metric
             row["_metric"] = result.metric
             out.append(row)
-        return out, self._plan(table, column, kind, metric, k, dimension, len(vectors), build_ms, search_ms, len(out))
+        return out, self._plan(
+            table, column, kind, metric, k, dimension, len(vectors),
+            build_ms, search_ms, len(out), reused=reused, index_path=index_path,
+        )
 
     def plan(self, table, spec, row_filter=None):
         """Plan que usaría la consulta, sin construir el índice ni buscar."""
@@ -248,6 +261,57 @@ class VectorExecutor:
             rows.append(row)
         return rows, vectors
 
+    def _hnsw_path(self, table_name: str, column: str, metric: str) -> Optional[Path]:
+        data_dir = getattr(self.catalog, "data_dir", None)
+        if data_dir is None:
+            return None
+        directory = Path(data_dir) / "indexes"
+        directory.mkdir(parents=True, exist_ok=True)
+        safe = lambda value: "".join(ch if ch.isalnum() or ch in "_-" else "_" for ch in value.lower())
+        return directory / f"{safe(table_name)}__{safe(column)}__hnsw__{safe(metric)}.idx"
+
+    @staticmethod
+    def _vectors_signature(vectors) -> str:
+        """Firma del contenido para detectar un índice persistido obsoleto."""
+        digest = hashlib.sha256()
+        for vector_id, vector in vectors:
+            digest.update(repr(vector_id).encode("utf-8"))
+            digest.update(b"|")
+            digest.update(repr(tuple(float(v) for v in vector)).encode("utf-8"))
+            digest.update(b"\n")
+        return digest.hexdigest()
+
+    def _load_or_build_hnsw(self, table_name: str, column: str, metric: str, vectors):
+        signature = self._vectors_signature(vectors)
+        path = self._hnsw_path(table_name, column, metric)
+
+        if path is not None and path.exists():
+            try:
+                index = HNSWIndex.load(path)
+                if (
+                    index.metric_name == metric
+                    and index.source_signature == signature
+                    and len(index) == len(vectors)
+                    and (not vectors or index.dimension == len(vectors[0][1]))
+                ):
+                    return index, True, str(path)
+            except (OSError, ValueError, KeyError, TypeError):
+                # Snapshot corrupto/incompatible: se reconstruye una vez y se reemplaza.
+                pass
+
+        index = HNSWIndex(
+            metric=get_search_metric(metric),
+            metric_name=metric,
+            random_seed=0,
+            ef_search=50,
+        )
+        for vector_id, vector in vectors:
+            index.insert(vector_id, vector)
+        index.source_signature = signature
+        if path is not None:
+            index.save(path)
+        return index, False, str(path) if path is not None else None
+
     @staticmethod
     def _build(kind: str, metric: str, vectors):
         n = len(vectors)
@@ -257,11 +321,13 @@ class VectorExecutor:
             index.build(vectors)
             return index
         if kind == "hnsw":
+            # La ruta normal usa _load_or_build_hnsw(). Se conserva este caso
+            # para compatibilidad con tests/helpers que invoquen _build directamente.
             index = HNSWIndex(
                 metric=get_search_metric(metric),
                 metric_name=metric,
                 random_seed=0,
-                ef_search=max(10, n),
+                ef_search=50,
             )
             for vector_id, vector in vectors:
                 index.insert(vector_id, vector)
@@ -269,12 +335,15 @@ class VectorExecutor:
         raise VectorQueryError(f"índice no soportado en SIMILAR_TO: {kind}; usa HNSW o IVF")
 
     @staticmethod
-    def _plan(table, column, kind, metric, k, dimension, n_vectors, build_ms, search_ms, rows_out, stored=None):
+    def _plan(table, column, kind, metric, k, dimension, n_vectors, build_ms, search_ms, rows_out,
+              stored=None, *, reused=False, index_path=None):
         operator = "HNSW_KNN" if kind == "hnsw" else "IVF_KNN"
         details = {"k": k, "metric": metric, "dimension": dimension, "vectors": n_vectors,
                    "build_ms": round(build_ms, 3)}
         index_name = column
         reason = f"{kind.upper()} con métrica {metric} sobre '{column}'"
+        if kind == "hnsw":
+            details.update({"persistent": bool(index_path), "reused": bool(reused), "index_path": index_path})
         if stored is not None:
             index_name = stored.metadata.name
             reason = f"índice IVF persistido '{index_name}' (métrica {metric}) sobre '{column}'"

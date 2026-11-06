@@ -39,6 +39,10 @@ async def import_existing(name:str,file:UploadFile=File(...),delimiter:str=Form(
     except Exception as e:raise HTTPException(400,str(e))
 @app.post("/api/query")
 def query(body:QueryBody):return engine.run(body.sql).to_dict()
+@app.post("/api/media/extract")
+async def media_extract(file:UploadFile=File(...),kind:str=Form("")):
+    try:return engine.extract_media(filename=file.filename or "archivo",content=await file.read(),kind=kind or None)
+    except Exception as e:raise HTTPException(400,str(e))
 @app.get("/api/spatial/points/{name}")
 def spatial_points(name:str):
     try:return engine.spatial_points(name)

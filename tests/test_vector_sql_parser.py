@@ -197,10 +197,10 @@ class TestParserSimilarToErrores(unittest.TestCase):
         )
 
 
-class TestEjecutorSinSoporteTodavia(unittest.TestCase):
-    """Tras #90, buscar por archivo exige ExtractFeatures (#107)."""
+class TestEjecutorConArchivoInexistente(unittest.TestCase):
+    """``SIMILAR_TO('foto.jpg')`` se resuelve por archivo; si no existe, avisa."""
 
-    def test_select_similar_to_por_archivo_pide_extractfeatures(self):
+    def test_select_similar_to_por_archivo_inexistente(self):
         directory = _temp_dir("bd2-sim-")
         try:
             engine = _Engine(directory)
@@ -208,11 +208,12 @@ class TestEjecutorSinSoporteTodavia(unittest.TestCase):
                 "imagenes", [("id", "INT"), ("embedding", "VARCHAR(100)")]
             )
             engine.run("INSERT INTO imagenes VALUES (1, '[1, 0]')")
+            missing = f"no-existe-{uuid.uuid4().hex}.jpg"
             resultado = engine.run(
-                "SELECT * FROM imagenes WHERE SIMILAR_TO('foto.jpg', k=10)"
+                f"SELECT * FROM imagenes WHERE SIMILAR_TO('{missing}', k=10)"
             )
             self.assertFalse(resultado.success)
-            self.assertIn("#107", resultado.error or "")
+            self.assertIn("no se encontró", resultado.error or "")
         finally:
             shutil.rmtree(directory, ignore_errors=True)
 

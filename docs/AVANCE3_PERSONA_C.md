@@ -236,3 +236,48 @@ Pruebas específicas:
 ```bash
 python -m pytest tests/test_vector_ranking.py -q
 ```
+
+## Parte 4 — Issue #107: extracción de características y `SIMILAR_TO('archivo')`
+
+Se implementó la pipeline 2.4.1 completa:
+
+- **SIFT** para imágenes: `cv2.SIFT_create()` si OpenCV está instalado; si no,
+  SIFT denso propio (pirámide de escalas, orientación dominante, 128-D).
+- **MFCC por trama** para audio: 20 coeficientes de timbre. MP3/OGG/FLAC/M4A se
+  convierten a WAV con `ffmpeg` cuando está disponible.
+- **K-Means** sobre una muestra de descriptores para obtener K palabras
+  visuales/auditivas.
+- **Histograma BoVW** + **TF-IDF** con IDF del corpus → vector de dimensión K.
+- Vocabulario e IDF persistidos en `<data_dir>/models/bow_image.npz` y
+  `bow_audio.npz`; se usan igual al indexar y al consultar.
+- `EXTRACT_FEATURES('archivo')` en `INSERT`/`UPDATE` guarda el vector como JSON.
+- `POST /api/media/extract` y `MultimediaPanel.tsx` conectan el panel con la
+  extracción; la consulta generada usa `SIMILAR_TO('foto.jpg', k=N)`.
+
+Entrenamiento:
+
+```bash
+python -m tools.train_feature_model
+python -m tools.train_feature_model --images <carpeta> --audio <carpeta>
+```
+
+Pruebas:
+
+```bash
+python -m pytest tests/test_feature_extraction.py tests/test_media_sql.py tests/test_media_engine.py -q
+python -m examples.demo_media
+```
+
+Diseño, teoría y limitaciones: `docs/extraccion_caracteristicas.md`.
+
+Para la exposición:
+
+```bash
+python -m tools.check_media_deps
+# opcional: pip install -r requirements-optional.txt
+# opcional: winget install Gyan.FFmpeg
+```
+
+`check_media_deps` indica si está disponible OpenCV (SIFT estándar) y `ffmpeg`
+(MP3/OGG/FLAC/M4A). Si instalas OpenCV, reentrena con
+`tools.train_feature_model` o `tools.seed_media_demo`.

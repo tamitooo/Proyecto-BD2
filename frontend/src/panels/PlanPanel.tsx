@@ -1,5 +1,11 @@
 import type { ExecutionPlan } from '../types';
 
+function renderDetail(value: unknown): string {
+  if (value === null || value === undefined) return '—';
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value);
+}
+
 export default function PlanPanel({ plan }: { plan: ExecutionPlan | null }) {
   if (!plan) return <div className="panel"><h2 className="panel__title">Plan de ejecución</h2><p className="panel__hint">Ejecuta una consulta para ver el plan.</p></div>;
   const steps = plan.steps ?? [];
@@ -20,6 +26,13 @@ export default function PlanPanel({ plan }: { plan: ExecutionPlan | null }) {
           <strong>{i + 1}. {step.operator}</strong>
           {step.index && <span className="chip">{step.index}</span>}
           {step.reason && <p>{step.reason}</p>}
+          {step.details && Object.keys(step.details).length > 0 && (
+            <dl className="kv kv--single">
+              {Object.entries(step.details).map(([key, value]) => (
+                <div key={key}><dt>{key}</dt><dd className="mono">{renderDetail(value)}</dd></div>
+              ))}
+            </dl>
+          )}
         </div>
       )) : <p className="panel__hint">Sin pasos detallados.</p>}
       {runtime.length > 0 && <>

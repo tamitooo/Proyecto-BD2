@@ -15,6 +15,12 @@ from query.text_queries import TextExecutor, TextQueryError
 from query.sql_parser import *
 from spatial.geo import euclidean, haversine
 from transactions.lock_manager import LockManager
+from vector.extract_features import (
+    ExtractFeatures,
+    FeatureExtractionError,
+    default_media_root,
+    default_model_root,
+)
 
 
 class QueryExecutionError(Exception): pass
@@ -43,6 +49,8 @@ class QueryExecutor:
         self.external_sort = external_sort or ExternalSort();
         self.external_hashing = external_hashing or ExternalHashing();
         self.lock_manager = lock_manager or LockManager();
+        self.media_root = default_media_root(catalog)
+        self.model_root = default_model_root(catalog)
         self._txn = None;
         self._txcounter = itertools.count(1);
         self._seq_reorgs = {};
@@ -163,7 +171,11 @@ class QueryExecutor:
         row_filter = (lambda row: self.matches_query(row, q)) if (q.predicates or q.or_groups) else None
         search_limit = None if q.order_by else s.limit
         try:
-            rows, plan = VectorExecutor(self.catalog).execute(t, spec, limit=search_limit, row_filter=row_filter)
+            rows, plan = VectorExecutor(
+                self.catalog,
+                media_root=self.media_root,
+                model_root=self.model_root,
+            ).execute(t, spec, limit=search_limit, row_filter=row_filter)
         except VectorQueryError as e:
             raise QueryExecutionError(str(e))
         rows = self._sort_search_rows(rows, q.order_by, self._score_alias(s.columns))
@@ -250,7 +262,7 @@ class QueryExecutor:
         cols = t.schema.col_names()
         if len(s.values) != len(cols): raise QueryExecutionError(f"INSERT expected {len(cols)} values")
         self._snapshot(t);
-        row = dict(zip(cols, s.values));
+        row = dict(zip(cols, [self._evaluate_value(v) for v in s.values]));
         st = time.perf_counter();
         rid = t.storage.insert(row)
         try:
@@ -296,7 +308,7 @@ class QueryExecutor:
         self._snapshot(t);
         oldrows = [dict(r) for _, r in t.storage.scan()];
         match = [(rid, row) for rid, row in t.storage.scan() if self.matches_query(row, s)];
-        assign = dict(s.assignments);
+        assign = {name: self._evaluate_value(value) for name, value in s.assignments};
         st = time.perf_counter();
         n = 0
         try:
@@ -437,7 +449,11 @@ class QueryExecutor:
             t = self.catalog.get_table(q.table);
             kind = spatial_kind(q)
             if getattr(q, "similarity", None):
-                payload = VectorExecutor(self.catalog).plan(t, q.similarity)
+                payload = VectorExecutor(
+                    self.catalog,
+                    media_root=self.media_root,
+                    model_root=self.model_root,
+                ).plan(t, q.similarity)
             elif getattr(q, "match", None):
                 payload = TextExecutor(self.catalog).plan(t, q.match, limit=inner.limit)
             elif kind and self.catalog.spatial_index_for(t.name, (
@@ -635,6 +651,26 @@ class QueryExecutor:
             for name, source in targets: row[name] = r.get(source)
             out.append(row)
         return out, names
+
+    def _evaluate_value(self, value):
+        """Resuelve ``EXTRACT_FEATURES('archivo')`` en INSERT/UPDATE.
+
+        El parser conserva la expresión y la extracción ocurre al ejecutar,
+        para que el motor pueda usar el ``media_root`` del catálogo y para que
+        el error incluya la ruta buscada.
+        """
+        if isinstance(value, ExtractFeaturesExpression):
+            try:
+                features = ExtractFeatures.extract(
+                    value.path,
+                    kind=value.kind,
+                    media_root=self.media_root,
+                    model_root=self.model_root,
+                )
+            except FeatureExtractionError as exc:
+                raise QueryExecutionError(f"EXTRACT_FEATURES: {exc}") from None
+            return features.to_json()
+        return value
 
     # ---------- validation/helpers ----------
     def _validate_select(self, s, t):

@@ -2,6 +2,7 @@ from __future__ import annotations
 import json,os,threading,time
 from pathlib import Path
 from typing import Any,Dict,Optional
+from backend.media import extract_media as extract_media_file
 from indexes.clustered_bplus import ClusteredBPlusIndex
 from indexes.unclustered_bplus import UnclusteredBPlusIndex
 from indexes.extendible_hash import ExtendibleHash
@@ -23,7 +24,7 @@ SEED=[("users","INSERT INTO users VALUES (1,'Ana Torres',20,'CS')"),("users","IN
 class DemoEngine:
     DEMO_TABLES={"users","employees","departments"}
     def __init__(self,data_dir=None,seed=True):
-        self.data_dir=Path(data_dir or os.environ.get("BD2_DATA_DIR") or Path(__file__).resolve().parent/"data");self.data_dir.mkdir(parents=True,exist_ok=True);self.catalog_path=self.data_dir/"catalog.json";self._lock=threading.RLock();self._sources={}
+        self.data_dir=Path(data_dir or os.environ.get("BD2_DATA_DIR") or Path(__file__).resolve().parent/"data");self.data_dir.mkdir(parents=True,exist_ok=True);self.catalog_path=self.data_dir/"catalog.json";self.media_dir=self.data_dir/"media";self.model_dir=self.data_dir/"models";self._lock=threading.RLock();self._sources={}
         self.users=HeapFile(str(self.data_dir/"users.dat"),USERS_SCHEMA);self.employees=SequentialFile(str(self.data_dir/"employees"),EMPLOYEES_SCHEMA);self.departments=HeapFile(str(self.data_dir/"departments.dat"),DEPARTMENTS_SCHEMA)
         self.catalog=Catalog(self.data_dir,on_change=self._save_catalog)
         self.catalog.register_table("users",self.users);self.catalog.register_table("employees",self.employees);self.catalog.register_table("departments",self.departments)
@@ -90,6 +91,9 @@ class DemoEngine:
     def import_csv(self,table,content,**kw):
         rep=import_csv(self.executor,table,content,allow_path=False,**kw);self._save_catalog();return rep
     def import_csv_as_table(self,**kw):return table_manager.import_csv_as_table(self,**kw)
+    def extract_media(self,*,filename,content,kind=None):
+        """Guarda una imagen/audio en ``<data_dir>/media`` y extrae su vector BoVW."""
+        return extract_media_file(self.media_dir,filename,content,kind=kind,model_root=self.model_dir)
     def spatial_points(self,name):
         t=self.catalog.get_table(name);reg=self.catalog.spatial_index_for(name)
         if reg:

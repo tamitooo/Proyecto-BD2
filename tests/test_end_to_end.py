@@ -58,10 +58,8 @@ class _EndToEndBase:
         self.catalog = Catalog(data_dir=self.temp.name)
         self.executor = QueryExecutor(
             self.catalog,
-            external_sort=ExternalSort(memory_limit_records=2, temp_dir=self.temp.name),
-            external_hashing=ExternalHashing(
-                memory_limit_records=2, temp_dir=self.temp.name
-            ),
+            external_sort=ExternalSort(memory_rows=2),
+            external_hashing=ExternalHashing(memory_rows=2),
         )
         using = "SEQUENTIAL" if self.storage_kind == "sequential" else "HEAP"
         self._ok(
@@ -78,7 +76,8 @@ class _EndToEndBase:
             self._ok(f"INSERT INTO matriculas VALUES ({row[0]}, {row[1]}, '{row[2]}')")
         # La PK ya tiene su índice Hash; se añaden los dos B+.
         self._ok("CREATE INDEX idx_alumnos_nota ON alumnos (nota) USING BPLUS_UNCLUSTERED")
-        self._ok("CREATE INDEX idx_alumnos_carrera ON alumnos (carrera) USING BPLUS_CLUSTERED")
+        if self.storage_kind == "heap":
+            self._ok("CREATE INDEX idx_alumnos_carrera ON alumnos (carrera) USING BPLUS_CLUSTERED")
 
     def tearDown(self):
         self.temp.cleanup()
@@ -134,6 +133,8 @@ class _EndToEndBase:
         self.assertEqual(self._ids(result), [6, 5, 4, 3, 2, 1])
 
     def test_order_by_cubierto_por_indice_agrupado(self):
+        if self.storage_kind != "heap":
+            self.skipTest("BPLUS_CLUSTERED solo existe sobre Heap File")
         result = self._ok("SELECT * FROM alumnos ORDER BY carrera")
         self.assertNotIn("EXTERNAL_SORT", _operators(result))
         carreras = [row["carrera"] for row in result.rows]

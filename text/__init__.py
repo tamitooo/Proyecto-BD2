@@ -9,6 +9,9 @@ from .preprocessing import (
     TextPreprocessor,
     tokenize,
 )
+from .spimi_storage import SPIMIBlockStore, iter_block_records
+from .spimi_merge import SPIMIIndexPaths, merge_spimi_blocks
+from .spimi_index import SPIMIInvertedIndex
 
 __all__ = [
     "BM25Statistics",
@@ -18,5 +21,20 @@ __all__ = [
     "sparse_cosine_similarity",
     "DEFAULT_PREPROCESSOR",
     "TextPreprocessor",
-    "tokenize"
+    "tokenize",
+
+    # Issue #45: In-memory SPIMI
+    "SPIMIBlock",
+    "SPIMIBlockBuilder",
+
+    # Issue #46: Disk-backed block storage
+    "SPIMIBlockStore",
+    "iter_block_records",
+
+    # Issue #47: Block merging
+    "SPIMIIndexPaths",
+    "merge_spimi_blocks",
+
+    # Issue #48: Inverted-index retrieval
+    "SPIMIInvertedIndex",
 ]

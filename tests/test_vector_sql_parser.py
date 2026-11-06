@@ -191,6 +191,11 @@ class TestParserSimilarToErrores(unittest.TestCase):
             "AND SIMILAR_TO('b', k=3)"
         )
 
+    def test_similar_to_con_or_no_soportado(self):
+        self.assertParseError(
+            "SELECT * FROM imagenes WHERE SIMILAR_TO([1, 0], k=2) OR id = 1"
+        )
+
 
 class TestEjecutorSinSoporteTodavia(unittest.TestCase):
     """Tras #90, buscar por archivo exige ExtractFeatures (#107)."""

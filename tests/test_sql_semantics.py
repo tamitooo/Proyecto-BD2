@@ -99,6 +99,13 @@ class TestAgregados(unittest.TestCase):
         self.assertTrue(resultado.success, resultado.error)
         self.assertEqual(resultado.rows, [{"dept": "A", "n": 2}, {"dept": "B", "n": 1}])
 
+    def test_having_no_soportado(self):
+        resultado = self.engine.run(
+            "SELECT dept, COUNT(*) AS n FROM ventas GROUP BY dept HAVING COUNT(*) > 1"
+        )
+        self.assertFalse(resultado.success)
+        self.assertIn("HAVING", resultado.error or "")
+
 
 class TestWhereConMatchYSimilarTo(unittest.TestCase):
     def setUp(self):

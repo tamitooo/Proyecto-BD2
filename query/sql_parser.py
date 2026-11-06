@@ -213,15 +213,20 @@ class SQLParser:
         if not m: raise SQLParseError("FROM requires table")
         table = m.group(1);
         rest = tail[m.end():]
-        marks = self._scan_top(rest, ["WHERE", "USING", "GROUP BY", "ORDER BY", "LIMIT"]);
+        marks = self._scan_top(rest, ["WHERE", "USING", "GROUP BY", "ORDER BY", "LIMIT", "HAVING"]);
         marks.sort()
         join_text = rest[:marks[0][0]].strip() if marks else rest.strip();
         clauses = {}
         for n, (a, b, k) in enumerate(marks): clauses[k] = rest[b:(
             marks[n + 1][0] if n + 1 < len(marks) else len(rest))].strip()
+        if "HAVING" in clauses:
+            raise SQLParseError("HAVING no está soportado; filtra con WHERE")
         joins = self._joins(join_text);
         groups = self._where_groups(clauses["WHERE"]) if "WHERE" in clauses else ();
         preds = tuple(p for g in groups for p in g)
+        if len(groups) > 1 and any(getattr(p, "is_similarity", False) or getattr(p, "is_match", False)
+                                   for g in groups for p in g):
+            raise SQLParseError("MATCH y SIMILAR_TO no se pueden combinar con OR; usa AND")
         index_kind, metric = self._using(clauses["USING"]) if clauses.get("USING") else (None, None)
         similar = tuple(p for p in preds if getattr(p, "is_similarity", False))
         matched = tuple(p for p in preds if getattr(p, "is_match", False))

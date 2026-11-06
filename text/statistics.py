@@ -1,10 +1,4 @@
-"""Estadísticas de colección requeridas por BM25.
-
-Este módulo no tokeniza ni aplica stopwords/stemming. Recibe tokens ya
-normalizados por la etapa de preprocesamiento/SPIMI de la Parte 3 y mantiene
-las estadísticas necesarias para calcular BM25 sin volver a recorrer todos los
-documentos en cada consulta.
-"""
+"""Estadísticas de colección requeridas por BM25."""
 
 from __future__ import annotations
 
@@ -17,15 +11,7 @@ DocumentId = Hashable
 
 @dataclass
 class BM25Statistics:
-    """Mantiene TF, DF, longitud por documento, N y avgdl.
-
-    Contrato de integración:
-    - Los tokens deben llegar ya normalizados por el mismo pipeline que SPIMI.
-    - ``add_document`` puede llamarse mientras se construye el índice invertido.
-    - ``term_frequency`` y ``document_frequency`` son O(1) promedio.
-    - ``revision`` cambia con cada modificación de la colección, para que quien
-      guarde valores derivados de ella sepa cuándo recalcularlos.
-    """
+    """Mantiene TF, DF, longitud por documento, N y avgdl."""
 
     _term_frequencies: Dict[DocumentId, Counter[str]] = field(default_factory=dict)
     _document_frequencies: Counter[str] = field(default_factory=Counter)
@@ -55,11 +41,7 @@ class BM25Statistics:
         return frozenset(self._document_lengths)
 
     def add_document(self, doc_id: DocumentId, tokens: Iterable[str]) -> None:
-        """Registra un documento a partir de tokens ya preprocesados.
-
-        Un ``doc_id`` no puede registrarse dos veces porque eso duplicaría DF y
-        la longitud total. Para reemplazar un documento se debe eliminar primero.
-        """
+        """Registra un documento a partir de tokens ya preprocesados."""
         if doc_id in self._document_lengths:
             raise ValueError(f"document '{doc_id}' is already registered")
 
@@ -145,10 +127,7 @@ class BM25Statistics:
         cls,
         documents: Mapping[DocumentId, Iterable[str]],
     ) -> "BM25Statistics":
-        """Construye las estadísticas desde ``doc_id -> tokens``.
-
-        Es útil para tests y para una futura carga masiva desde SPIMI.
-        """
+        """Construye las estadísticas desde ``doc_id -> tokens``."""
         stats = cls()
         for doc_id, tokens in documents.items():
             stats.add_document(doc_id, tokens)

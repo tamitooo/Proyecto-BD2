@@ -1,19 +1,4 @@
-"""Prueba end-to-end de la Parte 1 sobre el **ejecutor oficial**.
-
-Ejercita la cadena completa con el mismo camino que usan el API y la interfaz:
-
-    SQL  ->  SQLParser  ->  QueryPlanner  ->  query.query_executor.QueryExecutor
-                                                   |
-             Heap File / Archivo Secuencial  <------+
-             + B+ agrupado / B+ no agrupado / Hash Extendible
-             + External Sort (ORDER BY)
-             + External Hashing (GROUP BY y JOIN)
-
-Antes estas pruebas usaban ``query/executor.py`` (ejecutor legado, ya
-eliminado). Los operadores externos se crean con ``memory_limit_records=2`` a
-propósito: obliga a escribir y releer *runs*/particiones en disco, es decir, se
-prueba el camino externo real y no sólo el caso "todo cabe en memoria".
-"""
+"""End-to-end de la Parte 1; ``memory_rows=2`` fuerza el camino externo de sort y hashing."""
 
 import tempfile
 import unittest
@@ -74,7 +59,6 @@ class _EndToEndBase:
             self._ok(f"INSERT INTO alumnos VALUES ({row[0]}, '{row[1]}', {row[2]}, '{row[3]}')")
         for row in MATRICULAS:
             self._ok(f"INSERT INTO matriculas VALUES ({row[0]}, {row[1]}, '{row[2]}')")
-        # La PK ya tiene su índice Hash; se añaden los dos B+.
         self._ok("CREATE INDEX idx_alumnos_nota ON alumnos (nota) USING BPLUS_UNCLUSTERED")
         if self.storage_kind == "heap":
             self._ok("CREATE INDEX idx_alumnos_carrera ON alumnos (carrera) USING BPLUS_CLUSTERED")
@@ -94,7 +78,6 @@ class _EndToEndBase:
     def _ids(result):
         return [row["id"] for row in result.rows]
 
-    # ------------------------------------------------------------- lectura
 
     def test_select_all_devuelve_todos_los_registros(self):
         result = self._ok("SELECT * FROM alumnos")
@@ -170,7 +153,6 @@ class _EndToEndBase:
             ),
         )
 
-    # --------------------------------------------------------------- DML
 
     def test_insert_delete_y_consulta_final(self):
         inserted = self._ok("INSERT INTO alumnos VALUES (7, 'Zoe', 17.0, 'IA')")
@@ -181,7 +163,6 @@ class _EndToEndBase:
         self.assertEqual(deleted.affected_rows, 1)
         self.assertEqual(len(self._ok("SELECT * FROM alumnos").rows), len(ALUMNOS))
         self.assertEqual(self._ok("SELECT * FROM alumnos WHERE id = 2").rows, [])
-        # Los índices siguen coherentes tras el DML.
         rango = self._ok("SELECT * FROM alumnos WHERE nota >= 17")
         self.assertEqual(sorted(self._ids(rango)), [1, 5, 7])
 

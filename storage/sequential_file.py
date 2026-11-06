@@ -25,11 +25,9 @@ class RID:
 
 
 class SequentialFile:
-    """
-    Archivo Secuencial Paginado con un archivo principal ordenado por PK y una
+    """Archivo Secuencial Paginado con un archivo principal ordenado por PK y una
     zona auxiliar de overflow. La reorganización integra ambas regiones,
-    elimina tombstones y vuelve a dejar el principal físicamente ordenado.
-    """
+    elimina tombstones y vuelve a dejar el principal físicamente ordenado."""
 
     def __init__(self, path, schema):
         self.schema = schema
@@ -184,12 +182,7 @@ class SequentialFile:
         self.n_reorganizaciones += 1
 
     def replace_all(self, rows, *, key=None):
-        """Reescribe todo el archivo en orden.
-
-        Por defecto usa la clave primaria, que es la organización natural del
-        archivo secuencial. ``key`` permite que el catálogo materialice un
-        clustered B+ real cuando esa tabla se agrupa por otra columna.
-        """
+        """Reescribe todo el archivo en orden."""
         rows = list(rows)
         rows.sort(key=key or self._clave)
         with open(self.main_path, "wb") as f:

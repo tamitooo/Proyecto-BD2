@@ -1,11 +1,4 @@
-"""Bounded fan-in external merging of SPIMI blocks (issue #47).
-
-All input files contain sorted posting records from ``spimi_storage``. A
-k-way merge combines repeated (term, doc_id) pairs by summing TF, including
-the case where one long document was split across multiple memory blocks.
-Intermediate passes limit open files to ``max_open_files``. The final index
-and offset lexicon are published together by renaming a completed directory.
-"""
+"""k-way external merge of SPIMI blocks into the final index and its offset lexicon."""
 
 from __future__ import annotations
 
@@ -107,12 +100,7 @@ def merge_spimi_blocks(
     *,
     max_open_files: int = 32,
 ) -> SPIMIIndexPaths:
-    """Merge all block files without accumulating posting lists in memory.
-
-    Original blocks are never removed. ``output_directory`` must not exist,
-    so a prior index cannot be silently overwritten. A completed directory
-    contains a sorted postings file and a compact offset lexicon for #48.
-    """
+    """Merge blocks with at most ``max_open_files`` open; input blocks are kept."""
     if type(max_open_files) is not int or max_open_files < 2:
         raise ValueError("max_open_files must be an integer >= 2")
 
@@ -147,7 +135,6 @@ def merge_spimi_blocks(
                 _write_run(batch, run_path)
                 next_runs.append(run_path)
 
-            # Delete only generated intermediate files, never input blocks.
             for path in runs:
                 if path.parent == run_directory:
                     path.unlink()

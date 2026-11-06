@@ -35,12 +35,7 @@ class UnclusteredBPlusIndex:
         return record[self.key_field]
 
     def insert(self, record, rid):
-        """
-        Indexa un registro existente.
-
-        El registro NO se almacena en el indice. Solo se guarda su RID bajo
-        el valor de `key_field`.
-        """
+        """Indexa un registro existente."""
         if rid is None:
             raise ValueError("rid is required")
 
@@ -167,7 +162,6 @@ class UnclusteredBPlusIndex:
                 first = False
 
         return True
-
 
     def attach_file(self, file_path, load_existing=True):
         self.file_path = str(file_path)

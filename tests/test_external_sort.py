@@ -141,7 +141,6 @@ def test_multiple_fields():
 
 
 def test_callable_key_supports_storage_scan_shape():
-    # Simula exactamente storage.scan(): (RID, record)
     rows = [
         (("page-2", 0), {"id": 20, "salary": 3000}),
         (("page-1", 1), {"id": 10, "salary": 1000}),

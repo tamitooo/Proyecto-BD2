@@ -169,7 +169,7 @@ el script crea y reemplaza sus propias tablas:
 python -m benchmarks.benchmark_text_gin --pg-dsn "host=localhost port=5432 user=postgres password=postgres dbname=bd2_experimentos"
 ```
 
-Los resultados quedan en `benchmark_results/text` y `benchmark_results/vector`,
+Los resultados quedan en `benchmarks/results/text` y `benchmarks/results/vector`,
 con un CSV y un JSON por experimento. Las figuras se regeneran con:
 
 ```powershell
@@ -179,7 +179,7 @@ python -m benchmarks.generate_vector_charts
 
 Nota de datos: el corpus y los vectores son sinteticos, con semilla fija. La
 relevancia esta definida por construccion, no por juicio humano. Esa decision
-se justifica en `docs/borrador_informe_parte3_4.md` y no se presenta como una
+se justifica en `docs/informe/borrador_informe_parte3_4.md` y no se presenta como una
 medicion sobre datos reales.
 
 ### Nota metodológica de Parte 1
@@ -192,9 +192,9 @@ El benchmark actualizado usa `deep_size()` para estimar recursivamente la memori
 
 ## Documentación
 
-- `docs/COMPLIANCE_CHECKLIST.md`: checklist contra el enunciado.
-- `docs/informe_incremental.md`: informe incremental completo y limitaciones.
-- `docs/parte2_espacial.md`: diseño, SQL y resultados espaciales sincronizados con la corrida definitiva documentada.
+- `docs/rubrica/COMPLIANCE_CHECKLIST.md`: checklist contra el enunciado.
+- `docs/informe/informe_incremental.md`: informe incremental completo y limitaciones.
+- `docs/informe/parte2_espacial.md`: diseño, SQL y resultados espaciales sincronizados con la corrida definitiva documentada.
 
 ## Persistencia física de índices — corrección de rúbrica
 

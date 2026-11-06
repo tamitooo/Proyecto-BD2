@@ -1,13 +1,4 @@
-"""Pruebas del parser SQL para la búsqueda vectorial (Parte 4, sección 2.4.3).
-
-Cubre la sintaxis del enunciado:
-
-* ``WHERE SIMILAR_TO('foto_consulta.jpg', k=10)``
-* ``USING HNSW WITH METRIC=cosine`` / ``USING IVF WITH METRIC=euclidean``
-* ``SIMILARITY_SCORE() AS score`` en la lista de columnas y ``ORDER BY score``
-
-#86 es solo el parser: el ejecutor vectorial llega con #90 y el plan con #91.
-"""
+"""Parser SQL de la búsqueda vectorial: ``SIMILAR_TO``, ``USING HNSW/IVF`` y ``SIMILARITY_SCORE()``."""
 
 import os
 import shutil

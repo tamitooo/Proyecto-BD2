@@ -1,15 +1,4 @@
-"""Pruebas de semántica SQL de las búsquedas textual y vectorial.
-
-Cubren tres observaciones de la revisión:
-
-* GROUP BY con agregados devolvía NULL (proyección de los agregados).
-* MATCH y SIMILAR_TO ignoraban el resto del WHERE.
-* ORDER BY solo funcionaba con el alias del score y en sentido invertido.
-
-La semántica sigue el orden lógico de SQL: WHERE se aplica antes de
-GROUP BY/ORDER BY/LIMIT y ORDER BY ASC/DESC usa el operador < o > (PostgreSQL,
-docs 7.2.2, 7.2.3 y 7.5).
-"""
+"""Semántica SQL de MATCH/SIMILAR_TO: WHERE antes de GROUP BY, ORDER BY y LIMIT."""
 
 import os
 import shutil

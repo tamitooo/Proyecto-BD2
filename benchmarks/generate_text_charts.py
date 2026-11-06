@@ -1,8 +1,4 @@
-"""Graficas comparativas de la Parte 3: motor propio contra GIN.
-
-Lee los CSV que dejan los dos benchmarks y escribe las figuras en
-benchmark_results/text/plots. No mide nada: solo dibuja lo ya medido.
-"""
+"""Gráficas de la Parte 3 (motor contra GIN) a partir de los CSV ya medidos."""
 
 from __future__ import annotations
 
@@ -11,7 +7,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
-BASE = Path("benchmark_results/text")
+BASE = Path("benchmarks/results/text")
 PLOTS = BASE / "plots"
 PLOTS.mkdir(parents=True, exist_ok=True)
 

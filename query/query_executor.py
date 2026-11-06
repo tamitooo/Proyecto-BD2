@@ -89,7 +89,6 @@ class QueryExecutor:
             if raise_on_error: raise
             return QueryResult.fail(name, e, execution_time_ms=self._ms(start))
 
-    # ---------- SELECT ----------
     def _select(self, s):
         q = s.query_spec;
         self._resolve_named_points(q);
@@ -244,7 +243,6 @@ class QueryExecutor:
             out = kept
         return out
 
-    # ---------- DML ----------
     def _insert(self, s):
         t = self.catalog.get_table(s.table);
         cols = t.schema.col_names()
@@ -322,7 +320,6 @@ class QueryExecutor:
         return QueryResult.ok("UPDATE", affected_rows=n,
                               execution_plan=self._direct_plan(t, "UPDATE", list(t.indexes), st))
 
-    # ---------- DDL ----------
     def _create_table(self, s):
         t = self.catalog.create_table(s.table, s.columns, s.primary_key, storage_kind=s.storage_kind,
                                       if_not_exists=s.if_not_exists)
@@ -363,7 +360,6 @@ class QueryExecutor:
         self._touch();
         return QueryResult.ok("DROP INDEX", affected_rows=int(ok), rows=[{"indice": s.name, "eliminado": ok}])
 
-    # ---------- POINT VARIABLES ----------
     def _set_point(self, s):
         self.named_points[s.name.lower()] = tuple(s.point)
         return QueryResult.ok(
@@ -393,7 +389,6 @@ class QueryExecutor:
                     )
                 object.__setattr__(expr, "point", tuple(self.named_points[name]))
 
-    # ---------- TRANSACTION ----------
     def _transaction(self, s):
         if s.action == "begin":
             if self._txn: raise QueryExecutionError("ya hay una transacción activa")
@@ -406,7 +401,6 @@ class QueryExecutor:
         tx = self._txn
         if s.action == "commit": self.lock_manager.release_all(tx.id);self._txn = None;return QueryResult.ok(
             "END TRANSACTION", rows=[{"transaction": tx.id, "estado": "confirmada (COMMIT)"}])
-        # rollback: restore snapshots and delete tables created in txn
         for name in reversed(tx.created_tables):
             if self.catalog.has_table(name): self.catalog.drop_table(name)
         for name, snap in tx.snapshots.items():
@@ -428,7 +422,6 @@ class QueryExecutor:
     def _touch(self):
         if self._txn: self._txn.statements += 1
 
-    # ---------- EXPLAIN ----------
     def _explain(self, s):
         inner = s.statement
         if isinstance(inner, SelectStatement):
@@ -465,7 +458,6 @@ class QueryExecutor:
         text = f"Tabla: {payload.get('table')}\nRuta de acceso: {payload.get('access_path')}\nÍndices: {', '.join(payload.get('used_indexes') or []) or '-'}"
         return QueryResult.ok("EXPLAIN", columns=["plan"], rows=[{"plan": text}], execution_plan=payload)
 
-    # ---------- access/index ----------
     def _access(self, t, plan):
         step = plan.steps[0];
         op = step.operator
@@ -541,7 +533,6 @@ class QueryExecutor:
             elif r.metadata.kind == "rtree":
                 r.implementation.delete(rid)
 
-    # ---------- evaluators/operators ----------
     @classmethod
     def matches_all(cls, row, preds):
         return all(cls.evaluate_predicate(row, p) for p in preds)
@@ -636,7 +627,6 @@ class QueryExecutor:
             out.append(row)
         return out, names
 
-    # ---------- validation/helpers ----------
     def _validate_select(self, s, t):
         known = set(t.schema.col_names()) | {"_distance", "_lat", "_lon"};
         q = s.query_spec

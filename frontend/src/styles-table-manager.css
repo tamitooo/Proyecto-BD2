@@ -1,15 +1,3 @@
-/* ------------------------------------------------------------------ *
- * Gestión de tablas en el panel de archivos (TableManager + su lista).
- *
- * Estas reglas vienen del trabajo de gestión de tablas dinámicas que se
- * integró desde `main`. **Están recoloreadas al tema claro** que pidió el
- * profesor: el original usaba una paleta oscura (`background: #111c2f`,
- * `color: #0b1220`), incompatible con el fondo blanco.
- *
- * Se mantienen aparte de `styles.css` para que la fusión de los dos trabajos
- * quede legible: aquí sólo está lo que aporta el gestor de tablas.
- * ------------------------------------------------------------------ */
-
 .table-manager {
   margin: 12px 0 16px;
   padding: 10px;
@@ -36,7 +24,6 @@
 }
 
 .tab.is-active {
-  /* Texto blanco sobre el azul oscuro del tema claro. */
   color: #ffffff;
   background: var(--accent);
   border-color: var(--accent);
@@ -61,7 +48,6 @@
   gap: 4px;
 }
 
-/* Casilla (UNIQUE, cabecera del CSV): en línea con su etiqueta. */
 .field--check {
   flex-direction: row;
   align-items: center;
@@ -128,14 +114,12 @@
   background: var(--error-soft);
 }
 
-/* El original era verde oscuro (#0d3326); aquí la versión sobre blanco. */
 .alert--success {
   background: var(--ok-soft);
   color: var(--ok);
   border: 1px solid #6ee7b7;
 }
 
-/* Etiqueta de origen bajo el nombre de la tabla en el panel de archivos. */
 .table-list__name {
   display: block;
   font-weight: 600;

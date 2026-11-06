@@ -23,18 +23,14 @@ __all__ = [
     "TextPreprocessor",
     "tokenize",
 
-    # Issue #45: In-memory SPIMI
     "SPIMIBlock",
     "SPIMIBlockBuilder",
 
-    # Issue #46: Disk-backed block storage
     "SPIMIBlockStore",
     "iter_block_records",
 
-    # Issue #47: Block merging
     "SPIMIIndexPaths",
     "merge_spimi_blocks",
 
-    # Issue #48: Inverted-index retrieval
     "SPIMIInvertedIndex",
 ]

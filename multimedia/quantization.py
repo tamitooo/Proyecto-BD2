@@ -1,10 +1,4 @@
-"""Reproducible K-Means descriptor quantization (issue #104).
-
-The visual and audio codebooks must be trained independently: SIFT vectors
-are 128-D while MFCC vectors have configurable (usually 13) dimensions.
-This implementation uses NumPy K-Means++/Lloyd iterations, avoiding the
-IVF index's private, scalar Python clustering implementation.
-"""
+"""K-Means codebook for SIFT/MFCC descriptors (Part 4)."""
 
 from __future__ import annotations
 
@@ -26,12 +20,7 @@ def _matrix(descriptors: np.ndarray, dimension: int | None = None) -> np.ndarray
 
 
 class KMeansCodebook:
-    """Map local descriptors to integer word IDs in ``[0, n_words)``.
-
-    The seeded K-Means++ initialization is restarted ``n_init`` times, and
-    the lowest-inertia solution is retained. Distances are computed in chunks
-    to avoid an ``N x number_of_words`` allocation on large corpora.
-    """
+    """Maps descriptors to word IDs; keeps the lowest-inertia run of ``n_init``."""
 
     def __init__(
         self,

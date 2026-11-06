@@ -1,11 +1,4 @@
-"""Valida la metodologia del benchmark Heap vs Secuencial (issue #29).
-
-El benchmark usa "carga masiva" (escritura directa del archivo pagina a
-pagina) para poder medir 100 000 registros sin pagar el costo de la
-insercion uno a uno. Estas pruebas garantizan que el archivo generado por
-la carga masiva es **identico** al que produce la API publica, de modo que
-las mediciones de busqueda y de espacio siguen siendo validas.
-"""
+"""Valida la metodologia del benchmark Heap vs Secuencial (issue #29)."""
 
 import os
 import pickle
@@ -48,7 +41,6 @@ class TestBulkLoadHeap(unittest.TestCase):
         records = _records(250)
         slots_per_page = PAGE_SIZE // SCHEMA.record_size
 
-        # Al menos una pagina completa y una parcial.
         self.assertGreater(250 // slots_per_page, 1)
 
         incremental = os.path.join(self.temp.name, "incremental.dat")
@@ -182,7 +174,6 @@ class TestBulkLoadSequential(unittest.TestCase):
 
 class TestSchemaDelBenchmark(unittest.TestCase):
     def test_tamano_de_registro_estable(self):
-        """El benchmark asume un record_size fijo: 1 + 4 + 30 + 8 bytes."""
         self.assertEqual(SCHEMA.record_size, 43)
         self.assertEqual(SCHEMA.primary_key, "id")
         self.assertIsInstance(SCHEMA, Schema)

@@ -465,7 +465,6 @@ class SQLParser:
         if pm:
             point = (float(self._literal(pm.group(1))), float(self._literal(pm.group(2))))
         elif re.fullmatch(_ID, point_token):
-            # El ejecutor resuelve el punto nombrado (p.ej. mi_ubicacion).
             point = (float("nan"), float("nan"))
         else:
             raise SQLParseError("POINT inválido; usa POINT(lat, lon) o un punto nombrado")

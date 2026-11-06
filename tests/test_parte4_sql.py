@@ -1,10 +1,4 @@
-"""Pruebas de la Parte 4 por SQL (issue #80).
-
-Compara el resultado de ``SIMILAR_TO`` ejecutado con HNSW e IVF contra la
-respuesta exacta calculada en Python para las tres métricas. Con un dataset
-pequeño ambos índices deben coincidir con la fuerza bruta, que es la referencia
-de corrección de un k-NN.
-"""
+"""SIMILAR_TO con HNSW e IVF contra la fuerza bruta en las tres métricas."""
 
 import math
 import os

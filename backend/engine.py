@@ -28,10 +28,8 @@ class DemoEngine:
         self.catalog=Catalog(self.data_dir,on_change=self._save_catalog)
         self.catalog.register_table("users",self.users);self.catalog.register_table("employees",self.employees);self.catalog.register_table("departments",self.departments)
         self.catalog.register_index(name="idx_users_id_hash",table="users",column="id",kind="hash",implementation=ExtendibleHash(bucket_capacity=4,unique=True),unique=True,rebuild=True)
-        # Clustered real: users es Heap y se reorganiza físicamente por age.
         self.catalog.register_index(name="idx_users_age_bpc",table="users",column="age",kind="bplus_clustered",implementation=ClusteredBPlusIndex("age",order=4),rebuild=False)
         self.catalog.recluster_table("users")
-        # employees demuestra Archivo Secuencial + B+ secundario (RID).
         self.catalog.register_index(name="idx_emp_salary_bplus",table="employees",column="salary",kind="bplus_unclustered",implementation=UnclusteredBPlusIndex("salary",order=4),rebuild=True)
         self.catalog.register_index(name="idx_emp_dept_bplus",table="employees",column="dept",kind="bplus_unclustered",implementation=UnclusteredBPlusIndex("dept",order=4),rebuild=True)
         self.executor=QueryExecutor(self.catalog);self._load_catalog()

@@ -37,8 +37,6 @@ class TestHNSWStructure(unittest.TestCase):
         levels_b = [b.random_level() for _ in range(200)]
         self.assertEqual(levels_a, levels_b)
         self.assertTrue(all(level >= 0 for level in levels_a))
-        # La distribución debe producir mayormente nivel 0, pero también
-        # niveles superiores en una muestra razonable con esta semilla.
         self.assertGreater(levels_a.count(0), 100)
         self.assertTrue(any(level > 0 for level in levels_a))
 

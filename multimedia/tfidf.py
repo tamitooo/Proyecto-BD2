@@ -1,9 +1,4 @@
-"""TF-IDF weighting for fixed-length visual/audio histograms (issue #106).
-
-Uses smooth IDF ``log((1 + N) / (1 + df)) + 1`` and L2-normalized vectors
-for cosine search with the project's IVF/HNSW indices. Fit a *separate*
-weighter on each modality's training corpus to avoid mixing statistics.
-"""
+"""TF-IDF for visual/audio histograms: smooth IDF and L2 normalization."""
 
 from __future__ import annotations
 

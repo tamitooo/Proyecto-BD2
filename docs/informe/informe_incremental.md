@@ -71,7 +71,7 @@ El encabezado se simplificó a “Minigestor de Base de Datos Multimodal” y el
 
 ## 5. Resultados espaciales — corrida definitiva documentada
 
-Las siguientes cifras provienen de `benchmark_results/spatial_benchmark.csv` de la corrida PostGIS registrada en el repositorio original. Se usan esos números de forma consistente para evitar mezclar corridas.
+Las siguientes cifras provienen de `benchmarks/results/spatial_benchmark.csv` de la corrida PostGIS registrada en el repositorio original. Se usan esos números de forma consistente para evitar mezclar corridas.
 
 ### 5.1 Rango de 1 km — promedio por consulta
 

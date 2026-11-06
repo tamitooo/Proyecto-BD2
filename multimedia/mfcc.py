@@ -1,10 +1,4 @@
-"""MFCC audio descriptors for the multimedia vocabulary (issue #103).
-
-Each frame yields a float32 vector of ``n_mfcc`` coefficients. Output shape is
-``(frames, n_mfcc)``, including ``(0, n_mfcc)`` for empty waveforms.
-Audio files and encoded bytes are resampled to a common sample rate; raw
-waveforms require their original sample rate to avoid silent interpretation.
-"""
+"""MFCC audio descriptors, shape ``(frames, n_mfcc)`` (Part 4)."""
 
 from __future__ import annotations
 
@@ -81,11 +75,7 @@ class MFCCFeatureExtractor:
         *,
         sample_rate: int | None = None,
     ) -> np.ndarray:
-        """Extract mel-frequency cepstral coefficients frame by frame.
-
-        ``sample_rate`` is mandatory for raw NumPy waveforms and forbidden
-        for encoded files, whose actual sample rate is read from metadata.
-        """
+        """MFCC frame by frame; ``sample_rate`` is required only for raw waveforms."""
         librosa = _librosa()
         if isinstance(audio, (str, Path)):
             if sample_rate is not None:

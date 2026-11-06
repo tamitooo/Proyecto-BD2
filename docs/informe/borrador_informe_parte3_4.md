@@ -1,7 +1,7 @@
 # Secciones de Partes 3 y 4 del informe
 
 Redactado a partir de las respuestas del autor de la parte. Los numeros salen
-de `benchmark_results/text` y `benchmark_results/vector`. Corregir lo que no
+de `benchmarks/results/text` y `benchmarks/results/vector`. Corregir lo que no
 suene propio y avisar para ajustar el resto del documento.
 
 ---

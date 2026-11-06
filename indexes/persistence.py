@@ -1,9 +1,4 @@
-"""Persistencia atómica reutilizable para índices del minigestor.
-
-Los índices mantienen una representación en RAM para ejecutar el algoritmo, pero su
-estado canónico se sincroniza a un archivo propio. Al reiniciar se recupera desde ese
-archivo; no hace falta reconstruirlo escaneando la tabla base.
-"""
+"""Persistencia atómica reutilizable para índices del minigestor."""
 from __future__ import annotations
 import os
 import pickle

@@ -1,10 +1,4 @@
-"""Demo reproducible de race condition sobre una tabla física del minigestor.
-
-Dos hilos actualizan la MISMA fila de un HeapFile. Primero se ejecutan sin
-bloqueos para producir Lost Update y luego con PX/Strict-2PL mediante
-LockManager. Esto satisface el requisito de demostrar el problema y su control
-sobre la misma tabla, no sobre una variable escalar aislada.
-"""
+"""Demo reproducible de race condition sobre una tabla física del minigestor."""
 from __future__ import annotations
 
 import tempfile

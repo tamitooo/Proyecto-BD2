@@ -1,7 +1,7 @@
 import os
 import pickle
 
-PAGE_SIZE = 4096  #bytes por pagina
+PAGE_SIZE = 4096
 
 
 class RID:
@@ -25,16 +25,10 @@ class RID:
 
 
 class HeapFile:
-    """
-    Estructura fisica del archivo .dat:
-        [Pagina 0][Pagina 1][Pagina 2]...
-        cada Pagina tiene un tamano fijo (PAGE_SIZE bytes) y contiene
-        N = PAGE_SIZE // record_size slots para registros.
-
-    Para la reutilizacion de espacio libre mantenemos, en un archivo
-    auxiliar .free, el conjunto de numeros de pagina que tienen al menos
-    un slot libre (vacio o con tombstone).
-    """
+    """Estructura fisica del archivo .dat:
+    [Pagina 0][Pagina 1][Pagina 2]...
+    cada Pagina tiene un tamano fijo (PAGE_SIZE bytes) y contiene
+    N = PAGE_SIZE // record_size slots para registros."""
 
     def __init__(self, path, schema):
         self.path = path

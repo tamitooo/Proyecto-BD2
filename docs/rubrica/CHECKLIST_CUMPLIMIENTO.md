@@ -19,7 +19,7 @@ repositorio. ✅ = implementado y cubierto por pruebas o por benchmark.
 | 2.1.5 | 4 paneles: archivos, consultas, resultados, plan | ✅ | `frontend/src/panels/` (índices secundarios en tarjetas que no se desbordan) |
 | 2.1.6 | Heap vs Secuencial: inserción, búsqueda por PK, espacio, reorganización (1K/10K/100K) | ✅ | `benchmarks/benchmark_heap_vs_sequential.py`, tablas autogeneradas |
 | 2.1.6 | B+ agrupado vs no agrupado vs Hash: construcción, consulta, espacio, mutaciones | ✅ | `benchmarks/benchmark_indexes.py`, con línea base sin índice |
-| 2.1.6 | Gráficas, tabla de ventajas/desventajas y conclusiones | ✅ | `benchmark_results/plots/`, `docs/comparacion_ventajas_desventajas.md`, `docs/informe_incremental.md` |
+| 2.1.6 | Gráficas, tabla de ventajas/desventajas y conclusiones | ✅ | `benchmarks/results/plots/`, `docs/informe/comparacion_ventajas_desventajas.md`, `docs/informe/informe_incremental.md` |
 
 ## Parte 2 · Base de datos espacial
 
@@ -34,9 +34,9 @@ repositorio. ✅ = implementado y cubierto por pruebas o por benchmark.
 | 2.2.3 | `distancia(ubicacion, POINT(...)) < 5000` tal cual | ✅ | Alias `ubicacion` → par (lat, lon) del R-Tree |
 | 2.2.3 | `ORDER BY distancia(ubicacion, mi_ubicacion) LIMIT 10` tal cual | ✅ | Variable de sesión: `SET` o clic en el mapa |
 | 2.2.4 | Secuencial vs R-Tree vs GiST de PostgreSQL | ✅ | `benchmarks/benchmark_spatial.py --pg-mode postgis` |
-| 2.2.4 | Rango 1/5/10 km, k-NN 10/50/100, 1K/10K/100K, promedio de 100 consultas | ✅ | `benchmark_results/spatial_benchmark.csv` |
+| 2.2.4 | Rango 1/5/10 km, k-NN 10/50/100, 1K/10K/100K, promedio de 100 consultas | ✅ | `benchmarks/results/spatial_benchmark.csv` |
 | 2.2.4 | Construcción, consulta y memoria/espacio | ✅ | R-Tree serializado vs `pg_relation_size`, más memoria Python (`tracemalloc`) |
-| 2.2.4 | Gráficas y tabla de cuándo usar cada técnica | ✅ | `spatial_*.png`, `docs/parte2_espacial.md` §5.2 |
+| 2.2.4 | Gráficas y tabla de cuándo usar cada técnica | ✅ | `spatial_*.png`, `docs/informe/parte2_espacial.md` §5.2 |
 
 ## Entregables
 
@@ -44,8 +44,8 @@ repositorio. ✅ = implementado y cubierto por pruebas o por benchmark.
 |---|---|---|
 | Código en Git | ✅ | Este repositorio |
 | README (arquitectura, organización, instalación) | ✅ | `README.md` |
-| Informe incremental | ✅ | `docs/informe_incremental.md` |
-| Video demo y presentación | Pendiente del equipo | Guion en `docs/guia_issues_y_entregables.md` |
+| Informe incremental | ✅ | `docs/informe/informe_incremental.md` |
+| Video demo y presentación | Pendiente del equipo | Guion en `docs/material/guia_issues_y_entregables.md` |
 
 ## Correcciones de la revisión final
 

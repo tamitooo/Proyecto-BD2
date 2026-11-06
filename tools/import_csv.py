@@ -1,20 +1,4 @@
-"""Carga de archivos CSV en tablas del motor (línea de comandos).
-
-Ejemplos:
-    python -m tools.import_csv --list
-    python -m tools.import_csv --table alumnos --file alumnos_prueba_bd2.csv
-    python -m tools.import_csv --table alumnos --file datos.csv --no-headers
-    python -m tools.import_csv --sql "CREATE TABLE t (id INT PRIMARY KEY, x INT)" \
-                               --table t --file datos.csv
-
-Trabaja sobre el mismo catálogo que el API (`backend/data` + `catalog.json`),
-por lo que la tabla debe existir antes de importar (créala con `--sql` o desde
-el panel de consultas de la interfaz).
-
-Nota: si el API está corriendo, sus índices viven en memoria; para que la
-interfaz vea los datos importados usa mejor el endpoint
-`POST /api/tables/{nombre}/import` (o reinicia el API tras usar este comando).
-"""
+"""CLI para cargar un CSV en una tabla existente; con el API corriendo, usar ``POST /api/tables/{nombre}/import``."""
 
 import argparse
 import sys

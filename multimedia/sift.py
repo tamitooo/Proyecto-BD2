@@ -1,13 +1,4 @@
-"""SIFT local image descriptor extraction (Part 4, issue #102).
-
-The output is a ``numpy.float32`` array with shape ``(keypoints, 128)``.
-Zero-keypoint images return ``(0, 128)``, not ``None``, so the future visual
-vocabulary and histogram stages can consume a consistent interface.
-
-Supported inputs: an image filename (including Windows Unicode paths), encoded
-image bytes, or a NumPy grayscale/BGR/BGRA image. Array channels follow
-OpenCV's BGR convention. Input images are processed in grayscale.
-"""
+"""SIFT image descriptors, shape ``(keypoints, 128)`` (Part 4)."""
 
 from __future__ import annotations
 
@@ -58,12 +49,7 @@ def _uint8_array(image: np.ndarray) -> np.ndarray:
 
 
 class SIFTFeatureExtractor:
-    """Reusable OpenCV SIFT extractor, with deterministic descriptor ordering.
-
-    ``max_features=0`` leaves OpenCV's number of features unrestricted.
-    ``max_image_side`` optionally bounds the longer image dimension before
-    extraction; when used, keypoint coordinates refer to the resized image.
-    """
+    """Reusable OpenCV SIFT extractor with deterministic descriptor order."""
 
     def __init__(
         self,
@@ -153,11 +139,7 @@ class SIFTFeatureExtractor:
         *,
         mask: np.ndarray | None = None,
     ) -> tuple[list[Any], np.ndarray]:
-        """Return (OpenCV keypoints, 128-D descriptors) in stable order.
-
-        A mask, when given, must be a 2-D array matching the original image.
-        Its nonzero values indicate the region where detection is permitted.
-        """
+        """Return keypoints and 128-D descriptors in stable order."""
         cv2 = self._cv2
         gray = self._grayscale(image)
         binary_mask = None
@@ -180,8 +162,6 @@ class SIFTFeatureExtractor:
         if descriptors is None or len(keypoints) == 0:
             return [], np.empty((0, DESCRIPTOR_DIMENSION), dtype=np.float32)
 
-        # The histogram / K-Means stages ignore keypoint order, but sorting
-        # makes repeated extractions easier to test and compare reproducibly.
         selected = list(range(len(keypoints)))
         if self.max_features and len(selected) > self.max_features:
             # Preserve the strongest detections before imposing presentation

@@ -1,8 +1,4 @@
-"""Pruebas específicas del feedback de la rúbrica.
-
-Demuestran que B+, Hash y R-Tree tienen archivo propio y se restauran desde
-ese archivo, sin reconstruirse mediante un scan de la tabla base.
-"""
+"""Pruebas específicas del feedback de la rúbrica."""
 from pathlib import Path
 from unittest.mock import patch
 
@@ -74,7 +70,6 @@ def test_mutation_is_durable_without_rebuild(tmp_path):
     h.insert(999, (99, 99))
     assert Path(h.file_path).stat().st_mtime_ns >= before
 
-    # Un objeto nuevo sobre el mismo archivo ve la mutación.
     from indexes.extendible_hash import ExtendibleHash
     reloaded = ExtendibleHash(bucket_capacity=4, unique=True, file_path=h.file_path)
     assert reloaded.search(999) == [(99, 99)]

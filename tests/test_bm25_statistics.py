@@ -4,7 +4,6 @@ from text.statistics import BM25Statistics
 
 
 def corpus():
-    # Tokens deliberadamente ya preprocesados: este módulo no tokeniza.
     return {
         1: ["base", "dato", "vectorial", "base"],
         2: ["base", "dato", "relacional"],

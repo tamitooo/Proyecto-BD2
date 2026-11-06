@@ -1,11 +1,4 @@
-"""Pruebas del script SQL del curso (fixtures de ``tests/fixtures``).
-
-Ejercita exactamente el flujo que pide la cátedra:
-
-    CREATE TABLE  ->  carga del CSV  ->  SELECT / EXPLAIN / EXPLAIN ANALYZE
-
-Usa un directorio de datos temporal, así que no toca ``backend/data``.
-"""
+"""Pruebas del script SQL del curso (fixtures de ``tests/fixtures``)."""
 
 import os
 import tempfile
@@ -20,7 +13,6 @@ SQL_PROYECTO = FIXTURES / "queries-proy.sql"
 
 
 def sentencias_del_script():
-    """Divide el .sql en sentencias, descartando comentarios ``--``."""
     lineas = [
         linea
         for linea in SQL_PROYECTO.read_text(encoding="utf-8").splitlines()
@@ -35,8 +27,6 @@ def sentencias_del_script():
 
 
 class TestScriptDelCurso(unittest.TestCase):
-    """El script completo del profesor sobre el CSV de prueba."""
-
     @classmethod
     def setUpClass(cls):
         cls.temp = tempfile.TemporaryDirectory()
@@ -44,8 +34,6 @@ class TestScriptDelCurso(unittest.TestCase):
 
         cls.sentencias = sentencias_del_script()
         cls.creacion = cls.sentencias[0]
-        # El script del curso se ejecuta en orden: primero el DDL, después la
-        # carga del CSV y por último las consultas.
         cls.creacion_resultado = cls.engine.run(cls.creacion)
         cls.importacion = cls.engine.import_csv("alumnos", CSV_ALUMNOS)
 
@@ -53,7 +41,6 @@ class TestScriptDelCurso(unittest.TestCase):
     def tearDownClass(cls):
         cls.temp.cleanup()
 
-    # ---------------------- 1. CREATE TABLE ----------------------
     def test_01_el_script_tiene_las_sentencias_esperadas(self):
         self.assertEqual(len(self.sentencias), 6)
         self.assertTrue(self.sentencias[0].upper().startswith("CREATE TABLE"))
@@ -74,14 +61,12 @@ class TestScriptDelCurso(unittest.TestCase):
         self.assertEqual(tabla.schema.primary_key, "id")
         self.assertEqual(tabla.storage_kind, "heap")
 
-        # La PRIMARY KEY genera un índice Hash único
         indices = list(tabla.indexes.values())
         self.assertEqual(len(indices), 1)
         self.assertEqual(indices[0].metadata.column, "id")
         self.assertEqual(indices[0].metadata.kind, "hash")
         self.assertTrue(indices[0].metadata.unique)
 
-        # Archivos físicos en disco
         self.assertTrue(Path(tabla.storage.path).exists())
 
     def test_03_create_table_repetida_falla_sin_if_not_exists(self):
@@ -95,7 +80,6 @@ class TestScriptDelCurso(unittest.TestCase):
         ))
         self.assertTrue(con_guardas.success, con_guardas.error)
 
-    # ---------------------- 2. Carga del CSV ----------------------
     def test_04_importacion_del_csv(self):
         self.assertEqual(self.importacion.rows_read, 12)
         self.assertEqual(self.importacion.inserted, 12)
@@ -109,7 +93,6 @@ class TestScriptDelCurso(unittest.TestCase):
             12,
         )
 
-    # ---------------------- 3. Consultas ----------------------
     def test_05_consulta_1_igualdad_con_coma_en_el_literal(self):
         resultado = self.engine.run(self.sentencias[1])
 
@@ -179,8 +162,6 @@ class TestScriptDelCurso(unittest.TestCase):
 
 
 class TestDDLYCSVAdicionales(unittest.TestCase):
-    """Casos extra pedidos por la cátedra: DROP, UPDATE, OR, LIMIT, persistencia."""
-
     @classmethod
     def setUpClass(cls):
         cls.temp = tempfile.TemporaryDirectory()

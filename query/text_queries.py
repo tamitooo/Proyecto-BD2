@@ -1,7 +1,4 @@
-"""Issues #57 (selección del modelo de ranking), #58 (``SCORE()``) y #60
-(integración con el Query Executor). El preprocesamiento viene de
-:mod:`text.preprocessing` para que SQL y motor usen la misma tokenización.
-"""
+"""Ejecución de ``MATCH(...)`` con TF-IDF o BM25 y ``SCORE()``."""
 
 from __future__ import annotations
 

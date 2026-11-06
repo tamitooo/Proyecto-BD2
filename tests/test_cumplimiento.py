@@ -1,17 +1,4 @@
-"""Pruebas de cumplimiento: fijan las correcciones de la revisión final.
-
-Cada prueba corresponde a un punto del checklist (``docs/CHECKLIST_CUMPLIMIENTO.md``):
-
-* SQL espacial **literal del enunciado** (2.2.3): ``distancia(ubicacion, ...)``
-  y ``ORDER BY distancia(ubicacion, mi_ubicacion) LIMIT k``.
-* k-NN **sin** índice ordenado por distancia (antes ordenaba por latitud).
-* Métrica Euclidiana sobre el R-Tree (antes se ignoraba).
-* El R-Tree se mantiene con INSERT/UPDATE/DELETE y se restaura al reiniciar.
-* Espacio del R-Tree = tamaño serializado real (antes ``nodos × 64``).
-* JOIN con columnas calificadas de la tabla unida.
-* Un solo índice agrupado por tabla.
-* CSV pegado como texto en Linux/macOS (antes ``File name too long``).
-"""
+"""Pruebas de cumplimiento: fijan las correcciones de la revisión final."""
 
 import math
 import random
@@ -67,8 +54,6 @@ class _ConTiendas(unittest.TestCase):
 
 
 class TestSQLDelEnunciadoConIndice(_ConTiendas):
-    """Las dos consultas de 2.2.3 tal cual, resueltas con el R-Tree."""
-
     access_rango = "RTREE_RANGE_SCAN"
     access_knn = "RTREE_KNN"
 
@@ -113,8 +98,6 @@ class TestSQLDelEnunciadoConIndice(_ConTiendas):
 
 
 class TestSQLDelEnunciadoSinIndice(TestSQLDelEnunciadoConIndice):
-    """Sin R-Tree el resultado debe ser idéntico (sólo cambia el plan)."""
-
     con_indice = False
     access_rango = "HEAP_SCAN"
     access_knn = "HEAP_SCAN"

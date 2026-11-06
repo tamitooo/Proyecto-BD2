@@ -1,9 +1,4 @@
-"""Pruebas de ejecución de SIMILAR_TO (Parte 4, issues #87, #88 y #90).
-
-La tabla guarda los vectores en una columna VARCHAR con JSON mientras la
-extracción de características (#107) no exista; el vector de consulta se pasa
-como literal. Se cubren HNSW, IVF y las tres métricas.
-"""
+"""Ejecución de SIMILAR_TO con HNSW, IVF y las tres métricas."""
 
 import os
 import shutil

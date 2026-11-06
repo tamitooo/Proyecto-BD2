@@ -1,14 +1,4 @@
-"""Pruebas de integracion entre storage e indices (issue #34).
-
-A diferencia de los tests unitarios de cada modulo, aqui se verifica que
-las piezas **funcionen juntas**:
-
-    Heap File / Archivo Secuencial  +  B+ agrupado / B+ no agrupado / Hash
-
-Se cubre ademas el detalle de integracion mas importante del proyecto:
-la reorganizacion del Archivo Secuencial reescribe `.main` y **invalida
-todos los RID**, por lo que el indice debe reconstruirse.
-"""
+"""Pruebas de integracion entre storage e indices (issue #34)."""
 
 import os
 import tempfile
@@ -43,8 +33,6 @@ def _records(count, offset=0):
 
 
 class TestHeapConIndices(unittest.TestCase):
-    """Heap File (sin orden) + indices externos sobre la clave primaria."""
-
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.path = os.path.join(self.temp.name, "heap.dat")
@@ -124,8 +112,6 @@ class TestHeapConIndices(unittest.TestCase):
 
 
 class TestSecuencialConIndices(unittest.TestCase):
-    """Archivo Secuencial Paginado + indices."""
-
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.path = os.path.join(self.temp.name, "seq.dat")
@@ -145,7 +131,6 @@ class TestSecuencialConIndices(unittest.TestCase):
         ]
         self.assertEqual(claves, sorted(claves))
 
-        # .main quedo ordenado y .aux vacio
         self.assertEqual(os.path.getsize(self.sequential.aux_path), 0)
         self.assertEqual(
             os.path.getsize(self.sequential.main_path),
@@ -179,10 +164,6 @@ class TestSecuencialConIndices(unittest.TestCase):
         self.assertNotIn(3, vivos)
 
     def test_los_rid_cambian_al_reorganizar(self):
-        """
-        Documenta el contrato de integracion: `reorganizar()` invalida
-        cualquier indice construido sobre RIDs anteriores.
-        """
         self.sequential.insert({"id": 42, "nombre": "A", "nota": 3.0})
 
         rid_antes = self.sequential.search(42)[0]
@@ -197,11 +178,9 @@ class TestSecuencialConIndices(unittest.TestCase):
         self.assertEqual(rid_despues.region, "main")
         self.assertNotEqual(rid_antes.to_tuple(), rid_despues.to_tuple())
 
-        # El indice viejo apunta a un RID que ya no existe.
         self.assertIsNone(self.sequential.read_rid(rid_antes))
         self.assertIsNone(self.sequential.read_rid(index.search(42)[0]))
 
-        # Reconstruirlo restablece la consistencia.
         nuevo = UnclusteredBPlusIndex(key_field="id", order=4)
         for rid, record in self.sequential.scan():
             nuevo.insert(record, rid)
@@ -212,13 +191,6 @@ class TestSecuencialConIndices(unittest.TestCase):
 
 
 class TestCatalogoOficial(unittest.TestCase):
-    """Integración storage + índices + catálogo del ejecutor oficial.
-
-    Antes usaba ``TableDefinition`` del ejecutor legado (``query/executor.py``,
-    eliminado); ahora pasa por ``query.catalog.Catalog`` y
-    ``query.query_executor.QueryExecutor``, que es lo que usa el API.
-    """
-
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
 
@@ -253,17 +225,14 @@ class TestCatalogoOficial(unittest.TestCase):
 
         record = {"id": 3, "nombre": "alumno-003", "nota": 3.5}
 
-        # El hash resuelve la igualdad exacta y su RID lleva al registro.
         rids = catalog.get_index("alumnos", "idx_id").implementation.search(3)
         self.assertEqual(len(rids), 1)
         self.assertEqual(table.read_rid(rids[0]), record)
 
-        # El B+ no agrupado devuelve RIDs válidos.
         rids_nota = catalog.get_index("alumnos", "idx_nota").implementation.search(3.5)
         self.assertTrue(rids_nota)
         self.assertEqual(table.read_rid(rids_nota[0])["nota"], 3.5)
 
-        # Borrado coherente en storage e índices (por SQL).
         self.assertTrue(executor.execute("DELETE FROM alumnos WHERE id = 3").success)
         self.assertEqual(catalog.get_index("alumnos", "idx_id").implementation.search(3), [])
         self.assertEqual(executor.execute("SELECT * FROM alumnos WHERE id = 3").rows, [])
@@ -275,8 +244,6 @@ class TestCatalogoOficial(unittest.TestCase):
         catalog, executor = self._engine("sequential")
         self._revisar(catalog, executor)
 
-        # Tras reorganizar cambian TODOS los RID: reconstruir los índices
-        # mantiene las búsquedas correctas.
         catalog.get_table("alumnos").storage.reorganizar()
         catalog.rebuild_indexes("alumnos")
         rids = catalog.get_index("alumnos", "idx_id").implementation.search(42)
@@ -288,7 +255,6 @@ class TestCatalogoOficial(unittest.TestCase):
         index = catalog.get_index("alumnos", "idx_clus").implementation
         index.validate()
 
-        # Las hojas del B+ agrupado guardan el registro completo.
         encontrados = index.search("alumno-010")
         self.assertEqual(len(encontrados), 1)
         self.assertEqual(encontrados[0]["id"], 10)
@@ -310,8 +276,6 @@ class TestCatalogoOficial(unittest.TestCase):
 
 
 class TestEquivalenciaEntreTecnicas(unittest.TestCase):
-    """El mismo dataset debe producir el mismo contenido en ambas tecnicas."""
-
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
 

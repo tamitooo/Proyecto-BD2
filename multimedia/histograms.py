@@ -11,11 +11,7 @@ def word_histogram(
     *,
     normalization: str | None = "l1",
 ) -> np.ndarray:
-    """Count word assignments into a fixed-length float32 vector.
-
-    Empty assignments return a zero vector. ``normalization`` is ``None``,
-    ``l1`` (unit sum), or ``l2`` (unit Euclidean norm); zero stays zero.
-    """
+    """Count word IDs into a fixed-length float32 vector, optionally L1/L2 normalized."""
     if type(vocabulary_size) is not int or vocabulary_size < 1:
         raise ValueError("vocabulary_size must be a positive integer")
     if normalization not in (None, "l1", "l2"):

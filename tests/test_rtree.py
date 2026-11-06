@@ -1,9 +1,4 @@
-"""Pruebas del R-Tree y del índice espacial (Parte 2).
-
-Se comprueba contra **modelos de referencia** (fuerza bruta) en lugar de contra
-valores escritos a mano: si el índice devuelve algo distinto de recorrer todos
-los puntos, la prueba falla.
-"""
+"""Pruebas del R-Tree y del índice espacial (Parte 2)."""
 
 import math
 import random
@@ -36,8 +31,6 @@ from spatial.index import SpatialIndex
 
 
 class TestMINDIST(unittest.TestCase):
-    """La fórmula de MINDIST que pide la clase (semana 06)."""
-
     def test_punto_dentro_del_mbr_aporta_cero(self):
         mbr = ((5.0, 1.0), (9.0, 7.0))
         self.assertEqual(mindist_point_to_mbr((7.0, 4.0), mbr), 0.0)
@@ -72,7 +65,6 @@ class TestMINDIST(unittest.TestCase):
         )
 
     def test_mindist_es_cota_inferior_de_la_distancia_real(self):
-        """La propiedad que hace que el k-NN sea exacto."""
         rng = random.Random(3)
         for _ in range(200):
             primer = (
@@ -85,7 +77,6 @@ class TestMINDIST(unittest.TestCase):
             )
             q = (rng.uniform(0, 100), rng.uniform(0, 100))
             cota = mindist_point_to_mbr(q, primer)
-            # Un punto cualquiera del MBR nunca está más cerca que la cota.
             real = euclidean(q, (primer[0][0], primer[0][1]))
             self.assertLessEqual(cota, real + 1e-9)
 
@@ -181,8 +172,6 @@ class TestRTreeEstructura(unittest.TestCase):
 
 
 class TestRTreeBusquedas(unittest.TestCase):
-    """Rango y k-NN contra fuerza bruta."""
-
     @classmethod
     def setUpClass(cls):
         rng = random.Random(21)
@@ -210,13 +199,6 @@ class TestRTreeBusquedas(unittest.TestCase):
             self.assertEqual(del_indice, de_fuerza)
 
     def test_rango_circular(self):
-        """``search_circle`` es el rango de la **caja** que inscribe el círculo.
-
-        Devuelve candidatos por MBR: incluye todo lo que está dentro del círculo
-        y puede incluir puntos de las esquinas de la caja, que la comprobación
-        exacta posterior descarta. Por eso la comprobación es de **inclusión**,
-        no de igualdad.
-        """
         arbol = RTree(max_entries=16)
         for i, punto in enumerate(self.puntos):
             arbol.insert(punto, i)
@@ -234,9 +216,7 @@ class TestRTreeBusquedas(unittest.TestCase):
             if abs(p[0] - centro[0]) <= radio and abs(p[1] - centro[1]) <= radio
         }
 
-        # Todo lo que está en el círculo está entre los candidatos.
         self.assertTrue(dentro_del_circulo.issubset(candidatos))
-        # Y los candidatos son exactamente los de la caja.
         self.assertEqual(candidatos, dentro_de_la_caja)
 
     def test_knn_coincide_con_fuerza_bruta(self):
@@ -334,8 +314,6 @@ class TestRTreeBulkLoad(unittest.TestCase):
 
 
 class TestIndiceEspacial(unittest.TestCase):
-    """El envoltorio con latitud/longitud y las dos métricas."""
-
     @classmethod
     def setUpClass(cls):
         cls.ciudad = generate_points(
@@ -436,7 +414,6 @@ class TestGeo(unittest.TestCase):
         )
 
     def test_haversine_un_grado_de_latitud(self):
-        """1° de latitud son ~111.32 km en toda la esfera."""
         distancia = haversine((0.0, 0.0), (1.0, 0.0))
         self.assertAlmostEqual(distancia, 111_195, delta=500)
 
@@ -461,11 +438,9 @@ class TestGeo(unittest.TestCase):
         self.assertTrue(point_in_polygon((5.0, 5.0), cuadrado))
         self.assertFalse(point_in_polygon((15.0, 5.0), cuadrado))
         self.assertFalse(point_in_polygon((-1.0, 5.0), cuadrado))
-        # Sobre el borde cuenta como dentro.
         self.assertTrue(point_in_polygon((0.0, 5.0), cuadrado))
 
     def test_poligono_concavo(self):
-        # Una "C": el punto del hueco está fuera.
         anillo = [
             (0.0, 0.0), (0.0, 10.0), (10.0, 10.0), (10.0, 7.0),
             (3.0, 7.0), (3.0, 3.0), (10.0, 3.0), (10.0, 0.0),

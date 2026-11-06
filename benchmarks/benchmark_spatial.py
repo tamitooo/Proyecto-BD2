@@ -1,10 +1,4 @@
-"""Benchmark Parte 2: secuencial vs R-Tree propio vs PostgreSQL GiST/PostGIS.
-
-Defaults are the exact matrix requested by the project: N=1K/10K/100K,
-100 queries, radii 1/5/10 km and k=10/50/100. PostgreSQL is optional at runtime;
-when ``--pg-dsn`` is supplied the script creates a temporary PostGIS table and
-GiST index and measures the same query workload.
-"""
+"""Benchmark Parte 2: secuencial vs R-Tree propio vs PostgreSQL GiST/PostGIS."""
 from __future__ import annotations
 import argparse, heapq, math, os, random, statistics, time, uuid
 import numpy as np
@@ -56,7 +50,6 @@ def run(sizes=(1000,10000,100000),query_count=100,seed=42,pg_dsn=''):
  out=[]
  for n in sizes:
   pts=generate(n,seed);arr=np.asarray(pts,dtype=np.float64);qs=queries(query_count,seed+n);seq_size=int(arr.nbytes)
-  # Sequential build is zero: the dataset itself is the baseline structure.
   for radius in RADII:
    ts=[];items=0
    for q in qs:t=time.perf_counter();items+=seq_range(arr,q,radius);ts.append((time.perf_counter()-t)*1000)
@@ -79,5 +72,5 @@ def run(sizes=(1000,10000,100000),query_count=100,seed=42,pg_dsn=''):
  return out
 
 def main():
- p=argparse.ArgumentParser();p.add_argument('--sizes',nargs='+',type=int,default=[1000,10000,100000]);p.add_argument('--queries',type=int,default=100);p.add_argument('--pg-dsn',default=os.environ.get('BD2_PG_DSN',''));p.add_argument('--output-dir',default='benchmark_results');a=p.parse_args();rows=run(a.sizes,a.queries,pg_dsn=a.pg_dsn);out=Path(a.output_dir);write_rows(rows,out/'spatial_benchmark.csv',out/'spatial_benchmark.json',{'sizes':a.sizes,'queries':a.queries,'radii_m':RADII,'k_values':KS,'postgres_enabled':bool(a.pg_dsn)});[print(r) for r in rows]
+ p=argparse.ArgumentParser();p.add_argument('--sizes',nargs='+',type=int,default=[1000,10000,100000]);p.add_argument('--queries',type=int,default=100);p.add_argument('--pg-dsn',default=os.environ.get('BD2_PG_DSN',''));p.add_argument('--output-dir',default='benchmarks/results');a=p.parse_args();rows=run(a.sizes,a.queries,pg_dsn=a.pg_dsn);out=Path(a.output_dir);write_rows(rows,out/'spatial_benchmark.csv',out/'spatial_benchmark.json',{'sizes':a.sizes,'queries':a.queries,'radii_m':RADII,'k_values':KS,'postgres_enabled':bool(a.pg_dsn)});[print(r) for r in rows]
 if __name__=='__main__':main()

@@ -1,14 +1,4 @@
-"""Pruebas del parser SQL para la búsqueda textual (Parte 3, sección 2.3.3).
-
-Cubre la sintaxis del enunciado:
-
-* ``WHERE MATCH(contenido, 'base de datos vectorial')``
-* ``USING TF_IDF`` / ``USING BM25``
-* ``SCORE() AS relevancia`` en las columnas y ``ORDER BY relevancia``
-
-#56 es solo el parser: la ejecución de MATCH vive en query/text_queries.py
-(#60) y el plan de ejecución textual llega con #61.
-"""
+"""Parser SQL de la búsqueda textual: ``MATCH``, ``USING TF_IDF/BM25`` y ``SCORE()``."""
 
 import unittest
 

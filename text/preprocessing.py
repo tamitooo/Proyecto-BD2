@@ -8,19 +8,12 @@ from typing import Callable, Iterator
 
 
 # Unicode letters and numbers, excluding underscores.
-# NFKC normalization is applied before matching.
 _TOKEN_PATTERN = re.compile(r"[^\W_]+", flags=re.UNICODE)
 
 
 @dataclass(frozen=True)
 class TextPreprocessor:
-    """Shared preprocessing for indexing and searching.
-
-    Default settings preserve accents and stopwords to remain
-    compatible with the existing SQL MATCH implementation. (That I have yet not fixed because I am lazy)
-
-    A language-aware stemmer may be injected when needed. (ONLY FOR TESTING)
-    """
+    """Shared preprocessing for indexing and searching; defaults keep accents and stopwords."""
 
     stopwords: frozenset[str] = frozenset()
     strip_accents: bool = False
@@ -75,11 +68,7 @@ class TextPreprocessor:
         return unicodedata.normalize("NFC", result)
 
     def iter_tokens(self, value: object | None) -> Iterator[str]:
-        """Yield normalized tokens without storing a token list.
-
-        Suitable for processing documents incrementally during SPIMI
-        block construction. (NOT FOR BETA)
-        """
+        """Yield normalized tokens lazily, without building a list."""
         if value is None:
             return
 
@@ -88,7 +77,6 @@ class TextPreprocessor:
         for match in _TOKEN_PATTERN.finditer(normalized_text):
             term = match.group()
 
-            # Stopword removal precedes stemming.
             if term in self.stopwords:
                 continue
 
@@ -113,11 +101,9 @@ class TextPreprocessor:
         return list(self.iter_tokens(value))
 
 
-# Default instance shared with the SQL query layer.
 DEFAULT_PREPROCESSOR = TextPreprocessor()
 
 
 def tokenize(value: object | None) -> list[str]:
-    """Compatibility entry point for SQL MATCH and SPIMI.
-    Taken value is converted in output for a list of strings."""
+    """Tokenize with the default preprocessor shared by SQL MATCH and SPIMI."""
     return DEFAULT_PREPROCESSOR.tokenize(value)

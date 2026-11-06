@@ -1,10 +1,4 @@
-"""Unified multimedia feature extraction (issue #107).
-
-Train visual/audio vocabularies and IDF independently, then transform each
-object into a fixed-length weighted histogram ready for IVF/HNSW. Training
-uses a bounded, seeded priority sample of descriptors and a second pass over
-the source objects, avoiding keeping an entire descriptor corpus in RAM.
-"""
+"""ExtractFeatures: SIFT/MFCC -> codebook -> TF-IDF weighted histogram (Part 4)."""
 
 from __future__ import annotations
 
@@ -46,12 +40,7 @@ def _object(value: MultimediaObject | Mapping[str, Any]) -> MultimediaObject:
 
 
 class MultimediaFeaturePipeline:
-    """Fit once on a corpus, then generate searchable vectors for new objects.
-
-    Each modality has its own K-Means codebook and HistogramTFIDF model.
-    ``max_training_descriptors`` bounds the sampled descriptors retained for
-    K-Means training, not the size of a single decoded input image/audio file.
-    """
+    """Fit once on a corpus, then turn new objects into vectors for IVF/HNSW."""
 
     def __init__(
         self,
@@ -65,7 +54,6 @@ class MultimediaFeaturePipeline:
     ) -> None:
         if type(max_training_descriptors) is not int or max_training_descriptors < 1:
             raise ValueError("max_training_descriptors must be positive")
-        # Create SIFT lazily: audio-only callers should not need OpenCV.
         self.sift = sift
         self.mfcc = mfcc or MFCCFeatureExtractor()
         self.max_training_descriptors = max_training_descriptors
@@ -104,8 +92,6 @@ class MultimediaFeaturePipeline:
             "image": np.empty(0), "audio": np.empty(0),
         }
 
-        # Random-priority sampling gives each local descriptor the same
-        # probability of surviving the bounded training reservoir.
         for item in items:
             descriptors = self._descriptors(item)
             if len(descriptors) == 0:
@@ -137,8 +123,6 @@ class MultimediaFeaturePipeline:
                 )
             codebook.fit(sample)
 
-        # A second pass generates corpus histograms without retaining raw
-        # SIFT/MFCC descriptors for every object simultaneously.
         histograms: dict[str, list[np.ndarray]] = {"image": [], "audio": []}
         for item in items:
             codebook, _ = self._model(item.modality)
@@ -161,15 +145,10 @@ class MultimediaFeaturePipeline:
         histogram = word_histogram(assigned, codebook.n_words, normalization=None)
         return weighting.transform(histogram)
 
-    # Match the project specification's Spanish/PascalCase public name.
     ExtractFeatures = extract_features
 
     def save(self, path: str | Path) -> Path:
-        """Persist both trained codebooks/IDFs without executable pickle data.
-
-        When custom SIFT/MFCC settings are used, supply the same extractors to
-        :meth:`load` so that query descriptors match the training pipeline.
-        """
+        """Persist codebooks and IDF with ``np.savez`` (no pickle)."""
         if self.visual_tfidf.idf_ is None and self.audio_tfidf.idf_ is None:
             raise RuntimeError("cannot save an untrained pipeline")
         destination = Path(path)
@@ -228,11 +207,7 @@ def ExtractFeatures(
     *,
     pipeline: MultimediaFeaturePipeline,
 ) -> np.ndarray:
-    """ExtractFeatures(objeto) with an explicitly trained pipeline context.
-
-    The pipeline is required: a query cannot retrain vocabulary/IDF without
-    changing vector coordinates and invalidating the existing search index.
-    """
+    """Requires a trained pipeline: retraining would change the vector space of the index."""
     if not isinstance(pipeline, MultimediaFeaturePipeline):
         raise TypeError("pipeline must be a MultimediaFeaturePipeline")
     return pipeline.extract_features(objeto)

@@ -1,14 +1,4 @@
-"""Persistent, streaming SPIMI block files (issue #46).
-
-Each block is a UTF-8 JSON Lines file with one posting per line::
-
-    {"t":"base","d":1,"f":2}
-
-Records are sorted by ``(term, document_id)``. This format deliberately does
-not put an entire posting list on one line: a subsequent k-way external merge
-can read and combine records without loading large posting lists into RAM.
-Only integer and string document IDs are persistable; pickle is not used.
-"""
+"""SPIMI block files on disk: JSON Lines, one ``{"t", "d", "f"}`` posting per line, sorted by term."""
 
 from __future__ import annotations
 
@@ -42,11 +32,7 @@ def _validate_record(term: object, doc_id: object, frequency: object) -> None:
 
 
 def iter_block_records(path: str | Path) -> Iterator[PostingRecord]:
-    """Stream validated postings from an already-written SPIMI block.
-
-    Detects malformed records, duplicate pairs and unexpected ordering, so
-    the external merge never silently incorporates a corrupted block.
-    """
+    """Stream postings from a block, failing on malformed or unsorted records."""
     previous_key: tuple[str, tuple[int, int | str]] | None = None
     with Path(path).open("r", encoding="utf-8") as stream:
         for line_number, line in enumerate(stream, start=1):
@@ -68,12 +54,7 @@ def iter_block_records(path: str | Path) -> Iterator[PostingRecord]:
 
 
 class SPIMIBlockStore:
-    """Write SPIMI blocks atomically, with one block file per identifier.
-
-    The caller should consume :meth:`write_blocks` incrementally; keeping a
-    list of every block in memory would defeat the SPIMI memory budget.
-    Existing block files are not intentionally overwritten.
-    """
+    """Writes one file per block; existing block files are never overwritten."""
 
     def __init__(self, directory: str | Path) -> None:
         self.directory = Path(directory)
@@ -85,12 +66,7 @@ class SPIMIBlockStore:
         return self.directory / f"block_{block_id:06d}.spimi.jsonl"
 
     def write_block(self, block: SPIMIBlock) -> Path:
-        """Write a sorted block through a temporary file, then publish it.
-
-        ``flush`` and ``fsync`` complete before the final rename, avoiding a
-        partially written destination if serialization fails. This assumes a
-        single writer per directory; it does not coordinate processes.
-        """
+        """Write through a temporary file and rename it, so a failure leaves no partial block."""
         if not isinstance(block, SPIMIBlock):
             raise TypeError("block must be a SPIMIBlock")
         destination = self.path_for(block.block_id)
@@ -118,7 +94,6 @@ class SPIMIBlockStore:
                 stream.flush()
                 os.fsync(stream.fileno())
 
-            # Guard against an existing file in normal single-writer usage.
             if destination.exists():
                 raise FileExistsError(destination)
             os.replace(temporary, destination)

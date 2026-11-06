@@ -1,10 +1,4 @@
-"""Random-access term lookup on the final SPIMI index (issue #48).
-
-The lexicon maps each normalized term to the byte offset and document
-frequency of its sorted postings. It is loaded once; postings remain on disk
-until the term is requested. The same TextPreprocessor must be used at build
-and query time, including optional stopword/accent/stemming settings.
-"""
+"""Term lookup on the final SPIMI index; postings stay on disk until requested."""
 
 from __future__ import annotations
 
@@ -17,12 +11,7 @@ from .spimi_storage import DiskDocumentId, document_id_sort_key
 
 
 class SPIMIInvertedIndex:
-    """Lookup a term in O(1) average lexicon time plus O(df) disk reads.
-
-    The in-memory lexicon occupies O(vocabulary size); full posting lists are
-    never loaded for unrelated terms. Each lookup returns the requested
-    term's frequencies as ``doc_id -> frequency``.
-    """
+    """Lexicon in memory (term -> byte offset, df); one seek per term lookup."""
 
     def __init__(
         self,
@@ -115,5 +104,4 @@ class SPIMIInvertedIndex:
                 previous_id_key = id_key
         return postings
 
-    # Convenient alias for consumers that use the name lookup.
     lookup = search_term

@@ -1,12 +1,4 @@
-"""IVF contra HNSW sobre vectores sinteticos (Parte 4).
-
-Los vectores se generan con semilla fija en grupos separados, para que IVF
-tenga algo que clusterizar. La referencia exacta para medir Recall@10 sale
-del k-NN por fuerza bruta de cada indice, no de una aproximacion.
-
-Cuando la extraccion de caracteristicas de la Parte 4 este lista, se cambia
-la fuente de vectores sin tocar la medicion.
-"""
+"""IVF contra HNSW sobre vectores sintéticos agrupados (Parte 4); Recall@10 contra fuerza bruta."""
 
 from __future__ import annotations
 
@@ -111,7 +103,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="IVF contra HNSW en vectores sinteticos")
     ap.add_argument("--sizes", nargs="+", type=int, default=[1000, 10000, 100000])
     ap.add_argument("--metricas", nargs="+", default=["euclidean", "cosine"])
-    ap.add_argument("--output", default="benchmark_results/vector")
+    ap.add_argument("--output", default="benchmarks/results/vector")
     args = ap.parse_args()
 
     filas = run(tuple(args.sizes), tuple(args.metricas))

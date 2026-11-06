@@ -63,4 +63,4 @@ Leaflet se carga vía CDN desde `frontend/index.html`; el mapa base requiere con
 
 ## PostGIS
 
-El paquete conserva como referencia la corrida PostGIS real del repositorio en `benchmark_results/spatial_postgis_reference.csv`. La corrida local de regeneración sin DSN PostgreSQL valida Secuencial y R-Tree; para volver a certificar GiST en el host final debe ejecutarse el benchmark con `--pg-dsn` y PostGIS habilitado.
+El paquete conserva como referencia la corrida PostGIS real del repositorio en `benchmarks/results/spatial_postgis_reference.csv`. La corrida local de regeneración sin DSN PostgreSQL valida Secuencial y R-Tree; para volver a certificar GiST en el host final debe ejecutarse el benchmark con `--pg-dsn` y PostGIS habilitado.

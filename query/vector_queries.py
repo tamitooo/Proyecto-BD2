@@ -1,11 +1,4 @@
-"""Ejecución de búsquedas vectoriales ``SIMILAR_TO`` (Parte 4).
-
-Issues #87 y #88 (selección de índice y de métrica) y #90 (integración con el
-Query Executor). Mientras la extracción de características (#107) no exista, el
-vector de consulta se pasa como literal ``[0.1, 0.2, ...]`` y los vectores de la
-tabla se guardan en una columna ``VARCHAR`` con formato JSON (``[0.1, 0.2]``) o
-separado por comas (``0.1,0.2``).
-"""
+"""Ejecución de ``SIMILAR_TO`` (Parte 4); los vectores van en una columna como JSON o separados por comas."""
 
 from __future__ import annotations
 
@@ -28,11 +21,7 @@ _DEFAULT_METRIC = "euclidean"
 
 
 def parse_vector(value: Any) -> Tuple[float, ...]:
-    """Convierte una celda o un literal en un vector de ``float``.
-
-    Acepta listas/tuplas, JSON (``[0.1, 0.2]``) o texto separado por comas
-    (``0.1,0.2``). Lanza :class:`VectorQueryError` con un mensaje claro.
-    """
+    """Convierte una lista, JSON (``[0.1, 0.2]``) o texto ``0.1,0.2`` en un vector de ``float``."""
     if isinstance(value, (list, tuple)):
         raw: Sequence[Any] = list(value)
     elif isinstance(value, str):
@@ -126,7 +115,6 @@ class VectorExecutor:
         k = max(1, min(predicate.k, len(vectors)))
         return self._plan(table, column, kind, metric, k, dimension, len(vectors), 0.0, 0.0, 0)
 
-    # ------------------------------------------------------------- resolución
     @staticmethod
     def _resolve_column(table, requested: Optional[str]) -> str:
         names = list(table.schema.col_names())
@@ -199,7 +187,6 @@ class VectorExecutor:
             rows.append(row)
         return rows, vectors
 
-    # --------------------------------------------------------------- índices
     @staticmethod
     def _build(kind: str, metric: str, vectors):
         n = len(vectors)

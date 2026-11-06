@@ -726,7 +726,6 @@ def test_hash_equality_beats_bplus_even_if_order_by_matches_bplus():
         )
     )
 
-    # Hash exact lookup remains the selected access path.
     # ORDER BY sobre la misma columna de igualdad no requiere sort:
     # todas las filas encontradas tienen id = 10.
     assert plan.access_path == "HASH_INDEX_LOOKUP"

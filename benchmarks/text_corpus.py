@@ -1,11 +1,4 @@
-"""Corpus sintetico para los experimentos de la Parte 3.
-
-Cada consulta tiene documentos escritos para contener todos sus terminos.
-El resto de documentos son ruido sobre un vocabulario comun con frecuencia
-tipo Zipf, mas algunas palabras de consulta inyectadas a tasa muy baja.
-La relevancia queda asi definida por construccion: no hace falta juicio
-humano para saber que documento responde a que consulta.
-"""
+"""Corpus sintético de la Parte 3; la relevancia queda definida por construcción."""
 
 from __future__ import annotations
 

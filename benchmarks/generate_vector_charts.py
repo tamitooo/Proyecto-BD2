@@ -1,7 +1,4 @@
-"""Graficas comparativas de la Parte 4: IVF contra HNSW.
-
-Usa la distancia euclidiana, que es la unica medida en los tres tamanos.
-"""
+"""Gráficas de la Parte 4 (IVF contra HNSW) con distancia euclidiana."""
 
 from __future__ import annotations
 
@@ -10,7 +7,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
-BASE = Path("benchmark_results/vector")
+BASE = Path("benchmarks/results/vector")
 PLOTS = BASE / "plots"
 PLOTS.mkdir(parents=True, exist_ok=True)
 

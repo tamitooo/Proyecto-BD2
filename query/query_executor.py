@@ -117,6 +117,7 @@ class QueryExecutor:
             if normal: rows = [x for x in rows if self.matches_all(x, normal)]
         if q.joins: rows = self._joins(rows, q.joins, runtime)
         aggs = self._aggregates(s.columns)
+        if q.group_by: self._validate_group_by(s, q)
         if q.group_by:
             key = q.group_by[0] if len(q.group_by) == 1 else tuple(q.group_by);
             st = time.perf_counter();
@@ -158,24 +159,28 @@ class QueryExecutor:
                               execution_plan={**plan, "spatial": True, "kind": kind})
 
     def _vector(self, s, t, spec):
+        q = s.query_spec
+        row_filter = (lambda row: self.matches_query(row, q)) if (q.predicates or q.or_groups) else None
+        search_limit = None if q.order_by else s.limit
         try:
-            rows, plan = VectorExecutor(self.catalog).execute(t, spec, limit=s.limit)
+            rows, plan = VectorExecutor(self.catalog).execute(t, spec, limit=search_limit, row_filter=row_filter)
         except VectorQueryError as e:
             raise QueryExecutionError(str(e))
+        rows = self._sort_search_rows(rows, q.order_by, self._score_alias(s.columns))
         projected, cols = self._project(rows, s.columns)
         if s.limit is not None: projected = projected[:s.limit]
         return QueryResult.ok("SELECT", columns=cols, rows=projected, affected_rows=len(projected),
                               execution_plan={**plan, "similarity": True})
 
     def _text(self, s, t, spec):
+        q = s.query_spec
+        row_filter = (lambda row: self.matches_query(row, q)) if (q.predicates or q.or_groups) else None
+        search_limit = None if q.order_by else s.limit
         try:
-            rows, plan = TextExecutor(self.catalog).execute(t, spec, limit=s.limit)
+            rows, plan = TextExecutor(self.catalog).execute(t, spec, limit=search_limit, row_filter=row_filter)
         except TextQueryError as e:
             raise QueryExecutionError(str(e))
-        q = s.query_spec
-        alias = self._score_alias(s.columns)
-        if q.order_by and alias and q.order_by[0].column == alias:
-            rows.sort(key=lambda r: r["_score"], reverse=not q.order_by[0].descending)
+        rows = self._sort_search_rows(rows, q.order_by, self._score_alias(s.columns))
         projected, cols = self._project(rows, s.columns)
         if s.limit is not None: projected = projected[:s.limit]
         return QueryResult.ok("SELECT", columns=cols, rows=projected, affected_rows=len(projected),
@@ -187,6 +192,38 @@ class QueryExecutor:
             m = _SCORE.match(x)
             if m: return m.group(2) or "score"
         return None
+
+    @staticmethod
+    def _sort_search_rows(rows, order_by, score_alias):
+        if not order_by or not rows:
+            return rows
+        result = list(rows)
+        for item in reversed(order_by):
+            column = item.column
+            if score_alias and column == score_alias:
+                key_name = "_score"
+            elif column in result[0]:
+                key_name = column
+            elif column == "score" and "_score" in result[0]:
+                key_name = "_score"
+            else:
+                raise QueryExecutionError(f"la columna de ORDER BY '{column}' no existe en el resultado")
+            def sort_key(row, key_name=key_name):
+                value = row.get(key_name)
+                return (value is None, value)
+            result.sort(key=sort_key, reverse=item.descending)
+        return result
+
+    @staticmethod
+    def _validate_group_by(s, q):
+        for x in s.columns:
+            if x == "*":
+                raise QueryExecutionError("SELECT * no es válido con GROUP BY; selecciona las columnas agrupadas o agregados")
+            if _AGG.match(x) or _SCORE.match(x):
+                continue
+            column = x.split('.')[-1]
+            if column not in q.group_by:
+                raise QueryExecutionError(f"la columna '{column}' debe aparecer en GROUP BY o dentro de un agregado")
 
     def _filter_spatial_linear(self, rows, preds):
         out = list(rows)
@@ -583,7 +620,8 @@ class QueryExecutor:
                 continue
             m = _AGG.match(x)
             if m:
-                targets.append((m.group(3) or f"{m.group(1).lower()}_{'all' if m.group(2) == '*' else m.group(2)}", None))
+                name = m.group(3) or f"{m.group(1).lower()}_{'all' if m.group(2) == '*' else m.group(2)}"
+                targets.append((name, name))
                 continue
             sm = _SCORE.match(x)
             if sm:

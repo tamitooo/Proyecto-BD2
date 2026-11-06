@@ -21,13 +21,15 @@ from __future__ import annotations
 
 import heapq
 import math
+import operator
 import random
+from itertools import repeat
 from pathlib import Path
 from typing import Dict, Hashable, Iterable, List, Optional, Sequence, Tuple
 
 from indexes.persistence import atomic_pickle_write, pickle_read, remove_if_exists
 
-from .metrics import euclidean_distance, get_search_metric
+from .metrics import get_search_metric
 from .ranking import SearchResult, SimilarityRanking
 
 Vector = Tuple[float, ...]
@@ -136,10 +138,7 @@ class IVFIndex:
         assignments: Optional[List[int]] = None
 
         for _ in range(self.max_iterations):
-            updated = [
-                self._nearest(point, centroids, euclidean_distance)
-                for point in points
-            ]
+            updated = [self._nearest(point, centroids) for point in points]
             if updated == assignments:
                 break
             assignments = updated
@@ -161,7 +160,7 @@ class IVFIndex:
         """K-Means++: favorece centroides iniciales separados entre sí."""
         first = self._rng.choice(points)
         centroids = [first]
-        weights = [euclidean_distance(point, first) ** 2 for point in points]
+        weights = [math.dist(point, first) ** 2 for point in points]
 
         while len(centroids) < self.n_lists:
             if sum(weights) > 0.0:
@@ -171,18 +170,25 @@ class IVFIndex:
                 centroid = self._rng.choice(points)
             centroids.append(centroid)
             weights = [
-                min(weight, euclidean_distance(point, centroid) ** 2)
+                min(weight, math.dist(point, centroid) ** 2)
                 for point, weight in zip(points, weights)
             ]
         return centroids
 
     @staticmethod
-    def _nearest(point: Vector, centroids: Sequence[Vector], cost) -> int:
-        """Índice del centroide de menor costo; los empates van al primero."""
-        return min(
-            range(len(centroids)),
-            key=lambda list_id: cost(point, centroids[list_id]),
-        )
+    def _nearest(point: Vector, centroids: Sequence[Vector]) -> int:
+        """Centroide Euclidiano más cercano; los empates van al primero.
+
+        ``math.dist`` directo: los vectores ya se validaron al entrar.
+        """
+        costs = list(map(math.dist, repeat(point), centroids))
+        return costs.index(min(costs))
+
+    @staticmethod
+    def _most_similar(point: Vector, centroids: Sequence[Vector]) -> int:
+        """Centroide de mayor producto punto; los empates van al primero."""
+        scores = [sum(map(operator.mul, point, centroid)) for centroid in centroids]
+        return scores.index(max(scores))
 
     def _centroid(self, cluster: Sequence[Vector]) -> Vector:
         mean = tuple(math.fsum(values) / len(cluster) for values in zip(*cluster))
@@ -200,11 +206,13 @@ class IVFIndex:
         """Devuelve la lista invertida que corresponde a ``vector``."""
         if not self.is_trained:
             raise ValueError("el índice debe entrenarse antes de usarse")
-        return self._nearest(
-            self._as_query(vector),
-            self.centroids,
-            get_search_metric(self.metric_name),
-        )
+        query = self._as_query(vector)
+        if self.metric_name == "euclidean":
+            return self._nearest(query, self.centroids)
+        if self.metric_name == "cosine":
+            # Los centroides del K-Means esférico ya son unitarios.
+            query = self._unit_vector(query)
+        return self._most_similar(query, self.centroids)
 
     def insert(self, vector_id: Hashable, vector: Iterable[float]) -> int:
         """Inserta un vector y sincroniza el archivo; devuelve su lista.

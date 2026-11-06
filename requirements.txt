@@ -29,3 +29,11 @@ psycopg2-binary>=2.9
 
 # Benchmark espacial vectorizado / medición secuencial
 numpy>=1.26
+
+# SIFT image descriptors for the multimedia pipeline (Part 4, issue #102).
+# Install only one OpenCV wheel family (opencv-python or its headless variant).
+opencv-python>=4.8,<5
+
+# MFCC audio extraction (Part 4, issue #103).
+librosa>=0.10.2,<1
+soundfile>=0.12

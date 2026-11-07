@@ -1,5 +1,11 @@
-"""Estructuras de índices vectoriales de la Parte 4."""
+"""Estructuras de índices vectoriales y extracción de características (Parte 4)."""
 
+from .extract_features import (
+    AUDIO_DESCRIPTOR_DIM,
+    ExtractFeatures,
+    FeatureExtractionError,
+    FeatureVector,
+)
 from .hnsw import HNSWIndex, HNSWNode
 from .ivf import IVFIndex
 from .metrics import (
@@ -13,6 +19,10 @@ from .metrics import (
 from .ranking import SearchResult, SimilarityRanking
 
 __all__ = [
+    "AUDIO_DESCRIPTOR_DIM",
+    "ExtractFeatures",
+    "FeatureExtractionError",
+    "FeatureVector",
     "HNSWIndex",
     "HNSWNode",
     "IVFIndex",

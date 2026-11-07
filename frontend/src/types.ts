@@ -136,3 +136,17 @@ export interface SpatialQueryResult {
   candidates_visited: number | null;
   error: string | null;
 }
+
+export interface MediaFeatures {
+  name: string;
+  path: string;
+  kind: 'image' | 'audio';
+  dimension: number;
+  vector: number[];
+  json: string;
+  mode?: string;
+  n_words?: number | null;
+  sift_backend?: string | null;
+  size_bytes: number;
+  elapsed_ms: number;
+}

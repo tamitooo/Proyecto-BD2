@@ -1,4 +1,10 @@
-"""Ejecución de SIMILAR_TO con HNSW, IVF y las tres métricas."""
+"""Pruebas de ejecución de SIMILAR_TO (Parte 4, issues #87, #88 y #90).
+
+La tabla guarda los vectores en una columna VARCHAR con JSON. El vector de
+consulta puede ser un literal o un archivo multimedia (#107); la extracción de
+archivos se prueba en ``tests/test_media_sql.py``. Se cubren HNSW, IVF y las
+tres métricas.
+"""
 
 import os
 import shutil
@@ -128,12 +134,13 @@ class TestEjecucionVectorial(unittest.TestCase):
         self.assertTrue(resultado.success, resultado.error)
         self.assertEqual(len(resultado.rows), 1)
 
-    def test_archivo_requiere_extraccion_de_caracteristicas(self):
+    def test_archivo_inexistente_da_error_claro(self):
+        missing = f"no-existe-{uuid.uuid4().hex}.jpg"
         resultado = self.engine.run(
-            "SELECT * FROM imagenes WHERE SIMILAR_TO('foto.jpg', k=2) USING HNSW"
+            f"SELECT * FROM imagenes WHERE SIMILAR_TO('{missing}', k=2) USING HNSW"
         )
         self.assertFalse(resultado.success)
-        self.assertIn("#107", resultado.error or "")
+        self.assertIn("no se encontró", resultado.error or "")
 
     def test_columna_como_objetivo_no_define_consulta(self):
         resultado = self.engine.run(

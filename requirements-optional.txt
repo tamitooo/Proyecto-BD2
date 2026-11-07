@@ -1,0 +1,15 @@
+# Dependencias opcionales para la exposición multimedia (Parte 4).
+#
+# Obligatorias del proyecto: ver requirements.txt (numpy, Pillow, etc.).
+#
+# SIFT estándar de OpenCV. Si no se instala, vector/sift.py usa el SIFT denso
+# propio. Después de instalarlo hay que reentrenar el vocabulario:
+#   python -m tools.train_feature_model
+#   python -m tools.seed_media_demo
+opencv-python-headless>=4.10
+
+# ffmpeg NO es un paquete de pip. Para MP3/OGG/FLAC/M4A:
+#   winget install Gyan.FFmpeg
+#   choco install ffmpeg
+#   ffmpeg -version
+# Debe quedar en el PATH; luego reiniciar el backend.

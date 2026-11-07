@@ -1,5 +1,6 @@
 import type {
   CreateTableRequest,
+  MediaFeatures,
   QueryResult,
   SpatialPoints,
   SpatialQueryRequest,
@@ -65,6 +66,15 @@ export async function importCsvIntoTable(
   form.append('file', file);
   form.append('has_header', 'true');
   return parse(await fetch(`${BASE}/tables/${encodeURIComponent(table)}/import`, {
+    method: 'POST',
+    body: form,
+  }));
+}
+
+export async function extractMedia(file: File): Promise<MediaFeatures> {
+  const form = new FormData();
+  form.append('file', file);
+  return parse<MediaFeatures>(await fetch(`${BASE}/media/extract`, {
     method: 'POST',
     body: form,
   }));

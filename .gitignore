@@ -38,8 +38,12 @@ backend/data/
 # Corpus sintetico de los experimentos de texto (se regenera con la semilla)
 data/text/
 
+# Datos temporales de la demo multimedia
+.demo_media/
+
 # Salida temporal de pruebas
 .ptmp/
+.ptmp_*/
 
 # IDE
 .idea/

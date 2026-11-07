@@ -1,4 +1,18 @@
-"""Ejecución de ``SIMILAR_TO`` (Parte 4); los vectores van en una columna como JSON o separados por comas."""
+"""Ejecución de búsquedas vectoriales ``SIMILAR_TO`` (Parte 4).
+
+Issues #87 y #88 (selección de índice y de métrica), #90 (integración con el
+Query Executor) y #107 (extracción de características). El objetivo de la
+consulta puede ser:
+
+* un vector literal ``[0.1, 0.2, ...]``;
+* un archivo multimedia ``'foto.jpg'`` / ``'audio.wav'``, que se convierte a
+  vector con :class:`vector.extract_features.ExtractFeatures`;
+* el nombre de una columna de la tabla, que no define una consulta y se
+  rechaza con un mensaje claro.
+
+Los vectores de la tabla se guardan en una columna ``VARCHAR`` con formato JSON
+(``[0.1, 0.2]``) o separado por comas (``0.1,0.2``).
+"""
 
 from __future__ import annotations
 
@@ -6,9 +20,17 @@ import hashlib
 import json
 import math
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from vector.extract_features import (
+    ExtractFeatures,
+    FeatureExtractionError,
+    default_media_root,
+    default_model_root,
+    looks_like_media,
+)
 from vector.hnsw import HNSWIndex
 from vector.ivf import IVFIndex
 from vector.metrics import get_search_metric
@@ -16,6 +38,20 @@ from vector.metrics import get_search_metric
 
 class VectorQueryError(Exception):
     pass
+
+
+@dataclass(frozen=True)
+class QueryVector:
+    """Vector de consulta y su procedencia, para el plan y las pruebas."""
+
+    values: Tuple[float, ...]
+    source: str = "literal"  # literal | file
+    media_kind: Optional[str] = None
+    media_path: Optional[str] = None
+    extract_ms: float = 0.0
+    feature_mode: Optional[str] = None
+    n_words: Optional[int] = None
+    descriptor_backend: Optional[str] = None
 
 
 _VECTOR_COLUMN_NAMES = ("embedding", "vector", "vectors", "features", "descriptor", "histogram")
@@ -49,10 +85,18 @@ def parse_vector(value: Any) -> Tuple[float, ...]:
 
 
 class VectorExecutor:
-    """Ejecuta ``SIMILAR_TO`` reutilizando HNSW persistente cuando corresponde."""
+    """Ejecuta ``SIMILAR_TO`` reutilizando los índices IVF y HNSW persistentes cuando corresponde.
 
-    def __init__(self, catalog):
+    ``media_root`` es el directorio donde buscar ``'foto.jpg'`` cuando la ruta
+    no es absoluta. El Query Executor lo deriva del ``data_dir`` del catálogo
+    (``<data_dir>/media``), que es donde ``backend.media`` guarda las subidas
+    del panel multimedia.
+    """
+
+    def __init__(self, catalog, *, media_root=None, model_root=None):
         self.catalog = catalog
+        self.media_root = Path(media_root) if media_root is not None else default_media_root(catalog)
+        self.model_root = Path(model_root) if model_root is not None else default_model_root(catalog)
 
     def execute(self, table, spec, *, limit: Optional[int] = None, row_filter=None):
         predicate = spec.predicate
@@ -67,9 +111,9 @@ class VectorExecutor:
                 raise VectorQueryError("ninguna fila cumple el resto del WHERE")
             raise VectorQueryError(f"la columna '{column}' de '{table.name}' no tiene vectores válidos")
         dimension = len(vectors[0][1])
-        if len(target) != dimension:
+        if len(target.values) != dimension:
             raise VectorQueryError(
-                f"el vector de consulta tiene dimensión {len(target)} y la columna "
+                f"el vector de consulta tiene dimensión {len(target.values)} y la columna "
                 f"'{column}' dimensión {dimension}"
             )
         kind = (spec.index_kind or "hnsw").lower()
@@ -91,7 +135,7 @@ class VectorExecutor:
 
         started = time.perf_counter()
         try:
-            results = index.search_similar(target, k=k)
+            results = index.search_similar(target.values, k=k)
         except ValueError as exc:
             raise VectorQueryError(str(exc)) from None
         search_ms = (time.perf_counter() - started) * 1000
@@ -105,7 +149,7 @@ class VectorExecutor:
             out.append(row)
         return out, self._plan(
             table, column, kind, metric, k, dimension, len(vectors),
-            build_ms, search_ms, len(out), reused=reused, index_path=index_path,
+            build_ms, search_ms, len(out), target, reused=reused, index_path=index_path,
         )
 
     def plan(self, table, spec, row_filter=None):
@@ -116,19 +160,19 @@ class VectorExecutor:
         stored = self._stored_index(table, spec, column)
         if stored is not None:
             index = stored.implementation
-            self._check_dimension(target, index.dimension, column)
+            self._check_dimension(target.values, index.dimension, column)
             k = max(1, min(predicate.k, len(index)))
             return self._plan(table, column, "ivf", index.metric_name, k, index.dimension, len(index), 0.0, 0.0, 0,
-                              stored=stored)
+                              target, stored=stored)
         _, vectors = self._load_vectors(table, column, row_filter)
         if not vectors:
             if row_filter is not None:
                 raise VectorQueryError("ninguna fila cumple el resto del WHERE")
             raise VectorQueryError(f"la columna '{column}' de '{table.name}' no tiene vectores válidos")
         dimension = len(vectors[0][1])
-        if len(target) != dimension:
+        if len(target.values) != dimension:
             raise VectorQueryError(
-                f"el vector de consulta tiene dimensión {len(target)} y la columna "
+                f"el vector de consulta tiene dimensión {len(target.values)} y la columna "
                 f"'{column}' dimensión {dimension}"
             )
         kind = (spec.index_kind or "hnsw").lower()
@@ -136,7 +180,9 @@ class VectorExecutor:
         if kind not in {"hnsw", "ivf"}:
             raise VectorQueryError(f"índice no soportado en SIMILAR_TO: {kind}; usa HNSW o IVF")
         k = max(1, min(predicate.k, len(vectors)))
-        return self._plan(table, column, kind, metric, k, dimension, len(vectors), 0.0, 0.0, 0)
+        return self._plan(
+            table, column, kind, metric, k, dimension, len(vectors), 0.0, 0.0, 0, target
+        )
 
     def _stored_index(self, table, spec, column):
         """IVF creado con CREATE INDEX sobre la columna y con la misma métrica, si existe."""
@@ -156,7 +202,7 @@ class VectorExecutor:
 
     def _execute_stored(self, table, stored, column, target, k, limit, row_filter):
         index = stored.implementation
-        self._check_dimension(target, index.dimension, column)
+        self._check_dimension(target.values, index.dimension, column)
         n = len(index)
         k = max(1, min(k, n))
         if limit is not None:
@@ -166,7 +212,7 @@ class VectorExecutor:
         wanted = k if row_filter is None else min(n, 4 * k)
         while True:
             try:
-                results = index.search_similar(target, k=wanted)
+                results = index.search_similar(target.values, k=wanted)
             except ValueError as exc:
                 raise VectorQueryError(str(exc)) from None
             out: List[Dict[str, Any]] = []
@@ -187,7 +233,7 @@ class VectorExecutor:
         if row_filter is not None and not out:
             raise VectorQueryError("ninguna fila cumple el resto del WHERE")
         return out, self._plan(table, column, "ivf", index.metric_name, k, index.dimension, n, 0.0, search_ms,
-                               len(out), stored=stored)
+                               len(out), target, stored=stored)
 
     @staticmethod
     def _resolve_column(table, requested: Optional[str]) -> str:
@@ -222,23 +268,43 @@ class VectorExecutor:
                 continue
         return False
 
-    @staticmethod
-    def _resolve_target(table, predicate, column: str) -> Tuple[float, ...]:
+    def _resolve_target(self, table, predicate, column: str) -> QueryVector:
         target = predicate.target
         if isinstance(target, (list, tuple)):
-            return parse_vector(target)
+            return QueryVector(parse_vector(target))
+
         if isinstance(target, str):
             if target in table.schema.col_names():
                 raise VectorQueryError(
                     f"SIMILAR_TO({target}, ...) no define un vector de consulta; "
-                    f"pasa un vector literal [0.1, 0.2, ...]"
+                    f"pasa un archivo ('foto.jpg') o un vector literal [0.1, 0.2, ...]"
                 )
-            if "." in target or "/" in target or "\\" in target:
-                raise VectorQueryError(
-                    "buscar por archivo ('foto.jpg') requiere ExtractFeatures (#107); "
-                    "mientras tanto usa un vector literal [0.1, 0.2, ...]"
+            if looks_like_media(target, media_root=self.media_root):
+                started = time.perf_counter()
+                try:
+                    features = ExtractFeatures.extract(
+                        target,
+                        media_root=self.media_root,
+                        model_root=self.model_root,
+                    )
+                except FeatureExtractionError as exc:
+                    raise VectorQueryError(str(exc)) from None
+                extract_ms = (time.perf_counter() - started) * 1000
+                return QueryVector(
+                    values=features.values,
+                    source="file",
+                    media_kind=features.kind,
+                    media_path=features.source,
+                    extract_ms=extract_ms,
+                    feature_mode=features.mode,
+                    n_words=features.n_words,
+                    descriptor_backend=features.backend,
                 )
-            raise VectorQueryError(f"objetivo inválido en SIMILAR_TO: {target!r}")
+            raise VectorQueryError(
+                f"objetivo inválido en SIMILAR_TO: {target!r}; usa un archivo "
+                f"(por ejemplo 'foto.jpg') o un vector literal [0.1, 0.2, ...]"
+            )
+
         raise VectorQueryError(f"objetivo inválido en SIMILAR_TO: {target!r}")
 
     @staticmethod
@@ -336,7 +402,7 @@ class VectorExecutor:
 
     @staticmethod
     def _plan(table, column, kind, metric, k, dimension, n_vectors, build_ms, search_ms, rows_out,
-              stored=None, *, reused=False, index_path=None):
+              target=None, stored=None, *, reused=False, index_path=None):
         operator = "HNSW_KNN" if kind == "hnsw" else "IVF_KNN"
         details = {"k": k, "metric": metric, "dimension": dimension, "vectors": n_vectors,
                    "build_ms": round(build_ms, 3)}
@@ -349,6 +415,15 @@ class VectorExecutor:
             reason = f"índice IVF persistido '{index_name}' (métrica {metric}) sobre '{column}'"
             details.update({"persistent": True, "n_lists": stored.implementation.n_lists,
                             "n_probe": stored.implementation.n_probe})
+        if target is not None:
+            details["query_source"] = target.source
+            if target.source == "file":
+                details["media_kind"] = target.media_kind
+                details["media_file"] = Path(target.media_path).name if target.media_path else None
+                details["extract_ms"] = round(target.extract_ms, 3)
+                details["feature_mode"] = target.feature_mode
+                details["n_words"] = target.n_words
+                details["sift_backend"] = target.descriptor_backend
         return {
             "table": table.name,
             "planner_type": "vector_index",

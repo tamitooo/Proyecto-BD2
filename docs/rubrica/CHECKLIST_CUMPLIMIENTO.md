@@ -60,3 +60,20 @@ repositorio. ✅ = implementado y cubierto por pruebas o por benchmark.
 | Dos ejecutores (legado) | `query/executor.py` eliminado; demo y pruebas migradas al oficial |
 | Recuadro de índices secundarios desbordado; subtítulo "Parte 1" | Tarjetas adaptables; subtítulo eliminado |
 | *Bugs encontrados al revisar:* k-NN sin índice ordenaba por latitud; Euclidiana ignorada en el R-Tree; el R-Tree no se actualizaba con INSERT/UPDATE/DELETE ni se restauraba al reiniciar; JOIN con columnas de la tabla unida fallaba; radio Euclidiano del mapa en metros leído como grados; CSV pegado fallaba en Linux/macOS | Todos corregidos y cubiertos por `tests/test_cumplimiento.py` |
+
+## Parte 4 · búsqueda multimedia por archivo (#107)
+
+| Requisito | Estado | Evidencia |
+|---|---|---|
+| `SIMILAR_TO('foto.jpg')` y `SIMILAR_TO('voz.wav')` | ✅ | `vector/extract_features.py`, `query/vector_queries.py` |
+| SIFT para imágenes | ✅ | `vector/sift.py`: OpenCV si está instalado; fallback denso |
+| MFCC para audio | ✅ | `vector/extract_features.py` (20 coeficientes por trama) |
+| MP3/OGG/FLAC/M4A | ✅/⚠️ | Conversión a WAV con `ffmpeg` si está en el PATH |
+| Cuantización BoVW/BoAW con K-Means | ✅ | `vector/bow.py` (K-Means++ / Lloyd, vocabulario persistido) |
+| Histograma de K palabras + TF-IDF | ✅ | `vector/bow.py` (`histogram`, `encode`, IDF del corpus) |
+| Entrenamiento del vocabulario | ✅ | `python -m tools.train_feature_model` |
+| Indexar desde SQL | ✅ | `EXTRACT_FEATURES('archivo')` en `INSERT`/`UPDATE` |
+| Conectar el panel multimedia | ✅ | `MultimediaPanel.tsx`, `POST /api/media/extract` |
+| Pruebas de punta a punta y comparación con fuerza bruta | ✅ | `tests/test_feature_extraction.py`, `tests/test_media_sql.py`, `tests/test_media_engine.py` |
+| Demo reproducible | ✅ | `python -m examples.demo_media` |
+| Teoría y limitaciones | ✅ | `docs/extraccion_caracteristicas.md` |

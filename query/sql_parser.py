@@ -53,6 +53,19 @@ class SetPointStatement: name: str; point: Tuple[float, float]
 
 
 @dataclass(frozen=True)
+class ExtractFeaturesExpression:
+    """``EXTRACT_FEATURES('archivo'[, 'image'|'audio'])`` dentro de INSERT/UPDATE.
+
+    La extracción se difiere al ejecutor para que use el ``media_root`` del
+    catálogo y para que un archivo inexistente produzca un error de ejecución
+    con la ruta concreta, no un error de sintaxis.
+    """
+
+    path: str
+    kind: Optional[str] = None
+
+
+@dataclass(frozen=True)
 class SelectStatement: columns: Tuple[str, ...]; query_spec: QuerySpec; limit: Optional[int] = None
 
 
@@ -618,6 +631,33 @@ class SQLParser:
     @staticmethod
     def _literal(x):
         x = x.strip()
+        function = re.match(
+            r"(EXTRACT_FEATURES|EXTRAER_CARACTERISTICAS)\s*\(", x, re.I
+        )
+        if function:
+            close = SQLParser._match_paren(x, function.end() - 1)
+            if close is None or x[close + 1:].strip():
+                raise SQLParseError(
+                    "EXTRACT_FEATURES usa "
+                    "EXTRACT_FEATURES('archivo'[, 'image'|'audio'])"
+                )
+            parts = SQLParser._split(x[function.end():close])
+            if not 1 <= len(parts) <= 2:
+                raise SQLParseError(
+                    "EXTRACT_FEATURES usa "
+                    "EXTRACT_FEATURES('archivo'[, 'image'|'audio'])"
+                )
+            path = SQLParser._literal(parts[0])
+            if not isinstance(path, str) or not path.strip():
+                raise SQLParseError("EXTRACT_FEATURES requiere una ruta de archivo")
+            kind = None
+            if len(parts) == 2:
+                kind = SQLParser._literal(parts[1])
+                if not isinstance(kind, str) or not kind.strip():
+                    raise SQLParseError(
+                        "el tipo de EXTRACT_FEATURES debe ser 'image' o 'audio'"
+                    )
+            return ExtractFeaturesExpression(path, kind)
         if len(x) >= 2 and x[0] == x[-1] and x[0] in "'\"": return x[1:-1].replace(x[0] * 2, x[0])
         u = x.upper()
         if u == "NULL": return None

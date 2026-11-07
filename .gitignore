@@ -41,6 +41,9 @@ data/text/
 # Datos temporales de la demo multimedia
 .demo_media/
 
+# Dataset sintetico de imagenes y audio de la Parte 4 (se regenera con la semilla)
+data/multimedia/
+
 # Salida temporal de pruebas
 .ptmp/
 .ptmp_*/

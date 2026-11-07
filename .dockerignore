@@ -1,0 +1,10 @@
+.git
+**/__pycache__
+**/node_modules
+.pytest_cache
+.bd2-tests
+backend/data
+benchmark_results
+frontend/dist
+docs
+tests

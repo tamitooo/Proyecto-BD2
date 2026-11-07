@@ -1,0 +1,19 @@
+services:
+  backend:
+    build: .
+    environment:
+      BD2_DATA_DIR: /data
+    volumes:
+      - bd2-data:/data
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+volumes:
+  bd2-data:

@@ -38,6 +38,9 @@ backend/data/
 # Corpus sintetico de los experimentos de texto (se regenera con la semilla)
 data/text/
 
+# Dataset sintetico de imagenes y audio de la Parte 4 (se regenera con la semilla)
+data/multimedia/
+
 # Salida temporal de pruebas
 .ptmp/
 

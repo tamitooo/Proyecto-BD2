@@ -1,0 +1,7011 @@
+{
+  "meta": {
+    "semilla": 2026,
+    "imagenes": 1000,
+    "audios": 1000,
+    "entrenamiento_s": 105.09,
+    "extraccion_s": 16.12
+  },
+  "results": [
+    {
+      "id": 0,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 12.519,
+      "dimension": 32
+    },
+    {
+      "id": 1,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 10.782,
+      "dimension": 32
+    },
+    {
+      "id": 2,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 7.562,
+      "dimension": 32
+    },
+    {
+      "id": 3,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 28.287,
+      "dimension": 32
+    },
+    {
+      "id": 4,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 14.934,
+      "dimension": 32
+    },
+    {
+      "id": 5,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 14.945,
+      "dimension": 32
+    },
+    {
+      "id": 6,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 13.461,
+      "dimension": 32
+    },
+    {
+      "id": 7,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 11.422,
+      "dimension": 32
+    },
+    {
+      "id": 8,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 10.918,
+      "dimension": 32
+    },
+    {
+      "id": 9,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 7.76,
+      "dimension": 32
+    },
+    {
+      "id": 10,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 9.762,
+      "dimension": 32
+    },
+    {
+      "id": 11,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 29.773,
+      "dimension": 32
+    },
+    {
+      "id": 12,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 23.406,
+      "dimension": 32
+    },
+    {
+      "id": 13,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 10.521,
+      "dimension": 32
+    },
+    {
+      "id": 14,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 7.207,
+      "dimension": 32
+    },
+    {
+      "id": 15,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 9.661,
+      "dimension": 32
+    },
+    {
+      "id": 16,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 8.398,
+      "dimension": 32
+    },
+    {
+      "id": 17,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 7.754,
+      "dimension": 32
+    },
+    {
+      "id": 18,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 7.855,
+      "dimension": 32
+    },
+    {
+      "id": 19,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 26.28,
+      "dimension": 32
+    },
+    {
+      "id": 20,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 15.525,
+      "dimension": 32
+    },
+    {
+      "id": 21,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 12.026,
+      "dimension": 32
+    },
+    {
+      "id": 22,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 9.763,
+      "dimension": 32
+    },
+    {
+      "id": 23,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 11.005,
+      "dimension": 32
+    },
+    {
+      "id": 24,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 7.98,
+      "dimension": 32
+    },
+    {
+      "id": 25,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 12.18,
+      "dimension": 32
+    },
+    {
+      "id": 26,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 11.046,
+      "dimension": 32
+    },
+    {
+      "id": 27,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 29.439,
+      "dimension": 32
+    },
+    {
+      "id": 28,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 12.484,
+      "dimension": 32
+    },
+    {
+      "id": 29,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 16.227,
+      "dimension": 32
+    },
+    {
+      "id": 30,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 13.049,
+      "dimension": 32
+    },
+    {
+      "id": 31,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 13.121,
+      "dimension": 32
+    },
+    {
+      "id": 32,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 7.855,
+      "dimension": 32
+    },
+    {
+      "id": 33,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 12.127,
+      "dimension": 32
+    },
+    {
+      "id": 34,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 11.084,
+      "dimension": 32
+    },
+    {
+      "id": 35,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 41.492,
+      "dimension": 32
+    },
+    {
+      "id": 36,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 57.377,
+      "dimension": 32
+    },
+    {
+      "id": 37,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 26.361,
+      "dimension": 32
+    },
+    {
+      "id": 38,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 27.597,
+      "dimension": 32
+    },
+    {
+      "id": 39,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 54.558,
+      "dimension": 32
+    },
+    {
+      "id": 40,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 65.562,
+      "dimension": 32
+    },
+    {
+      "id": 41,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 13.331,
+      "dimension": 32
+    },
+    {
+      "id": 42,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 18.446,
+      "dimension": 32
+    },
+    {
+      "id": 43,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 33.213,
+      "dimension": 32
+    },
+    {
+      "id": 44,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 14.179,
+      "dimension": 32
+    },
+    {
+      "id": 45,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 12.605,
+      "dimension": 32
+    },
+    {
+      "id": 46,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 9.773,
+      "dimension": 32
+    },
+    {
+      "id": 47,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 8.939,
+      "dimension": 32
+    },
+    {
+      "id": 48,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 11.18,
+      "dimension": 32
+    },
+    {
+      "id": 49,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 10.625,
+      "dimension": 32
+    },
+    {
+      "id": 50,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 10.318,
+      "dimension": 32
+    },
+    {
+      "id": 51,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 33.202,
+      "dimension": 32
+    },
+    {
+      "id": 52,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 14.584,
+      "dimension": 32
+    },
+    {
+      "id": 53,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 11.689,
+      "dimension": 32
+    },
+    {
+      "id": 54,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 10.333,
+      "dimension": 32
+    },
+    {
+      "id": 55,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 10.729,
+      "dimension": 32
+    },
+    {
+      "id": 56,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 10.964,
+      "dimension": 32
+    },
+    {
+      "id": 57,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 11.693,
+      "dimension": 32
+    },
+    {
+      "id": 58,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 11.684,
+      "dimension": 32
+    },
+    {
+      "id": 59,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 35.47,
+      "dimension": 32
+    },
+    {
+      "id": 60,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 16.868,
+      "dimension": 32
+    },
+    {
+      "id": 61,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 12.643,
+      "dimension": 32
+    },
+    {
+      "id": 62,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 10.494,
+      "dimension": 32
+    },
+    {
+      "id": 63,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 9.078,
+      "dimension": 32
+    },
+    {
+      "id": 64,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 10.021,
+      "dimension": 32
+    },
+    {
+      "id": 65,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 9.114,
+      "dimension": 32
+    },
+    {
+      "id": 66,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 7.718,
+      "dimension": 32
+    },
+    {
+      "id": 67,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 28.597,
+      "dimension": 32
+    },
+    {
+      "id": 68,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 12.51,
+      "dimension": 32
+    },
+    {
+      "id": 69,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 12.18,
+      "dimension": 32
+    },
+    {
+      "id": 70,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 12.915,
+      "dimension": 32
+    },
+    {
+      "id": 71,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 10.429,
+      "dimension": 32
+    },
+    {
+      "id": 72,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 12.581,
+      "dimension": 32
+    },
+    {
+      "id": 73,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 8.793,
+      "dimension": 32
+    },
+    {
+      "id": 74,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 9.597,
+      "dimension": 32
+    },
+    {
+      "id": 75,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 48.381,
+      "dimension": 32
+    },
+    {
+      "id": 76,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 19.577,
+      "dimension": 32
+    },
+    {
+      "id": 77,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 10.944,
+      "dimension": 32
+    },
+    {
+      "id": 78,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 11.41,
+      "dimension": 32
+    },
+    {
+      "id": 79,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 12.434,
+      "dimension": 32
+    },
+    {
+      "id": 80,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 10.559,
+      "dimension": 32
+    },
+    {
+      "id": 81,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 20.098,
+      "dimension": 32
+    },
+    {
+      "id": 82,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 10.46,
+      "dimension": 32
+    },
+    {
+      "id": 83,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 43.734,
+      "dimension": 32
+    },
+    {
+      "id": 84,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 25.679,
+      "dimension": 32
+    },
+    {
+      "id": 85,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 15.53,
+      "dimension": 32
+    },
+    {
+      "id": 86,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 19.46,
+      "dimension": 32
+    },
+    {
+      "id": 87,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 18.521,
+      "dimension": 32
+    },
+    {
+      "id": 88,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 17.969,
+      "dimension": 32
+    },
+    {
+      "id": 89,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 15.312,
+      "dimension": 32
+    },
+    {
+      "id": 90,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 9.979,
+      "dimension": 32
+    },
+    {
+      "id": 91,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 30.562,
+      "dimension": 32
+    },
+    {
+      "id": 92,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 23.037,
+      "dimension": 32
+    },
+    {
+      "id": 93,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 16.88,
+      "dimension": 32
+    },
+    {
+      "id": 94,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 19.426,
+      "dimension": 32
+    },
+    {
+      "id": 95,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 12.186,
+      "dimension": 32
+    },
+    {
+      "id": 96,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 8.086,
+      "dimension": 32
+    },
+    {
+      "id": 97,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 10.961,
+      "dimension": 32
+    },
+    {
+      "id": 98,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 13.154,
+      "dimension": 32
+    },
+    {
+      "id": 99,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 33.538,
+      "dimension": 32
+    },
+    {
+      "id": 100,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 16.92,
+      "dimension": 32
+    },
+    {
+      "id": 101,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 12.614,
+      "dimension": 32
+    },
+    {
+      "id": 102,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 12.105,
+      "dimension": 32
+    },
+    {
+      "id": 103,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 11.134,
+      "dimension": 32
+    },
+    {
+      "id": 104,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 12.624,
+      "dimension": 32
+    },
+    {
+      "id": 105,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 17.384,
+      "dimension": 32
+    },
+    {
+      "id": 106,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 15.322,
+      "dimension": 32
+    },
+    {
+      "id": 107,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 58.686,
+      "dimension": 32
+    },
+    {
+      "id": 108,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 35.759,
+      "dimension": 32
+    },
+    {
+      "id": 109,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 16.496,
+      "dimension": 32
+    },
+    {
+      "id": 110,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 12.409,
+      "dimension": 32
+    },
+    {
+      "id": 111,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 13.449,
+      "dimension": 32
+    },
+    {
+      "id": 112,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 16.837,
+      "dimension": 32
+    },
+    {
+      "id": 113,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 11.451,
+      "dimension": 32
+    },
+    {
+      "id": 114,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 12.704,
+      "dimension": 32
+    },
+    {
+      "id": 115,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 34.836,
+      "dimension": 32
+    },
+    {
+      "id": 116,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 23.493,
+      "dimension": 32
+    },
+    {
+      "id": 117,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 18.307,
+      "dimension": 32
+    },
+    {
+      "id": 118,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 13.282,
+      "dimension": 32
+    },
+    {
+      "id": 119,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 30.41,
+      "dimension": 32
+    },
+    {
+      "id": 120,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 10.058,
+      "dimension": 32
+    },
+    {
+      "id": 121,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 13.039,
+      "dimension": 32
+    },
+    {
+      "id": 122,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 14.334,
+      "dimension": 32
+    },
+    {
+      "id": 123,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 47.778,
+      "dimension": 32
+    },
+    {
+      "id": 124,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 22.633,
+      "dimension": 32
+    },
+    {
+      "id": 125,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 13.974,
+      "dimension": 32
+    },
+    {
+      "id": 126,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 16.198,
+      "dimension": 32
+    },
+    {
+      "id": 127,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 21.577,
+      "dimension": 32
+    },
+    {
+      "id": 128,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 16.954,
+      "dimension": 32
+    },
+    {
+      "id": 129,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 17.308,
+      "dimension": 32
+    },
+    {
+      "id": 130,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 14.923,
+      "dimension": 32
+    },
+    {
+      "id": 131,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 52.08,
+      "dimension": 32
+    },
+    {
+      "id": 132,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 79.223,
+      "dimension": 32
+    },
+    {
+      "id": 133,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 30.282,
+      "dimension": 32
+    },
+    {
+      "id": 134,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 19.282,
+      "dimension": 32
+    },
+    {
+      "id": 135,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 13.168,
+      "dimension": 32
+    },
+    {
+      "id": 136,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 11.538,
+      "dimension": 32
+    },
+    {
+      "id": 137,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 9.552,
+      "dimension": 32
+    },
+    {
+      "id": 138,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 14.052,
+      "dimension": 32
+    },
+    {
+      "id": 139,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 36.758,
+      "dimension": 32
+    },
+    {
+      "id": 140,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 13.845,
+      "dimension": 32
+    },
+    {
+      "id": 141,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 9.868,
+      "dimension": 32
+    },
+    {
+      "id": 142,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 12.021,
+      "dimension": 32
+    },
+    {
+      "id": 143,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 14.04,
+      "dimension": 32
+    },
+    {
+      "id": 144,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 10.318,
+      "dimension": 32
+    },
+    {
+      "id": 145,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 9.537,
+      "dimension": 32
+    },
+    {
+      "id": 146,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 10.399,
+      "dimension": 32
+    },
+    {
+      "id": 147,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 34.406,
+      "dimension": 32
+    },
+    {
+      "id": 148,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 20.692,
+      "dimension": 32
+    },
+    {
+      "id": 149,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 17.136,
+      "dimension": 32
+    },
+    {
+      "id": 150,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 16.417,
+      "dimension": 32
+    },
+    {
+      "id": 151,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 12.889,
+      "dimension": 32
+    },
+    {
+      "id": 152,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 9.944,
+      "dimension": 32
+    },
+    {
+      "id": 153,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 11.266,
+      "dimension": 32
+    },
+    {
+      "id": 154,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 14.063,
+      "dimension": 32
+    },
+    {
+      "id": 155,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 37.571,
+      "dimension": 32
+    },
+    {
+      "id": 156,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 33.862,
+      "dimension": 32
+    },
+    {
+      "id": 157,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 13.516,
+      "dimension": 32
+    },
+    {
+      "id": 158,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 11.934,
+      "dimension": 32
+    },
+    {
+      "id": 159,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 10.218,
+      "dimension": 32
+    },
+    {
+      "id": 160,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 8.776,
+      "dimension": 32
+    },
+    {
+      "id": 161,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 10.937,
+      "dimension": 32
+    },
+    {
+      "id": 162,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 11.957,
+      "dimension": 32
+    },
+    {
+      "id": 163,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 35.576,
+      "dimension": 32
+    },
+    {
+      "id": 164,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 21.746,
+      "dimension": 32
+    },
+    {
+      "id": 165,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 21.326,
+      "dimension": 32
+    },
+    {
+      "id": 166,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 13.978,
+      "dimension": 32
+    },
+    {
+      "id": 167,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 13.533,
+      "dimension": 32
+    },
+    {
+      "id": 168,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 13.841,
+      "dimension": 32
+    },
+    {
+      "id": 169,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 13.776,
+      "dimension": 32
+    },
+    {
+      "id": 170,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 13.197,
+      "dimension": 32
+    },
+    {
+      "id": 171,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 35.809,
+      "dimension": 32
+    },
+    {
+      "id": 172,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 24.418,
+      "dimension": 32
+    },
+    {
+      "id": 173,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 24.542,
+      "dimension": 32
+    },
+    {
+      "id": 174,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 14.4,
+      "dimension": 32
+    },
+    {
+      "id": 175,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 13.938,
+      "dimension": 32
+    },
+    {
+      "id": 176,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 15.91,
+      "dimension": 32
+    },
+    {
+      "id": 177,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 13.144,
+      "dimension": 32
+    },
+    {
+      "id": 178,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 29.851,
+      "dimension": 32
+    },
+    {
+      "id": 179,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 68.563,
+      "dimension": 32
+    },
+    {
+      "id": 180,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 24.283,
+      "dimension": 32
+    },
+    {
+      "id": 181,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 20.332,
+      "dimension": 32
+    },
+    {
+      "id": 182,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 12.202,
+      "dimension": 32
+    },
+    {
+      "id": 183,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 15.034,
+      "dimension": 32
+    },
+    {
+      "id": 184,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 21.491,
+      "dimension": 32
+    },
+    {
+      "id": 185,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 16.263,
+      "dimension": 32
+    },
+    {
+      "id": 186,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 10.263,
+      "dimension": 32
+    },
+    {
+      "id": 187,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 39.144,
+      "dimension": 32
+    },
+    {
+      "id": 188,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 16.446,
+      "dimension": 32
+    },
+    {
+      "id": 189,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 14.794,
+      "dimension": 32
+    },
+    {
+      "id": 190,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 12.532,
+      "dimension": 32
+    },
+    {
+      "id": 191,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 14.969,
+      "dimension": 32
+    },
+    {
+      "id": 192,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 11.514,
+      "dimension": 32
+    },
+    {
+      "id": 193,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 15.705,
+      "dimension": 32
+    },
+    {
+      "id": 194,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 16.208,
+      "dimension": 32
+    },
+    {
+      "id": 195,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 34.615,
+      "dimension": 32
+    },
+    {
+      "id": 196,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 18.104,
+      "dimension": 32
+    },
+    {
+      "id": 197,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 16.139,
+      "dimension": 32
+    },
+    {
+      "id": 198,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 14.004,
+      "dimension": 32
+    },
+    {
+      "id": 199,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 10.802,
+      "dimension": 32
+    },
+    {
+      "id": 200,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 11.032,
+      "dimension": 32
+    },
+    {
+      "id": 201,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 13.549,
+      "dimension": 32
+    },
+    {
+      "id": 202,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 13.822,
+      "dimension": 32
+    },
+    {
+      "id": 203,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 118.256,
+      "dimension": 32
+    },
+    {
+      "id": 204,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 54.15,
+      "dimension": 32
+    },
+    {
+      "id": 205,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 30.335,
+      "dimension": 32
+    },
+    {
+      "id": 206,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 10.87,
+      "dimension": 32
+    },
+    {
+      "id": 207,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 22.722,
+      "dimension": 32
+    },
+    {
+      "id": 208,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 12.165,
+      "dimension": 32
+    },
+    {
+      "id": 209,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 15.312,
+      "dimension": 32
+    },
+    {
+      "id": 210,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 11.286,
+      "dimension": 32
+    },
+    {
+      "id": 211,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 36.392,
+      "dimension": 32
+    },
+    {
+      "id": 212,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 19.709,
+      "dimension": 32
+    },
+    {
+      "id": 213,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 19.498,
+      "dimension": 32
+    },
+    {
+      "id": 214,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 11.205,
+      "dimension": 32
+    },
+    {
+      "id": 215,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 16.361,
+      "dimension": 32
+    },
+    {
+      "id": 216,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 15.037,
+      "dimension": 32
+    },
+    {
+      "id": 217,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 14.146,
+      "dimension": 32
+    },
+    {
+      "id": 218,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 13.183,
+      "dimension": 32
+    },
+    {
+      "id": 219,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 60.893,
+      "dimension": 32
+    },
+    {
+      "id": 220,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 25.863,
+      "dimension": 32
+    },
+    {
+      "id": 221,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 21.79,
+      "dimension": 32
+    },
+    {
+      "id": 222,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 11.007,
+      "dimension": 32
+    },
+    {
+      "id": 223,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 13.886,
+      "dimension": 32
+    },
+    {
+      "id": 224,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 10.925,
+      "dimension": 32
+    },
+    {
+      "id": 225,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 10.727,
+      "dimension": 32
+    },
+    {
+      "id": 226,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 12.069,
+      "dimension": 32
+    },
+    {
+      "id": 227,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 35.023,
+      "dimension": 32
+    },
+    {
+      "id": 228,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 18.216,
+      "dimension": 32
+    },
+    {
+      "id": 229,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 13.838,
+      "dimension": 32
+    },
+    {
+      "id": 230,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 13.721,
+      "dimension": 32
+    },
+    {
+      "id": 231,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 11.423,
+      "dimension": 32
+    },
+    {
+      "id": 232,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 9.507,
+      "dimension": 32
+    },
+    {
+      "id": 233,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 9.982,
+      "dimension": 32
+    },
+    {
+      "id": 234,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 12.191,
+      "dimension": 32
+    },
+    {
+      "id": 235,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 32.656,
+      "dimension": 32
+    },
+    {
+      "id": 236,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 14.063,
+      "dimension": 32
+    },
+    {
+      "id": 237,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 12.165,
+      "dimension": 32
+    },
+    {
+      "id": 238,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 13.26,
+      "dimension": 32
+    },
+    {
+      "id": 239,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 13.629,
+      "dimension": 32
+    },
+    {
+      "id": 240,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 9.445,
+      "dimension": 32
+    },
+    {
+      "id": 241,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 9.842,
+      "dimension": 32
+    },
+    {
+      "id": 242,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 11.383,
+      "dimension": 32
+    },
+    {
+      "id": 243,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 32.148,
+      "dimension": 32
+    },
+    {
+      "id": 244,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 17.699,
+      "dimension": 32
+    },
+    {
+      "id": 245,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 16.717,
+      "dimension": 32
+    },
+    {
+      "id": 246,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 17.728,
+      "dimension": 32
+    },
+    {
+      "id": 247,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 11.579,
+      "dimension": 32
+    },
+    {
+      "id": 248,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 10.259,
+      "dimension": 32
+    },
+    {
+      "id": 249,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 13.059,
+      "dimension": 32
+    },
+    {
+      "id": 250,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 13.337,
+      "dimension": 32
+    },
+    {
+      "id": 251,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 30.529,
+      "dimension": 32
+    },
+    {
+      "id": 252,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 29.292,
+      "dimension": 32
+    },
+    {
+      "id": 253,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 15.298,
+      "dimension": 32
+    },
+    {
+      "id": 254,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 13.883,
+      "dimension": 32
+    },
+    {
+      "id": 255,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 11.47,
+      "dimension": 32
+    },
+    {
+      "id": 256,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 11.938,
+      "dimension": 32
+    },
+    {
+      "id": 257,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 13.306,
+      "dimension": 32
+    },
+    {
+      "id": 258,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 14.433,
+      "dimension": 32
+    },
+    {
+      "id": 259,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 35.415,
+      "dimension": 32
+    },
+    {
+      "id": 260,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 34.182,
+      "dimension": 32
+    },
+    {
+      "id": 261,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 17.777,
+      "dimension": 32
+    },
+    {
+      "id": 262,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 15.139,
+      "dimension": 32
+    },
+    {
+      "id": 263,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 17.364,
+      "dimension": 32
+    },
+    {
+      "id": 264,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 15.354,
+      "dimension": 32
+    },
+    {
+      "id": 265,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 13.274,
+      "dimension": 32
+    },
+    {
+      "id": 266,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 13.411,
+      "dimension": 32
+    },
+    {
+      "id": 267,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 51.854,
+      "dimension": 32
+    },
+    {
+      "id": 268,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 39.601,
+      "dimension": 32
+    },
+    {
+      "id": 269,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 34.87,
+      "dimension": 32
+    },
+    {
+      "id": 270,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 29.588,
+      "dimension": 32
+    },
+    {
+      "id": 271,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 27.033,
+      "dimension": 32
+    },
+    {
+      "id": 272,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 25.047,
+      "dimension": 32
+    },
+    {
+      "id": 273,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 42.663,
+      "dimension": 32
+    },
+    {
+      "id": 274,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 18.006,
+      "dimension": 32
+    },
+    {
+      "id": 275,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 48.266,
+      "dimension": 32
+    },
+    {
+      "id": 276,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 30.951,
+      "dimension": 32
+    },
+    {
+      "id": 277,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 27.725,
+      "dimension": 32
+    },
+    {
+      "id": 278,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 23.728,
+      "dimension": 32
+    },
+    {
+      "id": 279,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 12.822,
+      "dimension": 32
+    },
+    {
+      "id": 280,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 13.472,
+      "dimension": 32
+    },
+    {
+      "id": 281,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 13.812,
+      "dimension": 32
+    },
+    {
+      "id": 282,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 11.43,
+      "dimension": 32
+    },
+    {
+      "id": 283,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 35.518,
+      "dimension": 32
+    },
+    {
+      "id": 284,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 23.46,
+      "dimension": 32
+    },
+    {
+      "id": 285,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 14.886,
+      "dimension": 32
+    },
+    {
+      "id": 286,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 13.713,
+      "dimension": 32
+    },
+    {
+      "id": 287,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 11.089,
+      "dimension": 32
+    },
+    {
+      "id": 288,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 10.63,
+      "dimension": 32
+    },
+    {
+      "id": 289,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 13.316,
+      "dimension": 32
+    },
+    {
+      "id": 290,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 13.634,
+      "dimension": 32
+    },
+    {
+      "id": 291,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 34.244,
+      "dimension": 32
+    },
+    {
+      "id": 292,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 50.48,
+      "dimension": 32
+    },
+    {
+      "id": 293,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 20.388,
+      "dimension": 32
+    },
+    {
+      "id": 294,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 19.071,
+      "dimension": 32
+    },
+    {
+      "id": 295,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 17.26,
+      "dimension": 32
+    },
+    {
+      "id": 296,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 10.315,
+      "dimension": 32
+    },
+    {
+      "id": 297,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 13.077,
+      "dimension": 32
+    },
+    {
+      "id": 298,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 15.255,
+      "dimension": 32
+    },
+    {
+      "id": 299,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 38.348,
+      "dimension": 32
+    },
+    {
+      "id": 300,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 22.66,
+      "dimension": 32
+    },
+    {
+      "id": 301,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 16.925,
+      "dimension": 32
+    },
+    {
+      "id": 302,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 10.193,
+      "dimension": 32
+    },
+    {
+      "id": 303,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 13.474,
+      "dimension": 32
+    },
+    {
+      "id": 304,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 13.51,
+      "dimension": 32
+    },
+    {
+      "id": 305,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 14.08,
+      "dimension": 32
+    },
+    {
+      "id": 306,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 13.439,
+      "dimension": 32
+    },
+    {
+      "id": 307,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 39.814,
+      "dimension": 32
+    },
+    {
+      "id": 308,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 14.428,
+      "dimension": 32
+    },
+    {
+      "id": 309,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 21.929,
+      "dimension": 32
+    },
+    {
+      "id": 310,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 16.919,
+      "dimension": 32
+    },
+    {
+      "id": 311,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 12.789,
+      "dimension": 32
+    },
+    {
+      "id": 312,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 19.431,
+      "dimension": 32
+    },
+    {
+      "id": 313,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 19.831,
+      "dimension": 32
+    },
+    {
+      "id": 314,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 17.034,
+      "dimension": 32
+    },
+    {
+      "id": 315,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 83.742,
+      "dimension": 32
+    },
+    {
+      "id": 316,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 26.557,
+      "dimension": 32
+    },
+    {
+      "id": 317,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 16.78,
+      "dimension": 32
+    },
+    {
+      "id": 318,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 14.841,
+      "dimension": 32
+    },
+    {
+      "id": 319,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 8.144,
+      "dimension": 32
+    },
+    {
+      "id": 320,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 11.509,
+      "dimension": 32
+    },
+    {
+      "id": 321,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 14.579,
+      "dimension": 32
+    },
+    {
+      "id": 322,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 13.077,
+      "dimension": 32
+    },
+    {
+      "id": 323,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 33.155,
+      "dimension": 32
+    },
+    {
+      "id": 324,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 21.973,
+      "dimension": 32
+    },
+    {
+      "id": 325,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 16.571,
+      "dimension": 32
+    },
+    {
+      "id": 326,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 12.713,
+      "dimension": 32
+    },
+    {
+      "id": 327,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 10.213,
+      "dimension": 32
+    },
+    {
+      "id": 328,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 15.015,
+      "dimension": 32
+    },
+    {
+      "id": 329,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 21.458,
+      "dimension": 32
+    },
+    {
+      "id": 330,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 17.546,
+      "dimension": 32
+    },
+    {
+      "id": 331,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 43.373,
+      "dimension": 32
+    },
+    {
+      "id": 332,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 26.033,
+      "dimension": 32
+    },
+    {
+      "id": 333,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 31.197,
+      "dimension": 32
+    },
+    {
+      "id": 334,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 14.799,
+      "dimension": 32
+    },
+    {
+      "id": 335,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 17.246,
+      "dimension": 32
+    },
+    {
+      "id": 336,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 20.491,
+      "dimension": 32
+    },
+    {
+      "id": 337,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 12.243,
+      "dimension": 32
+    },
+    {
+      "id": 338,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 15.884,
+      "dimension": 32
+    },
+    {
+      "id": 339,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 116.685,
+      "dimension": 32
+    },
+    {
+      "id": 340,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 43.379,
+      "dimension": 32
+    },
+    {
+      "id": 341,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 21.551,
+      "dimension": 32
+    },
+    {
+      "id": 342,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 19.491,
+      "dimension": 32
+    },
+    {
+      "id": 343,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 18.206,
+      "dimension": 32
+    },
+    {
+      "id": 344,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 17.436,
+      "dimension": 32
+    },
+    {
+      "id": 345,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 13.677,
+      "dimension": 32
+    },
+    {
+      "id": 346,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 87.674,
+      "dimension": 32
+    },
+    {
+      "id": 347,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 50.361,
+      "dimension": 32
+    },
+    {
+      "id": 348,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 32.19,
+      "dimension": 32
+    },
+    {
+      "id": 349,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 19.424,
+      "dimension": 32
+    },
+    {
+      "id": 350,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 26.984,
+      "dimension": 32
+    },
+    {
+      "id": 351,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 17.313,
+      "dimension": 32
+    },
+    {
+      "id": 352,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 12.668,
+      "dimension": 32
+    },
+    {
+      "id": 353,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 15.556,
+      "dimension": 32
+    },
+    {
+      "id": 354,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 41.803,
+      "dimension": 32
+    },
+    {
+      "id": 355,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 129.879,
+      "dimension": 32
+    },
+    {
+      "id": 356,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 26.978,
+      "dimension": 32
+    },
+    {
+      "id": 357,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 16.434,
+      "dimension": 32
+    },
+    {
+      "id": 358,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 20.684,
+      "dimension": 32
+    },
+    {
+      "id": 359,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 24.242,
+      "dimension": 32
+    },
+    {
+      "id": 360,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 22.745,
+      "dimension": 32
+    },
+    {
+      "id": 361,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 13.23,
+      "dimension": 32
+    },
+    {
+      "id": 362,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 13.996,
+      "dimension": 32
+    },
+    {
+      "id": 363,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 38.546,
+      "dimension": 32
+    },
+    {
+      "id": 364,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 17.876,
+      "dimension": 32
+    },
+    {
+      "id": 365,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 17.897,
+      "dimension": 32
+    },
+    {
+      "id": 366,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 15.208,
+      "dimension": 32
+    },
+    {
+      "id": 367,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 12.114,
+      "dimension": 32
+    },
+    {
+      "id": 368,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 12.549,
+      "dimension": 32
+    },
+    {
+      "id": 369,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 14.854,
+      "dimension": 32
+    },
+    {
+      "id": 370,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 15.114,
+      "dimension": 32
+    },
+    {
+      "id": 371,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 47.593,
+      "dimension": 32
+    },
+    {
+      "id": 372,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 24.266,
+      "dimension": 32
+    },
+    {
+      "id": 373,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 17.845,
+      "dimension": 32
+    },
+    {
+      "id": 374,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 14.775,
+      "dimension": 32
+    },
+    {
+      "id": 375,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 15.778,
+      "dimension": 32
+    },
+    {
+      "id": 376,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 15.213,
+      "dimension": 32
+    },
+    {
+      "id": 377,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 14.91,
+      "dimension": 32
+    },
+    {
+      "id": 378,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 12.374,
+      "dimension": 32
+    },
+    {
+      "id": 379,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 38.83,
+      "dimension": 32
+    },
+    {
+      "id": 380,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 16.871,
+      "dimension": 32
+    },
+    {
+      "id": 381,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 18.487,
+      "dimension": 32
+    },
+    {
+      "id": 382,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 12.507,
+      "dimension": 32
+    },
+    {
+      "id": 383,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 11.631,
+      "dimension": 32
+    },
+    {
+      "id": 384,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 11.685,
+      "dimension": 32
+    },
+    {
+      "id": 385,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 12.896,
+      "dimension": 32
+    },
+    {
+      "id": 386,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 11.325,
+      "dimension": 32
+    },
+    {
+      "id": 387,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 35.04,
+      "dimension": 32
+    },
+    {
+      "id": 388,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 20.051,
+      "dimension": 32
+    },
+    {
+      "id": 389,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 15.314,
+      "dimension": 32
+    },
+    {
+      "id": 390,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 12.063,
+      "dimension": 32
+    },
+    {
+      "id": 391,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 11.232,
+      "dimension": 32
+    },
+    {
+      "id": 392,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 11.641,
+      "dimension": 32
+    },
+    {
+      "id": 393,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 10.11,
+      "dimension": 32
+    },
+    {
+      "id": 394,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 9.901,
+      "dimension": 32
+    },
+    {
+      "id": 395,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 36.039,
+      "dimension": 32
+    },
+    {
+      "id": 396,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 32.178,
+      "dimension": 32
+    },
+    {
+      "id": 397,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 12.466,
+      "dimension": 32
+    },
+    {
+      "id": 398,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 11.152,
+      "dimension": 32
+    },
+    {
+      "id": 399,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 12.983,
+      "dimension": 32
+    },
+    {
+      "id": 400,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 11.551,
+      "dimension": 32
+    },
+    {
+      "id": 401,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 11.494,
+      "dimension": 32
+    },
+    {
+      "id": 402,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 12.041,
+      "dimension": 32
+    },
+    {
+      "id": 403,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 46.366,
+      "dimension": 32
+    },
+    {
+      "id": 404,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 19.156,
+      "dimension": 32
+    },
+    {
+      "id": 405,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 11.373,
+      "dimension": 32
+    },
+    {
+      "id": 406,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 13.128,
+      "dimension": 32
+    },
+    {
+      "id": 407,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 18.342,
+      "dimension": 32
+    },
+    {
+      "id": 408,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 16.469,
+      "dimension": 32
+    },
+    {
+      "id": 409,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 36.693,
+      "dimension": 32
+    },
+    {
+      "id": 410,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 15.674,
+      "dimension": 32
+    },
+    {
+      "id": 411,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 40.428,
+      "dimension": 32
+    },
+    {
+      "id": 412,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 18.154,
+      "dimension": 32
+    },
+    {
+      "id": 413,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 14.989,
+      "dimension": 32
+    },
+    {
+      "id": 414,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 14.274,
+      "dimension": 32
+    },
+    {
+      "id": 415,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 12.854,
+      "dimension": 32
+    },
+    {
+      "id": 416,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 10.508,
+      "dimension": 32
+    },
+    {
+      "id": 417,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 11.416,
+      "dimension": 32
+    },
+    {
+      "id": 418,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 13.196,
+      "dimension": 32
+    },
+    {
+      "id": 419,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 34.019,
+      "dimension": 32
+    },
+    {
+      "id": 420,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 19.175,
+      "dimension": 32
+    },
+    {
+      "id": 421,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 14.733,
+      "dimension": 32
+    },
+    {
+      "id": 422,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 10.87,
+      "dimension": 32
+    },
+    {
+      "id": 423,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 12.024,
+      "dimension": 32
+    },
+    {
+      "id": 424,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 10.596,
+      "dimension": 32
+    },
+    {
+      "id": 425,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 14.099,
+      "dimension": 32
+    },
+    {
+      "id": 426,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 25.643,
+      "dimension": 32
+    },
+    {
+      "id": 427,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 36.508,
+      "dimension": 32
+    },
+    {
+      "id": 428,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 27.711,
+      "dimension": 32
+    },
+    {
+      "id": 429,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 17.176,
+      "dimension": 32
+    },
+    {
+      "id": 430,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 12.973,
+      "dimension": 32
+    },
+    {
+      "id": 431,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 15.55,
+      "dimension": 32
+    },
+    {
+      "id": 432,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 15.116,
+      "dimension": 32
+    },
+    {
+      "id": 433,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 11.29,
+      "dimension": 32
+    },
+    {
+      "id": 434,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 10.915,
+      "dimension": 32
+    },
+    {
+      "id": 435,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 79.237,
+      "dimension": 32
+    },
+    {
+      "id": 436,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 23.884,
+      "dimension": 32
+    },
+    {
+      "id": 437,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 16.781,
+      "dimension": 32
+    },
+    {
+      "id": 438,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 12.719,
+      "dimension": 32
+    },
+    {
+      "id": 439,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 27.44,
+      "dimension": 32
+    },
+    {
+      "id": 440,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 22.512,
+      "dimension": 32
+    },
+    {
+      "id": 441,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 24.462,
+      "dimension": 32
+    },
+    {
+      "id": 442,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 19.484,
+      "dimension": 32
+    },
+    {
+      "id": 443,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 47.281,
+      "dimension": 32
+    },
+    {
+      "id": 444,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 16.24,
+      "dimension": 32
+    },
+    {
+      "id": 445,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 12.53,
+      "dimension": 32
+    },
+    {
+      "id": 446,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 9.963,
+      "dimension": 32
+    },
+    {
+      "id": 447,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 10.763,
+      "dimension": 32
+    },
+    {
+      "id": 448,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 10.901,
+      "dimension": 32
+    },
+    {
+      "id": 449,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 10.145,
+      "dimension": 32
+    },
+    {
+      "id": 450,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 8.326,
+      "dimension": 32
+    },
+    {
+      "id": 451,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 27.717,
+      "dimension": 32
+    },
+    {
+      "id": 452,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 13.547,
+      "dimension": 32
+    },
+    {
+      "id": 453,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 12.783,
+      "dimension": 32
+    },
+    {
+      "id": 454,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 10.042,
+      "dimension": 32
+    },
+    {
+      "id": 455,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 8.866,
+      "dimension": 32
+    },
+    {
+      "id": 456,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 10.272,
+      "dimension": 32
+    },
+    {
+      "id": 457,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 11.2,
+      "dimension": 32
+    },
+    {
+      "id": 458,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 10.267,
+      "dimension": 32
+    },
+    {
+      "id": 459,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 27.402,
+      "dimension": 32
+    },
+    {
+      "id": 460,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 15.058,
+      "dimension": 32
+    },
+    {
+      "id": 461,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 19.916,
+      "dimension": 32
+    },
+    {
+      "id": 462,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 12.246,
+      "dimension": 32
+    },
+    {
+      "id": 463,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 10.653,
+      "dimension": 32
+    },
+    {
+      "id": 464,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 11.911,
+      "dimension": 32
+    },
+    {
+      "id": 465,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 17.534,
+      "dimension": 32
+    },
+    {
+      "id": 466,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 17.005,
+      "dimension": 32
+    },
+    {
+      "id": 467,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 46.99,
+      "dimension": 32
+    },
+    {
+      "id": 468,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 21.003,
+      "dimension": 32
+    },
+    {
+      "id": 469,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 18.789,
+      "dimension": 32
+    },
+    {
+      "id": 470,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 17.149,
+      "dimension": 32
+    },
+    {
+      "id": 471,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 15.266,
+      "dimension": 32
+    },
+    {
+      "id": 472,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 16.383,
+      "dimension": 32
+    },
+    {
+      "id": 473,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 14.652,
+      "dimension": 32
+    },
+    {
+      "id": 474,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 10.068,
+      "dimension": 32
+    },
+    {
+      "id": 475,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 35.103,
+      "dimension": 32
+    },
+    {
+      "id": 476,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 13.858,
+      "dimension": 32
+    },
+    {
+      "id": 477,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 11.466,
+      "dimension": 32
+    },
+    {
+      "id": 478,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 11.846,
+      "dimension": 32
+    },
+    {
+      "id": 479,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 9.813,
+      "dimension": 32
+    },
+    {
+      "id": 480,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 10.803,
+      "dimension": 32
+    },
+    {
+      "id": 481,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 12.869,
+      "dimension": 32
+    },
+    {
+      "id": 482,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 27.309,
+      "dimension": 32
+    },
+    {
+      "id": 483,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 92.314,
+      "dimension": 32
+    },
+    {
+      "id": 484,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 34.818,
+      "dimension": 32
+    },
+    {
+      "id": 485,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 11.896,
+      "dimension": 32
+    },
+    {
+      "id": 486,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 8.71,
+      "dimension": 32
+    },
+    {
+      "id": 487,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 9.997,
+      "dimension": 32
+    },
+    {
+      "id": 488,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 10.293,
+      "dimension": 32
+    },
+    {
+      "id": 489,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 11.155,
+      "dimension": 32
+    },
+    {
+      "id": 490,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 10.068,
+      "dimension": 32
+    },
+    {
+      "id": 491,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 30.458,
+      "dimension": 32
+    },
+    {
+      "id": 492,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 12.896,
+      "dimension": 32
+    },
+    {
+      "id": 493,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 9.849,
+      "dimension": 32
+    },
+    {
+      "id": 494,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 8.057,
+      "dimension": 32
+    },
+    {
+      "id": 495,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 11.796,
+      "dimension": 32
+    },
+    {
+      "id": 496,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 10.003,
+      "dimension": 32
+    },
+    {
+      "id": 497,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 8.018,
+      "dimension": 32
+    },
+    {
+      "id": 498,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 9.629,
+      "dimension": 32
+    },
+    {
+      "id": 499,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 31.99,
+      "dimension": 32
+    },
+    {
+      "id": 500,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 13.144,
+      "dimension": 32
+    },
+    {
+      "id": 501,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 12.529,
+      "dimension": 32
+    },
+    {
+      "id": 502,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 10.064,
+      "dimension": 32
+    },
+    {
+      "id": 503,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 10.657,
+      "dimension": 32
+    },
+    {
+      "id": 504,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 8.249,
+      "dimension": 32
+    },
+    {
+      "id": 505,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 10.927,
+      "dimension": 32
+    },
+    {
+      "id": 506,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 10.505,
+      "dimension": 32
+    },
+    {
+      "id": 507,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 29.518,
+      "dimension": 32
+    },
+    {
+      "id": 508,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 16.138,
+      "dimension": 32
+    },
+    {
+      "id": 509,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 11.547,
+      "dimension": 32
+    },
+    {
+      "id": 510,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 8.687,
+      "dimension": 32
+    },
+    {
+      "id": 511,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 11.015,
+      "dimension": 32
+    },
+    {
+      "id": 512,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 11.94,
+      "dimension": 32
+    },
+    {
+      "id": 513,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 9.717,
+      "dimension": 32
+    },
+    {
+      "id": 514,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 9.951,
+      "dimension": 32
+    },
+    {
+      "id": 515,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 27.799,
+      "dimension": 32
+    },
+    {
+      "id": 516,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 22.048,
+      "dimension": 32
+    },
+    {
+      "id": 517,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 11.638,
+      "dimension": 32
+    },
+    {
+      "id": 518,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 9.744,
+      "dimension": 32
+    },
+    {
+      "id": 519,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 13.083,
+      "dimension": 32
+    },
+    {
+      "id": 520,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 11.117,
+      "dimension": 32
+    },
+    {
+      "id": 521,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 10.207,
+      "dimension": 32
+    },
+    {
+      "id": 522,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 11.47,
+      "dimension": 32
+    },
+    {
+      "id": 523,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 28.572,
+      "dimension": 32
+    },
+    {
+      "id": 524,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 11.591,
+      "dimension": 32
+    },
+    {
+      "id": 525,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 10.084,
+      "dimension": 32
+    },
+    {
+      "id": 526,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 11.326,
+      "dimension": 32
+    },
+    {
+      "id": 527,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 9.833,
+      "dimension": 32
+    },
+    {
+      "id": 528,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 9.979,
+      "dimension": 32
+    },
+    {
+      "id": 529,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 9.515,
+      "dimension": 32
+    },
+    {
+      "id": 530,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 9.652,
+      "dimension": 32
+    },
+    {
+      "id": 531,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 25.932,
+      "dimension": 32
+    },
+    {
+      "id": 532,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 16.244,
+      "dimension": 32
+    },
+    {
+      "id": 533,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 12.593,
+      "dimension": 32
+    },
+    {
+      "id": 534,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 8.941,
+      "dimension": 32
+    },
+    {
+      "id": 535,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 8.885,
+      "dimension": 32
+    },
+    {
+      "id": 536,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 7.989,
+      "dimension": 32
+    },
+    {
+      "id": 537,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 8.528,
+      "dimension": 32
+    },
+    {
+      "id": 538,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 8.674,
+      "dimension": 32
+    },
+    {
+      "id": 539,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 27.023,
+      "dimension": 32
+    },
+    {
+      "id": 540,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 29.203,
+      "dimension": 32
+    },
+    {
+      "id": 541,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 13.945,
+      "dimension": 32
+    },
+    {
+      "id": 542,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 10.634,
+      "dimension": 32
+    },
+    {
+      "id": 543,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 12.835,
+      "dimension": 32
+    },
+    {
+      "id": 544,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 10.496,
+      "dimension": 32
+    },
+    {
+      "id": 545,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 11.469,
+      "dimension": 32
+    },
+    {
+      "id": 546,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 8.457,
+      "dimension": 32
+    },
+    {
+      "id": 547,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 28.451,
+      "dimension": 32
+    },
+    {
+      "id": 548,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 12.481,
+      "dimension": 32
+    },
+    {
+      "id": 549,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 13.321,
+      "dimension": 32
+    },
+    {
+      "id": 550,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 10.908,
+      "dimension": 32
+    },
+    {
+      "id": 551,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 11.832,
+      "dimension": 32
+    },
+    {
+      "id": 552,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 9.776,
+      "dimension": 32
+    },
+    {
+      "id": 553,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 9.263,
+      "dimension": 32
+    },
+    {
+      "id": 554,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 9.871,
+      "dimension": 32
+    },
+    {
+      "id": 555,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 25.942,
+      "dimension": 32
+    },
+    {
+      "id": 556,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 15.744,
+      "dimension": 32
+    },
+    {
+      "id": 557,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 13.39,
+      "dimension": 32
+    },
+    {
+      "id": 558,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 9.739,
+      "dimension": 32
+    },
+    {
+      "id": 559,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 10.877,
+      "dimension": 32
+    },
+    {
+      "id": 560,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 10.71,
+      "dimension": 32
+    },
+    {
+      "id": 561,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 8.207,
+      "dimension": 32
+    },
+    {
+      "id": 562,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 8.948,
+      "dimension": 32
+    },
+    {
+      "id": 563,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 31.426,
+      "dimension": 32
+    },
+    {
+      "id": 564,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 18.373,
+      "dimension": 32
+    },
+    {
+      "id": 565,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 12.277,
+      "dimension": 32
+    },
+    {
+      "id": 566,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 9.412,
+      "dimension": 32
+    },
+    {
+      "id": 567,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 9.657,
+      "dimension": 32
+    },
+    {
+      "id": 568,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 8.449,
+      "dimension": 32
+    },
+    {
+      "id": 569,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 8.332,
+      "dimension": 32
+    },
+    {
+      "id": 570,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 10.834,
+      "dimension": 32
+    },
+    {
+      "id": 571,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 28.577,
+      "dimension": 32
+    },
+    {
+      "id": 572,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 15.206,
+      "dimension": 32
+    },
+    {
+      "id": 573,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 10.982,
+      "dimension": 32
+    },
+    {
+      "id": 574,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 9.594,
+      "dimension": 32
+    },
+    {
+      "id": 575,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 10.396,
+      "dimension": 32
+    },
+    {
+      "id": 576,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 10.896,
+      "dimension": 32
+    },
+    {
+      "id": 577,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 8.885,
+      "dimension": 32
+    },
+    {
+      "id": 578,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 8.818,
+      "dimension": 32
+    },
+    {
+      "id": 579,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 28.581,
+      "dimension": 32
+    },
+    {
+      "id": 580,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 13.964,
+      "dimension": 32
+    },
+    {
+      "id": 581,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 11.637,
+      "dimension": 32
+    },
+    {
+      "id": 582,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 8.965,
+      "dimension": 32
+    },
+    {
+      "id": 583,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 11.009,
+      "dimension": 32
+    },
+    {
+      "id": 584,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 11.713,
+      "dimension": 32
+    },
+    {
+      "id": 585,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 8.411,
+      "dimension": 32
+    },
+    {
+      "id": 586,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 8.616,
+      "dimension": 32
+    },
+    {
+      "id": 587,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 35.78,
+      "dimension": 32
+    },
+    {
+      "id": 588,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 15.569,
+      "dimension": 32
+    },
+    {
+      "id": 589,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 11.606,
+      "dimension": 32
+    },
+    {
+      "id": 590,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 9.225,
+      "dimension": 32
+    },
+    {
+      "id": 591,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 9.834,
+      "dimension": 32
+    },
+    {
+      "id": 592,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 11.512,
+      "dimension": 32
+    },
+    {
+      "id": 593,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 7.632,
+      "dimension": 32
+    },
+    {
+      "id": 594,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 9.451,
+      "dimension": 32
+    },
+    {
+      "id": 595,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 32.578,
+      "dimension": 32
+    },
+    {
+      "id": 596,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 20.946,
+      "dimension": 32
+    },
+    {
+      "id": 597,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 14.358,
+      "dimension": 32
+    },
+    {
+      "id": 598,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 10.134,
+      "dimension": 32
+    },
+    {
+      "id": 599,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 11.605,
+      "dimension": 32
+    },
+    {
+      "id": 600,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 9.458,
+      "dimension": 32
+    },
+    {
+      "id": 601,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 9.281,
+      "dimension": 32
+    },
+    {
+      "id": 602,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 9.981,
+      "dimension": 32
+    },
+    {
+      "id": 603,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 31.767,
+      "dimension": 32
+    },
+    {
+      "id": 604,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 14.417,
+      "dimension": 32
+    },
+    {
+      "id": 605,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 12.481,
+      "dimension": 32
+    },
+    {
+      "id": 606,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 10.52,
+      "dimension": 32
+    },
+    {
+      "id": 607,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 13.403,
+      "dimension": 32
+    },
+    {
+      "id": 608,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 12.524,
+      "dimension": 32
+    },
+    {
+      "id": 609,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 9.263,
+      "dimension": 32
+    },
+    {
+      "id": 610,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 10.167,
+      "dimension": 32
+    },
+    {
+      "id": 611,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 42.26,
+      "dimension": 32
+    },
+    {
+      "id": 612,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 14.627,
+      "dimension": 32
+    },
+    {
+      "id": 613,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 15.968,
+      "dimension": 32
+    },
+    {
+      "id": 614,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 11.113,
+      "dimension": 32
+    },
+    {
+      "id": 615,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 13.397,
+      "dimension": 32
+    },
+    {
+      "id": 616,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 12.274,
+      "dimension": 32
+    },
+    {
+      "id": 617,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 10.043,
+      "dimension": 32
+    },
+    {
+      "id": 618,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 10.464,
+      "dimension": 32
+    },
+    {
+      "id": 619,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 30.017,
+      "dimension": 32
+    },
+    {
+      "id": 620,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 17.671,
+      "dimension": 32
+    },
+    {
+      "id": 621,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 12.546,
+      "dimension": 32
+    },
+    {
+      "id": 622,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 11.386,
+      "dimension": 32
+    },
+    {
+      "id": 623,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 12.736,
+      "dimension": 32
+    },
+    {
+      "id": 624,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 11.081,
+      "dimension": 32
+    },
+    {
+      "id": 625,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 10.394,
+      "dimension": 32
+    },
+    {
+      "id": 626,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 11.162,
+      "dimension": 32
+    },
+    {
+      "id": 627,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 27.463,
+      "dimension": 32
+    },
+    {
+      "id": 628,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 14.423,
+      "dimension": 32
+    },
+    {
+      "id": 629,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 13.134,
+      "dimension": 32
+    },
+    {
+      "id": 630,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 8.803,
+      "dimension": 32
+    },
+    {
+      "id": 631,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 9.944,
+      "dimension": 32
+    },
+    {
+      "id": 632,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 9.748,
+      "dimension": 32
+    },
+    {
+      "id": 633,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 7.766,
+      "dimension": 32
+    },
+    {
+      "id": 634,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 9.005,
+      "dimension": 32
+    },
+    {
+      "id": 635,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 29.563,
+      "dimension": 32
+    },
+    {
+      "id": 636,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 13.635,
+      "dimension": 32
+    },
+    {
+      "id": 637,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 10.121,
+      "dimension": 32
+    },
+    {
+      "id": 638,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 7.803,
+      "dimension": 32
+    },
+    {
+      "id": 639,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 9.525,
+      "dimension": 32
+    },
+    {
+      "id": 640,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 9.481,
+      "dimension": 32
+    },
+    {
+      "id": 641,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 8.307,
+      "dimension": 32
+    },
+    {
+      "id": 642,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 8.721,
+      "dimension": 32
+    },
+    {
+      "id": 643,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 23.653,
+      "dimension": 32
+    },
+    {
+      "id": 644,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 14.435,
+      "dimension": 32
+    },
+    {
+      "id": 645,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 14.251,
+      "dimension": 32
+    },
+    {
+      "id": 646,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 9.575,
+      "dimension": 32
+    },
+    {
+      "id": 647,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 11.691,
+      "dimension": 32
+    },
+    {
+      "id": 648,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 11.44,
+      "dimension": 32
+    },
+    {
+      "id": 649,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 8.998,
+      "dimension": 32
+    },
+    {
+      "id": 650,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 8.836,
+      "dimension": 32
+    },
+    {
+      "id": 651,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 28.786,
+      "dimension": 32
+    },
+    {
+      "id": 652,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 13.402,
+      "dimension": 32
+    },
+    {
+      "id": 653,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 11.893,
+      "dimension": 32
+    },
+    {
+      "id": 654,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 9.21,
+      "dimension": 32
+    },
+    {
+      "id": 655,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 11.864,
+      "dimension": 32
+    },
+    {
+      "id": 656,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 11.109,
+      "dimension": 32
+    },
+    {
+      "id": 657,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 10.39,
+      "dimension": 32
+    },
+    {
+      "id": 658,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 9.734,
+      "dimension": 32
+    },
+    {
+      "id": 659,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 25.637,
+      "dimension": 32
+    },
+    {
+      "id": 660,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 22.891,
+      "dimension": 32
+    },
+    {
+      "id": 661,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 11.45,
+      "dimension": 32
+    },
+    {
+      "id": 662,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 8.588,
+      "dimension": 32
+    },
+    {
+      "id": 663,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 8.748,
+      "dimension": 32
+    },
+    {
+      "id": 664,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 7.723,
+      "dimension": 32
+    },
+    {
+      "id": 665,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 9.524,
+      "dimension": 32
+    },
+    {
+      "id": 666,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 10.98,
+      "dimension": 32
+    },
+    {
+      "id": 667,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 28.131,
+      "dimension": 32
+    },
+    {
+      "id": 668,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 28.214,
+      "dimension": 32
+    },
+    {
+      "id": 669,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 12.588,
+      "dimension": 32
+    },
+    {
+      "id": 670,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 11.505,
+      "dimension": 32
+    },
+    {
+      "id": 671,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 10.798,
+      "dimension": 32
+    },
+    {
+      "id": 672,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 10.152,
+      "dimension": 32
+    },
+    {
+      "id": 673,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 9.739,
+      "dimension": 32
+    },
+    {
+      "id": 674,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 10.695,
+      "dimension": 32
+    },
+    {
+      "id": 675,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 29.108,
+      "dimension": 32
+    },
+    {
+      "id": 676,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 13.746,
+      "dimension": 32
+    },
+    {
+      "id": 677,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 21.324,
+      "dimension": 32
+    },
+    {
+      "id": 678,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 11.389,
+      "dimension": 32
+    },
+    {
+      "id": 679,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 9.597,
+      "dimension": 32
+    },
+    {
+      "id": 680,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 9.964,
+      "dimension": 32
+    },
+    {
+      "id": 681,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 8.125,
+      "dimension": 32
+    },
+    {
+      "id": 682,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 8.908,
+      "dimension": 32
+    },
+    {
+      "id": 683,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 30.87,
+      "dimension": 32
+    },
+    {
+      "id": 684,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 12.856,
+      "dimension": 32
+    },
+    {
+      "id": 685,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 10.763,
+      "dimension": 32
+    },
+    {
+      "id": 686,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 11.393,
+      "dimension": 32
+    },
+    {
+      "id": 687,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 11.044,
+      "dimension": 32
+    },
+    {
+      "id": 688,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 10.159,
+      "dimension": 32
+    },
+    {
+      "id": 689,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 10.046,
+      "dimension": 32
+    },
+    {
+      "id": 690,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 9.885,
+      "dimension": 32
+    },
+    {
+      "id": 691,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 28.767,
+      "dimension": 32
+    },
+    {
+      "id": 692,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 30.219,
+      "dimension": 32
+    },
+    {
+      "id": 693,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 13.248,
+      "dimension": 32
+    },
+    {
+      "id": 694,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 12.025,
+      "dimension": 32
+    },
+    {
+      "id": 695,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 12.702,
+      "dimension": 32
+    },
+    {
+      "id": 696,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 11.845,
+      "dimension": 32
+    },
+    {
+      "id": 697,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 10.077,
+      "dimension": 32
+    },
+    {
+      "id": 698,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 9.238,
+      "dimension": 32
+    },
+    {
+      "id": 699,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 28.168,
+      "dimension": 32
+    },
+    {
+      "id": 700,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 11.749,
+      "dimension": 32
+    },
+    {
+      "id": 701,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 8.89,
+      "dimension": 32
+    },
+    {
+      "id": 702,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 8.88,
+      "dimension": 32
+    },
+    {
+      "id": 703,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 8.971,
+      "dimension": 32
+    },
+    {
+      "id": 704,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 7.453,
+      "dimension": 32
+    },
+    {
+      "id": 705,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 7.64,
+      "dimension": 32
+    },
+    {
+      "id": 706,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 7.372,
+      "dimension": 32
+    },
+    {
+      "id": 707,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 28.457,
+      "dimension": 32
+    },
+    {
+      "id": 708,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 12.864,
+      "dimension": 32
+    },
+    {
+      "id": 709,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 11.462,
+      "dimension": 32
+    },
+    {
+      "id": 710,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 12.133,
+      "dimension": 32
+    },
+    {
+      "id": 711,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 12.258,
+      "dimension": 32
+    },
+    {
+      "id": 712,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 12.234,
+      "dimension": 32
+    },
+    {
+      "id": 713,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 9.672,
+      "dimension": 32
+    },
+    {
+      "id": 714,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 10.586,
+      "dimension": 32
+    },
+    {
+      "id": 715,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 28.435,
+      "dimension": 32
+    },
+    {
+      "id": 716,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 26.868,
+      "dimension": 32
+    },
+    {
+      "id": 717,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 15.053,
+      "dimension": 32
+    },
+    {
+      "id": 718,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 11.862,
+      "dimension": 32
+    },
+    {
+      "id": 719,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 13.356,
+      "dimension": 32
+    },
+    {
+      "id": 720,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 11.126,
+      "dimension": 32
+    },
+    {
+      "id": 721,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 10.271,
+      "dimension": 32
+    },
+    {
+      "id": 722,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 12.855,
+      "dimension": 32
+    },
+    {
+      "id": 723,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 32.136,
+      "dimension": 32
+    },
+    {
+      "id": 724,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 13.231,
+      "dimension": 32
+    },
+    {
+      "id": 725,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 20.257,
+      "dimension": 32
+    },
+    {
+      "id": 726,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 11.258,
+      "dimension": 32
+    },
+    {
+      "id": 727,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 13.525,
+      "dimension": 32
+    },
+    {
+      "id": 728,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 8.94,
+      "dimension": 32
+    },
+    {
+      "id": 729,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 6.995,
+      "dimension": 32
+    },
+    {
+      "id": 730,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 9.978,
+      "dimension": 32
+    },
+    {
+      "id": 731,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 25.953,
+      "dimension": 32
+    },
+    {
+      "id": 732,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 11.513,
+      "dimension": 32
+    },
+    {
+      "id": 733,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 10.457,
+      "dimension": 32
+    },
+    {
+      "id": 734,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 9.019,
+      "dimension": 32
+    },
+    {
+      "id": 735,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 10.104,
+      "dimension": 32
+    },
+    {
+      "id": 736,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 11.268,
+      "dimension": 32
+    },
+    {
+      "id": 737,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 9.468,
+      "dimension": 32
+    },
+    {
+      "id": 738,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 9.769,
+      "dimension": 32
+    },
+    {
+      "id": 739,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 27.927,
+      "dimension": 32
+    },
+    {
+      "id": 740,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 13.266,
+      "dimension": 32
+    },
+    {
+      "id": 741,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 10.355,
+      "dimension": 32
+    },
+    {
+      "id": 742,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 12.112,
+      "dimension": 32
+    },
+    {
+      "id": 743,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 14.941,
+      "dimension": 32
+    },
+    {
+      "id": 744,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 10.055,
+      "dimension": 32
+    },
+    {
+      "id": 745,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 10.948,
+      "dimension": 32
+    },
+    {
+      "id": 746,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 10.138,
+      "dimension": 32
+    },
+    {
+      "id": 747,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 30.183,
+      "dimension": 32
+    },
+    {
+      "id": 748,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 13.26,
+      "dimension": 32
+    },
+    {
+      "id": 749,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 11.063,
+      "dimension": 32
+    },
+    {
+      "id": 750,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 9.842,
+      "dimension": 32
+    },
+    {
+      "id": 751,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 10.23,
+      "dimension": 32
+    },
+    {
+      "id": 752,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 8.43,
+      "dimension": 32
+    },
+    {
+      "id": 753,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 10.61,
+      "dimension": 32
+    },
+    {
+      "id": 754,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 9.638,
+      "dimension": 32
+    },
+    {
+      "id": 755,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 26.705,
+      "dimension": 32
+    },
+    {
+      "id": 756,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 13.692,
+      "dimension": 32
+    },
+    {
+      "id": 757,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 17.805,
+      "dimension": 32
+    },
+    {
+      "id": 758,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 12.422,
+      "dimension": 32
+    },
+    {
+      "id": 759,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 21.149,
+      "dimension": 32
+    },
+    {
+      "id": 760,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 17.179,
+      "dimension": 32
+    },
+    {
+      "id": 761,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 11.275,
+      "dimension": 32
+    },
+    {
+      "id": 762,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 9.356,
+      "dimension": 32
+    },
+    {
+      "id": 763,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 26.602,
+      "dimension": 32
+    },
+    {
+      "id": 764,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 13.602,
+      "dimension": 32
+    },
+    {
+      "id": 765,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 8.724,
+      "dimension": 32
+    },
+    {
+      "id": 766,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 8.624,
+      "dimension": 32
+    },
+    {
+      "id": 767,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 8.745,
+      "dimension": 32
+    },
+    {
+      "id": 768,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 7.522,
+      "dimension": 32
+    },
+    {
+      "id": 769,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 6.994,
+      "dimension": 32
+    },
+    {
+      "id": 770,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 7.043,
+      "dimension": 32
+    },
+    {
+      "id": 771,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 23.38,
+      "dimension": 32
+    },
+    {
+      "id": 772,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 11.366,
+      "dimension": 32
+    },
+    {
+      "id": 773,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 9.415,
+      "dimension": 32
+    },
+    {
+      "id": 774,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 9.909,
+      "dimension": 32
+    },
+    {
+      "id": 775,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 7.17,
+      "dimension": 32
+    },
+    {
+      "id": 776,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 6.852,
+      "dimension": 32
+    },
+    {
+      "id": 777,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 7.226,
+      "dimension": 32
+    },
+    {
+      "id": 778,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 8.095,
+      "dimension": 32
+    },
+    {
+      "id": 779,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 23.474,
+      "dimension": 32
+    },
+    {
+      "id": 780,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 11.941,
+      "dimension": 32
+    },
+    {
+      "id": 781,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 9.816,
+      "dimension": 32
+    },
+    {
+      "id": 782,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 8.11,
+      "dimension": 32
+    },
+    {
+      "id": 783,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 7.405,
+      "dimension": 32
+    },
+    {
+      "id": 784,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 7.242,
+      "dimension": 32
+    },
+    {
+      "id": 785,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 7.361,
+      "dimension": 32
+    },
+    {
+      "id": 786,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 7.681,
+      "dimension": 32
+    },
+    {
+      "id": 787,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 24.36,
+      "dimension": 32
+    },
+    {
+      "id": 788,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 16.328,
+      "dimension": 32
+    },
+    {
+      "id": 789,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 9.113,
+      "dimension": 32
+    },
+    {
+      "id": 790,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 7.338,
+      "dimension": 32
+    },
+    {
+      "id": 791,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 7.42,
+      "dimension": 32
+    },
+    {
+      "id": 792,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 6.894,
+      "dimension": 32
+    },
+    {
+      "id": 793,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 6.966,
+      "dimension": 32
+    },
+    {
+      "id": 794,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 6.905,
+      "dimension": 32
+    },
+    {
+      "id": 795,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 23.213,
+      "dimension": 32
+    },
+    {
+      "id": 796,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 11.805,
+      "dimension": 32
+    },
+    {
+      "id": 797,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 10.249,
+      "dimension": 32
+    },
+    {
+      "id": 798,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 7.541,
+      "dimension": 32
+    },
+    {
+      "id": 799,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 8.494,
+      "dimension": 32
+    },
+    {
+      "id": 800,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 7.095,
+      "dimension": 32
+    },
+    {
+      "id": 801,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 7.643,
+      "dimension": 32
+    },
+    {
+      "id": 802,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 7.179,
+      "dimension": 32
+    },
+    {
+      "id": 803,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 22.823,
+      "dimension": 32
+    },
+    {
+      "id": 804,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 11.508,
+      "dimension": 32
+    },
+    {
+      "id": 805,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 8.258,
+      "dimension": 32
+    },
+    {
+      "id": 806,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 7.47,
+      "dimension": 32
+    },
+    {
+      "id": 807,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 7.735,
+      "dimension": 32
+    },
+    {
+      "id": 808,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 6.705,
+      "dimension": 32
+    },
+    {
+      "id": 809,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 8.672,
+      "dimension": 32
+    },
+    {
+      "id": 810,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 8.723,
+      "dimension": 32
+    },
+    {
+      "id": 811,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 23.808,
+      "dimension": 32
+    },
+    {
+      "id": 812,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 12.127,
+      "dimension": 32
+    },
+    {
+      "id": 813,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 9.889,
+      "dimension": 32
+    },
+    {
+      "id": 814,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 7.999,
+      "dimension": 32
+    },
+    {
+      "id": 815,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 8.671,
+      "dimension": 32
+    },
+    {
+      "id": 816,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 6.919,
+      "dimension": 32
+    },
+    {
+      "id": 817,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 6.992,
+      "dimension": 32
+    },
+    {
+      "id": 818,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 6.705,
+      "dimension": 32
+    },
+    {
+      "id": 819,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 21.96,
+      "dimension": 32
+    },
+    {
+      "id": 820,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 12.621,
+      "dimension": 32
+    },
+    {
+      "id": 821,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 9.915,
+      "dimension": 32
+    },
+    {
+      "id": 822,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 7.231,
+      "dimension": 32
+    },
+    {
+      "id": 823,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 7.124,
+      "dimension": 32
+    },
+    {
+      "id": 824,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 8.205,
+      "dimension": 32
+    },
+    {
+      "id": 825,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 8.717,
+      "dimension": 32
+    },
+    {
+      "id": 826,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 6.759,
+      "dimension": 32
+    },
+    {
+      "id": 827,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 22.953,
+      "dimension": 32
+    },
+    {
+      "id": 828,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 12.96,
+      "dimension": 32
+    },
+    {
+      "id": 829,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 9.495,
+      "dimension": 32
+    },
+    {
+      "id": 830,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 9.544,
+      "dimension": 32
+    },
+    {
+      "id": 831,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 9.434,
+      "dimension": 32
+    },
+    {
+      "id": 832,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 6.84,
+      "dimension": 32
+    },
+    {
+      "id": 833,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 6.916,
+      "dimension": 32
+    },
+    {
+      "id": 834,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 7.146,
+      "dimension": 32
+    },
+    {
+      "id": 835,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 22.834,
+      "dimension": 32
+    },
+    {
+      "id": 836,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 10.895,
+      "dimension": 32
+    },
+    {
+      "id": 837,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 8.83,
+      "dimension": 32
+    },
+    {
+      "id": 838,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 8.359,
+      "dimension": 32
+    },
+    {
+      "id": 839,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 8.953,
+      "dimension": 32
+    },
+    {
+      "id": 840,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 7.97,
+      "dimension": 32
+    },
+    {
+      "id": 841,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 7.75,
+      "dimension": 32
+    },
+    {
+      "id": 842,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 6.857,
+      "dimension": 32
+    },
+    {
+      "id": 843,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 23.64,
+      "dimension": 32
+    },
+    {
+      "id": 844,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 14.602,
+      "dimension": 32
+    },
+    {
+      "id": 845,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 9.329,
+      "dimension": 32
+    },
+    {
+      "id": 846,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 7.828,
+      "dimension": 32
+    },
+    {
+      "id": 847,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 8.639,
+      "dimension": 32
+    },
+    {
+      "id": 848,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 8.473,
+      "dimension": 32
+    },
+    {
+      "id": 849,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 7.147,
+      "dimension": 32
+    },
+    {
+      "id": 850,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 7.563,
+      "dimension": 32
+    },
+    {
+      "id": 851,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 23.977,
+      "dimension": 32
+    },
+    {
+      "id": 852,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 11.004,
+      "dimension": 32
+    },
+    {
+      "id": 853,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 9.09,
+      "dimension": 32
+    },
+    {
+      "id": 854,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 7.736,
+      "dimension": 32
+    },
+    {
+      "id": 855,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 8.186,
+      "dimension": 32
+    },
+    {
+      "id": 856,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 8.238,
+      "dimension": 32
+    },
+    {
+      "id": 857,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 6.914,
+      "dimension": 32
+    },
+    {
+      "id": 858,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 6.988,
+      "dimension": 32
+    },
+    {
+      "id": 859,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 21.919,
+      "dimension": 32
+    },
+    {
+      "id": 860,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 12.51,
+      "dimension": 32
+    },
+    {
+      "id": 861,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 9.274,
+      "dimension": 32
+    },
+    {
+      "id": 862,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 7.501,
+      "dimension": 32
+    },
+    {
+      "id": 863,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 7.525,
+      "dimension": 32
+    },
+    {
+      "id": 864,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 6.94,
+      "dimension": 32
+    },
+    {
+      "id": 865,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 7.784,
+      "dimension": 32
+    },
+    {
+      "id": 866,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 7.105,
+      "dimension": 32
+    },
+    {
+      "id": 867,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 22.585,
+      "dimension": 32
+    },
+    {
+      "id": 868,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 10.314,
+      "dimension": 32
+    },
+    {
+      "id": 869,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 7.426,
+      "dimension": 32
+    },
+    {
+      "id": 870,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 8.224,
+      "dimension": 32
+    },
+    {
+      "id": 871,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 9.676,
+      "dimension": 32
+    },
+    {
+      "id": 872,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 8.409,
+      "dimension": 32
+    },
+    {
+      "id": 873,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 8.08,
+      "dimension": 32
+    },
+    {
+      "id": 874,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 7.404,
+      "dimension": 32
+    },
+    {
+      "id": 875,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 23.544,
+      "dimension": 32
+    },
+    {
+      "id": 876,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 9.289,
+      "dimension": 32
+    },
+    {
+      "id": 877,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 8.101,
+      "dimension": 32
+    },
+    {
+      "id": 878,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 7.389,
+      "dimension": 32
+    },
+    {
+      "id": 879,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 7.279,
+      "dimension": 32
+    },
+    {
+      "id": 880,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 6.972,
+      "dimension": 32
+    },
+    {
+      "id": 881,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 8.181,
+      "dimension": 32
+    },
+    {
+      "id": 882,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 6.938,
+      "dimension": 32
+    },
+    {
+      "id": 883,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 24.732,
+      "dimension": 32
+    },
+    {
+      "id": 884,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 15.321,
+      "dimension": 32
+    },
+    {
+      "id": 885,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 11.399,
+      "dimension": 32
+    },
+    {
+      "id": 886,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 8.419,
+      "dimension": 32
+    },
+    {
+      "id": 887,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 10.171,
+      "dimension": 32
+    },
+    {
+      "id": 888,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 9.698,
+      "dimension": 32
+    },
+    {
+      "id": 889,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 8.419,
+      "dimension": 32
+    },
+    {
+      "id": 890,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 6.828,
+      "dimension": 32
+    },
+    {
+      "id": 891,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 24.488,
+      "dimension": 32
+    },
+    {
+      "id": 892,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 13.03,
+      "dimension": 32
+    },
+    {
+      "id": 893,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 9.517,
+      "dimension": 32
+    },
+    {
+      "id": 894,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 8.419,
+      "dimension": 32
+    },
+    {
+      "id": 895,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 9.721,
+      "dimension": 32
+    },
+    {
+      "id": 896,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 8.471,
+      "dimension": 32
+    },
+    {
+      "id": 897,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 7.166,
+      "dimension": 32
+    },
+    {
+      "id": 898,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 7.127,
+      "dimension": 32
+    },
+    {
+      "id": 899,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 24.387,
+      "dimension": 32
+    },
+    {
+      "id": 900,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 13.088,
+      "dimension": 32
+    },
+    {
+      "id": 901,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 9.953,
+      "dimension": 32
+    },
+    {
+      "id": 902,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 7.322,
+      "dimension": 32
+    },
+    {
+      "id": 903,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 8.655,
+      "dimension": 32
+    },
+    {
+      "id": 904,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 9.005,
+      "dimension": 32
+    },
+    {
+      "id": 905,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 7.411,
+      "dimension": 32
+    },
+    {
+      "id": 906,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 6.859,
+      "dimension": 32
+    },
+    {
+      "id": 907,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 23.666,
+      "dimension": 32
+    },
+    {
+      "id": 908,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 12.66,
+      "dimension": 32
+    },
+    {
+      "id": 909,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 9.49,
+      "dimension": 32
+    },
+    {
+      "id": 910,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 7.432,
+      "dimension": 32
+    },
+    {
+      "id": 911,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 9.775,
+      "dimension": 32
+    },
+    {
+      "id": 912,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 8.804,
+      "dimension": 32
+    },
+    {
+      "id": 913,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 7.886,
+      "dimension": 32
+    },
+    {
+      "id": 914,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 7.411,
+      "dimension": 32
+    },
+    {
+      "id": 915,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 24.337,
+      "dimension": 32
+    },
+    {
+      "id": 916,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 13.285,
+      "dimension": 32
+    },
+    {
+      "id": 917,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 10.374,
+      "dimension": 32
+    },
+    {
+      "id": 918,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 7.94,
+      "dimension": 32
+    },
+    {
+      "id": 919,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 7.65,
+      "dimension": 32
+    },
+    {
+      "id": 920,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 7.167,
+      "dimension": 32
+    },
+    {
+      "id": 921,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 7.229,
+      "dimension": 32
+    },
+    {
+      "id": 922,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 8.007,
+      "dimension": 32
+    },
+    {
+      "id": 923,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 24.187,
+      "dimension": 32
+    },
+    {
+      "id": 924,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 13.864,
+      "dimension": 32
+    },
+    {
+      "id": 925,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 8.833,
+      "dimension": 32
+    },
+    {
+      "id": 926,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 7.493,
+      "dimension": 32
+    },
+    {
+      "id": 927,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 7.039,
+      "dimension": 32
+    },
+    {
+      "id": 928,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 8.724,
+      "dimension": 32
+    },
+    {
+      "id": 929,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 8.679,
+      "dimension": 32
+    },
+    {
+      "id": 930,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 7.813,
+      "dimension": 32
+    },
+    {
+      "id": 931,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 23.273,
+      "dimension": 32
+    },
+    {
+      "id": 932,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 12.887,
+      "dimension": 32
+    },
+    {
+      "id": 933,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 9.393,
+      "dimension": 32
+    },
+    {
+      "id": 934,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 7.455,
+      "dimension": 32
+    },
+    {
+      "id": 935,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 8.476,
+      "dimension": 32
+    },
+    {
+      "id": 936,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 7.983,
+      "dimension": 32
+    },
+    {
+      "id": 937,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 6.852,
+      "dimension": 32
+    },
+    {
+      "id": 938,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 7.411,
+      "dimension": 32
+    },
+    {
+      "id": 939,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 21.707,
+      "dimension": 32
+    },
+    {
+      "id": 940,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 13.385,
+      "dimension": 32
+    },
+    {
+      "id": 941,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 9.833,
+      "dimension": 32
+    },
+    {
+      "id": 942,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 7.165,
+      "dimension": 32
+    },
+    {
+      "id": 943,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 7.549,
+      "dimension": 32
+    },
+    {
+      "id": 944,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 7.84,
+      "dimension": 32
+    },
+    {
+      "id": 945,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 7.557,
+      "dimension": 32
+    },
+    {
+      "id": 946,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 8.265,
+      "dimension": 32
+    },
+    {
+      "id": 947,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 23.645,
+      "dimension": 32
+    },
+    {
+      "id": 948,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 12.293,
+      "dimension": 32
+    },
+    {
+      "id": 949,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 12.416,
+      "dimension": 32
+    },
+    {
+      "id": 950,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 9.866,
+      "dimension": 32
+    },
+    {
+      "id": 951,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 9.023,
+      "dimension": 32
+    },
+    {
+      "id": 952,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 9.577,
+      "dimension": 32
+    },
+    {
+      "id": 953,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 9.551,
+      "dimension": 32
+    },
+    {
+      "id": 954,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 8.582,
+      "dimension": 32
+    },
+    {
+      "id": 955,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 26.166,
+      "dimension": 32
+    },
+    {
+      "id": 956,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 13.421,
+      "dimension": 32
+    },
+    {
+      "id": 957,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 10.622,
+      "dimension": 32
+    },
+    {
+      "id": 958,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 9.696,
+      "dimension": 32
+    },
+    {
+      "id": 959,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 9.697,
+      "dimension": 32
+    },
+    {
+      "id": 960,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 7.063,
+      "dimension": 32
+    },
+    {
+      "id": 961,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 7.092,
+      "dimension": 32
+    },
+    {
+      "id": 962,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 6.599,
+      "dimension": 32
+    },
+    {
+      "id": 963,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 22.606,
+      "dimension": 32
+    },
+    {
+      "id": 964,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 10.058,
+      "dimension": 32
+    },
+    {
+      "id": 965,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 8.102,
+      "dimension": 32
+    },
+    {
+      "id": 966,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 7.127,
+      "dimension": 32
+    },
+    {
+      "id": 967,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 7.727,
+      "dimension": 32
+    },
+    {
+      "id": 968,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 8.291,
+      "dimension": 32
+    },
+    {
+      "id": 969,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 8.104,
+      "dimension": 32
+    },
+    {
+      "id": 970,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 7.26,
+      "dimension": 32
+    },
+    {
+      "id": 971,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 21.896,
+      "dimension": 32
+    },
+    {
+      "id": 972,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 11.116,
+      "dimension": 32
+    },
+    {
+      "id": 973,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 9.204,
+      "dimension": 32
+    },
+    {
+      "id": 974,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 8.141,
+      "dimension": 32
+    },
+    {
+      "id": 975,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 8.693,
+      "dimension": 32
+    },
+    {
+      "id": 976,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 7.022,
+      "dimension": 32
+    },
+    {
+      "id": 977,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 7.27,
+      "dimension": 32
+    },
+    {
+      "id": 978,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 9.435,
+      "dimension": 32
+    },
+    {
+      "id": 979,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 22.846,
+      "dimension": 32
+    },
+    {
+      "id": 980,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 13.151,
+      "dimension": 32
+    },
+    {
+      "id": 981,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 9.582,
+      "dimension": 32
+    },
+    {
+      "id": 982,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 7.559,
+      "dimension": 32
+    },
+    {
+      "id": 983,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 8.394,
+      "dimension": 32
+    },
+    {
+      "id": 984,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 7.623,
+      "dimension": 32
+    },
+    {
+      "id": 985,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 8.166,
+      "dimension": 32
+    },
+    {
+      "id": 986,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 8.474,
+      "dimension": 32
+    },
+    {
+      "id": 987,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 22.796,
+      "dimension": 32
+    },
+    {
+      "id": 988,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 8.897,
+      "dimension": 32
+    },
+    {
+      "id": 989,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 8.41,
+      "dimension": 32
+    },
+    {
+      "id": 990,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 9.348,
+      "dimension": 32
+    },
+    {
+      "id": 991,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 8.618,
+      "dimension": 32
+    },
+    {
+      "id": 992,
+      "modalidad": "image",
+      "familia": "circulos",
+      "ms": 6.63,
+      "dimension": 32
+    },
+    {
+      "id": 993,
+      "modalidad": "image",
+      "familia": "franjas",
+      "ms": 6.96,
+      "dimension": 32
+    },
+    {
+      "id": 994,
+      "modalidad": "image",
+      "familia": "bloques",
+      "ms": 7.29,
+      "dimension": 32
+    },
+    {
+      "id": 995,
+      "modalidad": "image",
+      "familia": "ruido",
+      "ms": 22.22,
+      "dimension": 32
+    },
+    {
+      "id": 996,
+      "modalidad": "image",
+      "familia": "damero",
+      "ms": 16.815,
+      "dimension": 32
+    },
+    {
+      "id": 997,
+      "modalidad": "image",
+      "familia": "elipses",
+      "ms": 9.419,
+      "dimension": 32
+    },
+    {
+      "id": 998,
+      "modalidad": "image",
+      "familia": "cruces",
+      "ms": 7.309,
+      "dimension": 32
+    },
+    {
+      "id": 999,
+      "modalidad": "image",
+      "familia": "anillos",
+      "ms": 10.573,
+      "dimension": 32
+    }
+  ]
+}

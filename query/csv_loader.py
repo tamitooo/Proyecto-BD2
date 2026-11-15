@@ -54,6 +54,7 @@ def _coerce(v, typ):
 
 def import_csv(executor, table_name, source, *, has_header=True, delimiter=",", encoding="utf-8", max_errors=10, **_):
     if isinstance(source, os.PathLike): text = Path(source).read_bytes()
+    elif isinstance(source, (bytes, bytearray, str)): text = source
     else: text = source.read() if hasattr(source, "read") else str(source);
     text = text.decode(encoding) if isinstance(text, bytes) else text
     t = executor.catalog.get_table(table_name);
@@ -70,8 +71,10 @@ def import_csv(executor, table_name, source, *, has_header=True, delimiter=",", 
         pos = list(range(len(cols)));data = rows
     types = {f.name: f.kind if f.kind != "VARCHAR" else f.kind for f in t.schema.fields}
     rep.rows_read = len(data)
+    width = len(rows[0])
     for i, r in enumerate(data, 2):
         try:
+            if len(r) != width: raise CsvImportError(f"expected {width} columnas, la fila tiene {len(r)}")
             vals = []
             for p, c in zip(pos, cols): vals.append(_coerce(r[p], types[c]))
             q = executor.execute(

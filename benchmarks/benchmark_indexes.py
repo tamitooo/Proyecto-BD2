@@ -11,10 +11,22 @@ from indexes.extendible_hash import ExtendibleHash
 def ns(fn):t=time.perf_counter_ns();x=fn();return time.perf_counter_ns()-t,x
 def mean_us(xs):return statistics.fmean(xs)/1000 if xs else None
 
+def linear_scan_baseline(recs,queries,rng):
+ """Línea base sin índice: cada búsqueda recorre todos los registros."""
+ n=len(recs);exact=[];hits=0;ranges=[];items=0;width=max(2,n//300)
+ for _ in range(queries):
+  k=rng.randrange(max(1,n//3));dt,v=ns(lambda k=k:[r for r in recs if r['value']==k]);exact.append(dt);hits+=len(v)
+ for _ in range(queries):
+  lo=rng.randrange(max(1,n//3));dt,v=ns(lambda lo=lo:[r for r in recs if lo<=r['value']<=lo+width]);ranges.append(dt);items+=len(v)
+ base={'dataset_size':n,'index_type':'linear_scan','build_ms':0.0,'size_bytes':0,'supported':True}
+ return [base|{'metric':'exact_lookup','avg_us':mean_us(exact),'operations':queries,'result_items':hits},
+         base|{'metric':'range_search','avg_us':mean_us(ranges),'operations':queries,'result_items':items}]
+
 def run(sizes=(1000,10000,100000),queries=100,mutations=50,seed=42):
  rng=random.Random(seed);out=[]
  for n in sizes:
   recs=[{'id':i,'value':i//3} for i in range(n)]
+  out+=linear_scan_baseline(recs,queries,random.Random(seed))
   specs=[
    ('bplus_clustered',lambda:ClusteredBPlusIndex('value',order=32)),
    ('bplus_unclustered',lambda:UnclusteredBPlusIndex('value',order=32)),

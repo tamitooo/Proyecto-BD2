@@ -11,7 +11,8 @@ from query.csv_loader import import_csv
 from query.query_executor import QueryExecutor
 from query.query_result import QueryResult
 from query import table_manager
-from spatial.geo import METRIC_UNITS
+from query.table_manager import TableManagementError
+from spatial.geo import METERS_PER_DEGREE_LAT, METRIC_UNITS
 from storage.heap_file import HeapFile
 from storage.sequential_file import SequentialFile
 from storage.record import Schema
@@ -35,8 +36,13 @@ class DemoEngine:
         self.catalog.register_index(name="idx_emp_dept_bplus",table="employees",column="dept",kind="bplus_unclustered",implementation=UnclusteredBPlusIndex("dept",order=4),rebuild=True)
         self.executor=QueryExecutor(self.catalog);self._load_catalog()
         if seed:self._seed()
-    def run(self,sql):
+    def run(self,sql,variables=None):
+        """``variables`` define puntos de sesión (p. ej. ``mi_ubicacion`` enviado por el mapa)."""
         with self._lock:
+            for name,point in (variables or {}).items():
+                lat,lon=(float(x) for x in point)
+                if not (-90<=lat<=90 and -180<=lon<=180):raise ValueError(f"{name} fuera de rango")
+                self.executor.named_points[name.lower().lstrip("@")]=(lat,lon)
             result=self.executor.execute(sql);self._save_catalog();return result
     def _seed(self):
         # Cargar el dataset demo completo sólo cuando la tabla estaba vacía al
@@ -55,7 +61,7 @@ class DemoEngine:
     def _save_catalog(self):
         try:
             dynamic=[d for d in self.catalog.describe_tables() if d["name"] not in self.DEMO_TABLES]
-            self.catalog_path.write_text(json.dumps({"tables":dynamic,"sources":self._sources},ensure_ascii=False,indent=2),encoding="utf-8")
+            self.catalog_path.write_text(json.dumps({"version":1,"tables":dynamic,"sources":self._sources},ensure_ascii=False,indent=2),encoding="utf-8")
         except Exception:pass
     def _load_catalog(self):
         if not self.catalog_path.exists():return []
@@ -112,7 +118,10 @@ class DemoEngine:
         start=time.perf_counter();reg=self.catalog.spatial_index_for(table)
         if not reg:return {"success":False,"error":"La tabla no tiene índice R-Tree","table":table,"kind":kind,"metric":metric,"points":[]}
         idx=reg.implementation;t=self.catalog.get_table(table)
-        if kind=="range":matches=idx.range_search((lat,lon),radius_m,metric=metric)
+        if kind=="range":
+            # El panel siempre envía el radio en metros; la métrica euclidiana trabaja en grados.
+            radius=radius_m/METERS_PER_DEGREE_LAT if metric=="euclidean" else radius_m
+            matches=idx.range_search((lat,lon),radius,metric=metric)
         elif kind=="knn":matches=idx.knn((lat,lon),k,metric=metric)
         elif kind=="polygon":
             pairs=idx.polygon_search(polygon or []);matches=[(rid,None) for rid,_ in pairs]
@@ -122,4 +131,4 @@ class DemoEngine:
             row=t.read_rid(rid)
             if row is None:continue
             plat,plon=idx.coordinates(rid);pts.append({"rid":repr(rid),"lat":plat,"lon":plon,"label":str(row.get("name") or row.get("nombre") or "") or None,"distance_m":d,"row":row})
-        return {"success":True,"kind":kind,"metric":metric,"table":table,"access_path":{"range":"RTREE_RANGE_SCAN","knn":"RTREE_KNN","polygon":"RTREE_POLYGON"}[kind],"used_indexes":[reg.metadata.name],"execution_time_ms":round((time.perf_counter()-start)*1000,6),"distance_unit":METRIC_UNITS.get(metric,"m"),"points":pts,"candidates_visited":len(pts),"error":None}
+        return {"success":True,"kind":kind,"metric":metric,"table":table,"access_path":{"range":"RTREE_RANGE_SCAN","knn":"RTREE_KNN","polygon":"RTREE_POLYGON"}[kind],"used_indexes":[reg.metadata.name],"execution_time_ms":round((time.perf_counter()-start)*1000,6),"distance_unit":METRIC_UNITS.get(metric,"m"),"points":pts,"count":len(pts),"candidates_visited":len(pts),"error":None}

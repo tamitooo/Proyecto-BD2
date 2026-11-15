@@ -33,6 +33,7 @@ class TransactionState:
     statements: int = 0;
     snapshots: Dict[str, Dict[str, Any]] = field(default_factory=dict);
     created_tables: List[str] = field(default_factory=list);
+    dropped_tables: Dict[str, Dict[str, Any]] = field(default_factory=dict);
     locked_tables: List[str] = field(default_factory=list)
 
 
@@ -115,6 +116,9 @@ class QueryExecutor:
         st = time.perf_counter();
         rows = self._access(t, plan);
         self._runtime(runtime, plan.steps[0].operator, st, rows_out=len(rows), table=t.name, index=plan.steps[0].index)
+        if q.or_groups or q.predicates:
+            st = time.perf_counter();
+            before = len(rows)
         if q.or_groups:
             rows = [x for x in rows if self.matches_query(x, q)]
         elif q.predicates:
@@ -122,6 +126,8 @@ class QueryExecutor:
             normal = [p for p in q.predicates if not getattr(p, "is_spatial", False)]
             if spatial: rows = self._filter_spatial_linear(rows, spatial)
             if normal: rows = [x for x in rows if self.matches_all(x, normal)]
+        if q.or_groups or q.predicates:
+            self._runtime(runtime, "FILTER", st, rows_in=before, rows_out=len(rows))
         if q.joins: rows = self._joins(rows, q.joins, runtime)
         aggs = self._aggregates(s.columns)
         if q.group_by: self._validate_group_by(s, q)
@@ -242,11 +248,8 @@ class QueryExecutor:
             e = p.distance;
             kept = []
             for row in out:
-                latc = e.column if e.column in row else next(
-                    (c for c in row if c.lower() in {"lat", "latitud", "latitude"}), None);
-                lonc = next((c for c in row if c.lower() in {"lon", "lng", "longitud", "longitude"}), None)
-                if not latc or not lonc: continue
-                pt = (float(row[latc]), float(row[lonc]));
+                pt = self._row_point(row, e.column)
+                if pt is None: continue
                 d = euclidean(e.point, pt) if e.metric == "euclidean" else haversine(e.point, pt)
                 if (p.operator == "<" and d < float(p.value)) or (p.operator == "<=" and d <= float(p.value)):
                     x = dict(row);
@@ -343,7 +346,11 @@ class QueryExecutor:
                                               "used_indexes": list(t.indexes), "steps": [], "runtime_steps": []})
 
     def _drop_table(self, s):
-        if self.catalog.has_table(s.table): self._snapshot(self.catalog.get_table(s.table))
+        if self.catalog.has_table(s.table):
+            t = self.catalog.get_table(s.table)
+            self._snapshot(t)
+            if self._txn and self.catalog.data_dir is not None and t.name not in self._txn.dropped_tables:
+                self._txn.dropped_tables[t.name] = next(d for d in self.catalog.describe_tables() if d["name"] == t.name)
         ok = self.catalog.drop_table(s.table, if_exists=s.if_exists);
         self._touch();
         return QueryResult.ok("DROP TABLE", affected_rows=int(ok), rows=[{"table": s.table.lower(), "dropped": ok}])
@@ -357,14 +364,17 @@ class QueryExecutor:
                                       metric=getattr(s, "metric", None));
         self._touch();
         ms = self._ms(st)
+        filas = sum(1 for _ in t.storage.scan())
         return QueryResult.ok("CREATE INDEX", columns=["indice", "tabla", "columna", "tecnica", "filas"], rows=[
             {"indice": r.metadata.name, "tabla": t.name, "columna": r.metadata.column, "tecnica": r.metadata.kind,
-             "filas": sum(1 for _ in t.storage.scan())}], affected_rows=1,
+             "filas": filas}], affected_rows=1,
                               execution_plan={"table": t.name, "planner_type": "ddl", "access_path": "CREATE_INDEX",
                                               "used_indexes": [r.metadata.name], "index_build_time_ms": ms, "steps": [
                                       {"operator": "CREATE_INDEX", "table": t.name, "index": r.metadata.name,
                                        "reason": "índice construido sobre datos existentes",
-                                       "details": {"kind": r.metadata.kind}}], "runtime_steps": []})
+                                       "details": {"kind": r.metadata.kind}}], "runtime_steps": [
+                                      {"operator": "CREATE_INDEX", "elapsed_ms": ms, "rows_indexed": filas,
+                                       "index": r.metadata.name}]})
 
     def _drop_index(self, s):
         table = s.table
@@ -416,6 +426,9 @@ class QueryExecutor:
             "END TRANSACTION", rows=[{"transaction": tx.id, "estado": "confirmada (COMMIT)"}])
         for name in reversed(tx.created_tables):
             if self.catalog.has_table(name): self.catalog.drop_table(name)
+        for name, definition in tx.dropped_tables.items():
+            if name not in tx.created_tables and not self.catalog.has_table(name):
+                self.catalog.restore_table(definition)
         for name, snap in tx.snapshots.items():
             if self.catalog.has_table(name):
                 t = self.catalog.get_table(name);
@@ -461,7 +474,8 @@ class QueryExecutor:
                 payload = {"table": t.name, "planner_type": "spatial_rtree", "access_path": op,
                            "used_indexes": [reg.metadata.name], "steps": [
                         {"operator": op, "table": t.name, "index": reg.metadata.name,
-                         "reason": "consulta espacial con R-Tree", "details": {}}], "runtime_steps": []}
+                         "reason": "consulta espacial con R-Tree", "details": {}}], "runtime_steps": [],
+                           "spatial": True, "kind": kind}
             else:
                 payload = self._planner().plan(q).to_dict();payload["runtime_steps"] = []
             if s.analyze:
@@ -472,8 +486,34 @@ class QueryExecutor:
             payload = {"table": getattr(inner, "table", None), "planner_type": "direct_write",
                        "access_path": self._name(inner).replace(" ", "_"), "used_indexes": [], "steps": [],
                        "runtime_steps": []}
-        text = f"Tabla: {payload.get('table')}\nRuta de acceso: {payload.get('access_path')}\nÍndices: {', '.join(payload.get('used_indexes') or []) or '-'}"
-        return QueryResult.ok("EXPLAIN", columns=["plan"], rows=[{"plan": text}], execution_plan=payload)
+            if s.analyze:
+                st = time.perf_counter()
+                ex = self.execute(inner)
+                if not ex.success: return ex
+                payload["runtime_steps"] = (ex.execution_plan or {}).get("runtime_steps") or [
+                    {"operator": payload["access_path"], "elapsed_ms": self._ms(st), "rows_out": ex.affected_rows}]
+                payload["analyze"] = {"rows": ex.affected_rows, "execution_time_ms": self._ms(st)}
+        return QueryResult.ok("EXPLAIN", columns=["plan"], rows=[{"plan": self._plan_text(payload)}],
+                              execution_plan=payload)
+
+    @staticmethod
+    def _plan_text(payload):
+        lines = [f"Tabla: {payload.get('table')}", f"Ruta de acceso: {payload.get('access_path')}",
+                 f"Índices: {', '.join(payload.get('used_indexes') or []) or '-'}", "Plan lógico:"]
+        for n, step in enumerate(payload.get("steps") or [], 1):
+            index = f" [{step['index']}]" if step.get("index") else ""
+            reason = f" — {step['reason']}" if step.get("reason") else ""
+            lines.append(f"  {n}. {step.get('operator')}{index}{reason}")
+        if not payload.get("steps"):
+            lines.append(f"  1. {payload.get('access_path')}")
+        if "analyze" in payload:
+            lines.append("Ejecución real:")
+            for step in payload.get("runtime_steps") or []:
+                rows = f", filas={step['rows_out']}" if step.get("rows_out") is not None else ""
+                lines.append(f"  - {step.get('operator')}: {step.get('elapsed_ms')} ms{rows}")
+            lines.append(f"  total: {payload['analyze'].get('rows')} filas en "
+                         f"{payload['analyze'].get('execution_time_ms')} ms")
+        return "\n".join(lines)
 
     def _access(self, t, plan):
         step = plan.steps[0];
@@ -589,11 +629,34 @@ class QueryExecutor:
         {"=": lambda: a == b, "==": lambda: a == b, "!=": lambda: a != b, "<>": lambda: a != b, "<": lambda: a < b,
          "<=": lambda: a <= b, ">": lambda: a > b, ">=": lambda: a >= b, "between": lambda: b[0] <= a <= b[1]}[op]()
 
+    @staticmethod
+    def _row_point(row, column):
+        latc = column if column in row else next(
+            (c for c in row if c.lower() in {"lat", "latitud", "latitude"}), None)
+        lonc = next((c for c in row if c.lower() in {"lon", "lng", "longitud", "longitude"}), None)
+        if not latc or not lonc or row[latc] is None or row[lonc] is None: return None
+        return float(row[latc]), float(row[lonc])
+
+    def _sort_key(self, o):
+        """NULL (o sin coordenadas) va al final en ASC y al inicio en DESC, como en PostgreSQL."""
+        e = getattr(o, "distance", None)
+        if e is not None:
+            def value(r):
+                pt = self._row_point(r, e.column)
+                if pt is None: return None
+                return euclidean(e.point, pt) if e.metric == "euclidean" else haversine(e.point, pt)
+        else:
+            value = lambda r, c=o.column: r.get(c)
+        def key(r):
+            v = value(r)
+            return (1, 0) if v is None else (0, v)
+        return key
+
     def _sort(self, rows, order, runtime):
         current = list(rows);
         st = time.perf_counter()
-        for o in reversed(order): current = self.external_sort.sort(current, key=lambda r, c=o.column: r[c],
-                                                                    descending=o.descending)
+        for o in reversed(order):
+            current = self.external_sort.sort(current, key=self._sort_key(o), descending=o.descending)
         self._runtime(runtime, "EXTERNAL_SORT", st, rows_in=len(rows), rows_out=len(current));
         return current
 
@@ -637,6 +700,14 @@ class QueryExecutor:
                 min(vals) if vals else None) if op == "min" else (max(vals) if vals else None)
         return out
 
+    @staticmethod
+    def _column_target(x, rows):
+        """``tabla.col`` usa la copia calificada que deja el JOIN cuando el nombre se repite."""
+        if "." in x and rows and x in rows[0]:
+            return x, x
+        column = x.split('.')[-1]
+        return column, column
+
     def _project(self, rows, columns):
         if columns == ("*",): return [dict(r) for r in rows], (list(rows[0].keys()) if rows else [])
         targets = [];
@@ -654,7 +725,7 @@ class QueryExecutor:
             if sm:
                 targets.append((sm.group(2) or "score", "_score"))
                 continue
-            targets.append((x.split('.')[-1], x.split('.')[-1]))
+            targets.append(self._column_target(x, rows))
         names = (list(rows[0].keys()) if star and rows else []) + [name for name, _ in targets]
         out = []
         for r in rows:
@@ -691,6 +762,21 @@ class QueryExecutor:
                 f"unknown column '{p.column}'")
         for c in q.group_by:
             if c not in known: raise QueryExecutionError(f"unknown GROUP BY '{c}'")
+        tables = {t.name.lower(): set(t.schema.col_names())}
+        for j in q.joins or ():
+            jt = self.catalog.get_table(j.table)
+            tables[jt.name.lower()] = set(jt.schema.col_names())
+        every = set().union(*tables.values())
+        for x in s.columns:
+            if x == "*" or _AGG.match(x) or _SCORE.match(x): continue
+            prefix, _, column = x.rpartition(".")
+            if prefix:
+                if prefix.lower() not in tables:
+                    raise QueryExecutionError(f"unknown selected column '{x}': la tabla '{prefix}' no está en FROM/JOIN")
+                if column not in tables[prefix.lower()]:
+                    raise QueryExecutionError(f"unknown selected column '{x}'")
+            elif column not in every:
+                raise QueryExecutionError(f"unknown selected column '{x}'")
 
     def _planner(self):
         return QueryPlanner(self.catalog.planner_indexes(), self.catalog.planner_storage())

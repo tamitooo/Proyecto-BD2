@@ -146,11 +146,16 @@ class Catalog:
         if idx in t.indexes:
             if if_not_exists: return t.indexes[idx]
             raise CatalogError(f"el índice '{idx}' ya existe")
+        same = next((r for r in t.indexes.values() if r.metadata.kind == kind and r.metadata.column == col
+                     and (kind != "ivf" or r.implementation.metric_name == (metric or "euclidean"))), None)
+        if same:
+            if if_not_exists: return same
+            raise CatalogError(f"la columna '{col}' ya tiene el índice '{same.metadata.name}' ({kind})")
         if unique and kind != "hash": raise CatalogError("UNIQUE se soporta con Hash Extendible en este minigestor")
         if kind == "bplus_clustered":
-            if self.clustered_index(t.name): raise CatalogError("solo puede existir un índice B+ agrupado por tabla")
+            if self.clustered_index(t.name): raise CatalogError("solo puede existir un índice agrupado (B+) por tabla")
             if t.storage_kind != "heap": raise CatalogError(
-                "BPLUS_CLUSTERED requiere Heap File en este minigestor; el Archivo Secuencial ya mantiene su propio orden físico por la PK")
+                "la tabla ya tiene un índice agrupado: el Archivo Secuencial mantiene su orden físico por la PK (BPLUS_CLUSTERED requiere Heap File)")
             # Orden físico ANTES de capturar los RID del índice.
             self._cluster_heap(t, col)
             impl = ClusteredBPlusIndex(col, order=4, unique=unique)
@@ -161,7 +166,7 @@ class Catalog:
         elif kind == "ivf":
             impl = IVFIndex(n_lists=1, metric_name=metric or "euclidean", random_seed=0)
         else:
-            if not lon_column: raise CatalogError("RTREE necesita (lat, lon)")
+            if not lon_column: raise CatalogError("RTREE necesita dos columnas (lat, lon)")
             lon = self._norm(lon_column)
             if lon not in t.schema.col_names() or lon == col: raise CatalogError("columna de longitud inválida")
             impl = SpatialIndex(col, lon, max_entries=self.rtree_max_entries)
@@ -206,7 +211,7 @@ class Catalog:
         if column not in t.schema.col_names(): raise CatalogError(f"unknown indexed column '{column}'")
         if kind == "bplus_clustered" and any(
             r.metadata.kind == "bplus_clustered" for r in t.indexes.values()): raise CatalogError(
-            "solo puede existir un índice B+ agrupado por tabla")
+            "solo puede existir un índice agrupado (B+) por tabla")
         meta = IndexMetadata(idx, t.name, column, kind,
                              bool(getattr(implementation, "unique", False) if unique is None else unique));
         reg = RegisteredIndex(meta, implementation);

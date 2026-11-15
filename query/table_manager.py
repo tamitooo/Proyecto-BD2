@@ -1,10 +1,23 @@
+import re
+
 from .csv_loader import infer_schema_from_csv, _coerce, CsvImportError
 
 
 class TableManagementError(Exception): pass
 
 
+_IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+
+def _check_identifier(kind, value):
+    if not isinstance(value, str) or not _IDENTIFIER.fullmatch(value):
+        raise TableManagementError(f"invalid {kind} name: {value!r} (usa letras, números y _)")
+
+
 def create_table(engine, *, name, columns, primary_key, storage_kind="heap", source="manual", original_filename=None):
+    _check_identifier("table", name)
+    for c in columns:
+        _check_identifier("column", c["name"] if isinstance(c, dict) else c[0])
     norm = []
     for c in columns:
         if isinstance(c, dict):
@@ -30,8 +43,13 @@ def import_csv_as_table(engine, *, name, filename, content, primary_key, storage
                  original_filename=filename)
     try:
         rep = engine.import_csv(name, text, delimiter=delimiter)
-    except Exception:
+    except Exception as e:
         engine.run(f"DROP TABLE IF EXISTS {name}");
-        raise
+        raise TableManagementError(str(e)) from e
+    if rep.failed:
+        # Una tabla nueva se crea entera o no se crea: no se deja una carga parcial.
+        engine.run(f"DROP TABLE IF EXISTS {name}")
+        raise TableManagementError(
+            f"{rep.failed} fila(s) inválidas; no se creó la tabla '{name}': " + "; ".join(rep.errors))
     return {"imported_rows": rep.inserted, "table": engine.table_info(name),
             "inferred_schema": {"columnas": schema, "primary_key": primary_key}, "original_filename": filename}

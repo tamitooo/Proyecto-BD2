@@ -236,6 +236,9 @@ class SQLParser:
             marks[n + 1][0] if n + 1 < len(marks) else len(rest))].strip()
         if "HAVING" in clauses:
             raise SQLParseError("HAVING no está soportado; filtra con WHERE")
+        for keyword, value in clauses.items():
+            if not value:
+                raise SQLParseError(f"{keyword} incompleto: falta su contenido")
         joins = self._joins(join_text);
         groups = self._where_groups(clauses["WHERE"]) if "WHERE" in clauses else ();
         preds = tuple(p for g in groups for p in g)
@@ -377,14 +380,14 @@ class SQLParser:
         if tail:
             u = re.fullmatch(r"USING\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s+WITH\s+METRIC\s*=\s*([A-Za-z_][A-Za-z0-9_]*))?",
                              tail, re.I)
-            if not u or u.group(1).upper() not in self._KINDS: raise SQLParseError("técnica de índice desconocida")
+            if not u or u.group(1).upper() not in self._KINDS: raise SQLParseError(f"técnica desconocida en CREATE INDEX: {tail}; usa " + ", ".join(sorted(self._KINDS)))
             kind = self._KINDS[u.group(1).upper()]
             if u.group(2):
                 if kind != "ivf": raise SQLParseError("WITH METRIC solo aplica a USING IVF")
                 metric = self._METRICS.get(u.group(2).lower())
                 if metric is None: raise SQLParseError(
                     f"métrica desconocida: {u.group(2)}; usa euclidean, cosine o dot_product")
-        if kind == "rtree" and len(cols) != 2: raise SQLParseError("RTREE necesita (lat, lon)")
+        if kind == "rtree" and len(cols) != 2: raise SQLParseError("RTREE necesita dos columnas (lat, lon)")
         if kind != "rtree" and len(cols) != 1: raise SQLParseError("índice no espacial usa una columna")
         return CreateIndexStatement(m.group(4), cols[0], m.group(3), bool(m.group(1)), kind, bool(m.group(2)),
                                     cols[1] if len(cols) > 1 else None, metric)
@@ -405,7 +408,10 @@ class SQLParser:
     def _set_point(self, s):
         m = re.fullmatch(rf"SET\s+({_ID})\s*=\s*POINT\s*\(\s*([^,]+),\s*([^\)]+)\s*\)", s, re.I)
         if not m: raise SQLParseError("SET de punto usa: SET nombre = POINT(lat, lon)")
-        return SetPointStatement(m.group(1), (float(self._literal(m.group(2))), float(self._literal(m.group(3)))))
+        lat, lon = self._number(m.group(2), "POINT"), self._number(m.group(3), "POINT")
+        if not (-90.0 <= lat <= 90.0 and -180.0 <= lon <= 180.0):
+            raise SQLParseError(f"POINT({lat}, {lon}) fuera de rango: lat en [-90, 90] y lon en [-180, 180]")
+        return SetPointStatement(m.group(1), (lat, lon))
 
     def _explain(self, s):
         m = re.match(r"EXPLAIN\s+(ANALYZE\s+)?", s, re.I);
@@ -445,7 +451,7 @@ class SQLParser:
                 pos += om.end();
                 endand = self._next_kw(text, "AND", pos);
                 raw = text[pos:endand[0] if endand else len(text)].strip();
-                out.append(Predicate(expr.column, op, float(self._literal(raw)), expr));
+                out.append(Predicate(expr.column, op, self._number(raw, "el radio de distancia"), expr));
                 pos = endand[1] if endand else len(text);
                 continue
             cm = re.match(_QID, text[pos:])
@@ -471,6 +477,7 @@ class SQLParser:
             pos += om.end();
             nxt = self._next_kw(text, "AND", pos);
             raw = text[pos:nxt[0] if nxt else len(text)].strip();
+            if not raw: raise SQLParseError(f"falta el valor después de '{col} {op}'")
             out.append(Predicate(col, op, self._literal(raw)));
             pos = nxt[1] if nxt else len(text)
         return out
@@ -482,10 +489,10 @@ class SQLParser:
         ci = self._match_paren(text, oi);
         parts = self._split(text[oi + 1:ci]);
         if len(parts) < 2: raise SQLParseError("distancia necesita columna, POINT")
-        point_token = parts[1].strip()
+        point_token = parts[1].strip().lstrip("@")
         pm = re.fullmatch(r"POINT\s*\(\s*([^,]+),\s*([^\)]+)\s*\)", point_token, re.I)
         if pm:
-            point = (float(self._literal(pm.group(1))), float(self._literal(pm.group(2))))
+            point = (self._number(pm.group(1), "POINT"), self._number(pm.group(2), "POINT"))
         elif re.fullmatch(_ID, point_token):
             point = (float("nan"), float("nan"))
         else:
@@ -519,7 +526,7 @@ class SQLParser:
         for pair in pm.group(1).split(','):
             xy = pair.split();
             if len(xy) != 2: raise SQLParseError("vértice inválido")
-            ring.append((float(self._literal(xy[0])), float(self._literal(xy[1]))))
+            ring.append((self._number(xy[0], "POLYGON"), self._number(xy[1], "POLYGON")))
         if len(ring) < 3: raise SQLParseError("polígono necesita 3 vértices")
         return PolygonPredicate(col, tuple(ring)), ci + 1
 
@@ -627,6 +634,13 @@ class SQLParser:
                 if d == 0: return i
             i += 1
         return None
+
+    @staticmethod
+    def _number(x, where):
+        try:
+            return float(SQLParser._literal(x))
+        except (TypeError, ValueError):
+            raise SQLParseError(f"{where} espera números, no {x.strip()!r}") from None
 
     @staticmethod
     def _literal(x):

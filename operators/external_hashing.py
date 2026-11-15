@@ -81,7 +81,18 @@ class ExternalHashing:
                 if value is not None:
                     state[name] = value if name not in state else max(state[name], value)
             else:
-                raise ValueError(f"aggregate unsupported: {op}")
+                raise ValueError(f"unsupported aggregate: {op}")
+
+    @staticmethod
+    def _validate_aggregates(aggregates):
+        for name, spec in (aggregates or {}).items():
+            if isinstance(spec, str):
+                if spec != "count":
+                    raise ValueError(f"aggregate '{name}' ({spec}) requires a source column")
+                continue
+            op, _column = spec
+            if op not in {"count", "sum", "avg", "min", "max"}:
+                raise ValueError(f"unsupported aggregate: {op}")
 
     @staticmethod
     def _aggregate_finish(state, aggregates):
@@ -105,6 +116,7 @@ class ExternalHashing:
         return out
 
     def group_by(self, rows: Iterable[Mapping[str, Any]], *, key, aggregates=None):
+        self._validate_aggregates(aggregates)
         rows = list(rows)
         stats = ExternalHashStats(rows=len(rows))
 

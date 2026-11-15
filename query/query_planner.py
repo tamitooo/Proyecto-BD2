@@ -226,7 +226,10 @@ class QueryPlanner:
         self.indexes.append(index)
 
     def register_storage(self, table, storage_kind):
-        self.storage_by_table[table] = storage_kind.lower()
+        kind = str(storage_kind).lower()
+        if kind not in {"heap", "sequential"}:
+            raise ValueError(f"unsupported storage_kind: {storage_kind}; usa heap o sequential")
+        self.storage_by_table[table] = kind
 
     def plan(self, query):
         query = self._coerce_query(query);
@@ -435,6 +438,11 @@ class QueryPlanner:
             op = p.normalized_operator()
             if op not in SUPPORTED_PREDICATE_OPERATORS: raise ValueError(
                 f"unsupported predicate operator: {p.operator}")
+            if op == "between" and not (isinstance(p.value, (tuple, list)) and len(p.value) == 2):
+                raise ValueError("BETWEEN requires two values (low, high)")
+        for j in q.joins or ():
+            if j.join_type.lower() not in {"inner", "left", "right", "full"}:
+                raise ValueError(f"unsupported join type: {j.join_type}")
 
     @classmethod
     def _coerce_query(cls, q):

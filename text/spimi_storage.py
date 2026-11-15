@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import time
 from pathlib import Path
 from typing import Iterable, Iterator, TypeAlias
 
@@ -12,6 +13,18 @@ from .spimi import SPIMIBlock
 
 DiskDocumentId: TypeAlias = int | str
 PostingRecord: TypeAlias = tuple[str, DiskDocumentId, int]
+
+
+def replace_with_retry(source: Path, destination: Path, attempts: int = 20) -> None:
+    """``os.replace`` reintentando: en Windows/OneDrive el destino puede estar tomado un instante."""
+    for attempt in range(attempts):
+        try:
+            os.replace(source, destination)
+            return
+        except PermissionError:
+            if attempt == attempts - 1:
+                raise
+            time.sleep(0.05 * (attempt + 1))
 
 
 def document_id_sort_key(doc_id: DiskDocumentId) -> tuple[int, int | str]:
@@ -96,7 +109,7 @@ class SPIMIBlockStore:
 
             if destination.exists():
                 raise FileExistsError(destination)
-            os.replace(temporary, destination)
+            replace_with_retry(temporary, destination)
             temporary = None
             return destination
         finally:

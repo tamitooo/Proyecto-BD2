@@ -97,6 +97,9 @@ class Catalog:
         for reg in list(t.indexes.values()):
             if hasattr(reg.implementation, "drop_persistent_file"): reg.implementation.drop_persistent_file()
         del self._tables[n]
+        if delete_files and self.data_dir is not None:
+            from query.text_queries import drop_spimi_indexes
+            drop_spimi_indexes(self.data_dir, t.name)
         if delete_files:
             for p in paths:
                 try:

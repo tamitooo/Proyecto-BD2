@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Iterable, Iterator
 
 from .spimi_storage import (
+    replace_with_retry,
     PostingRecord,
     document_id_sort_key,
     iter_block_records,
@@ -147,7 +148,7 @@ def merge_spimi_blocks(
         shutil.rmtree(run_directory)
         if destination.exists():
             raise FileExistsError(destination)
-        os.rename(temporary, destination)
+        replace_with_retry(temporary, destination)
     except BaseException:
         if temporary.exists():
             shutil.rmtree(temporary)

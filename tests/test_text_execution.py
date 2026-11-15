@@ -137,3 +137,76 @@ class TestTablaVacia(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestIndiceSPIMI(unittest.TestCase):
+    def setUp(self):
+        self._dir = _temp_dir("bd2-spimi-")
+        self.engine = _Engine(self._dir)
+        self.engine.create_table("documentos", [("id", "INT"), ("contenido", "VARCHAR(200)")])
+        for doc_id, contenido in ((1, "base de datos vectorial"), (2, "machine learning"), (3, "base de datos")):
+            self.engine.run(f"INSERT INTO documentos VALUES ({doc_id}, '{contenido}')")
+
+    def tearDown(self):
+        shutil.rmtree(self._dir, ignore_errors=True)
+
+    def buscar(self, texto="base de datos", extra=""):
+        resultado = self.engine.run(
+            f"SELECT * FROM documentos WHERE MATCH(contenido, '{texto}') {extra} USING BM25"
+        )
+        self.assertTrue(resultado.success, resultado.error)
+        return resultado
+
+    def spimi(self, resultado):
+        return next(s for s in resultado.execution_plan["steps"] if s["operator"] == "SPIMI_INDEX")["details"]
+
+    def test_indice_en_disco_y_reutilizado(self):
+        primero = self.spimi(self.buscar())
+        self.assertFalse(primero["reused"])
+        self.assertTrue(os.path.isdir(primero["index_path"]))
+        with open(os.path.join(primero["index_path"], "CURRENT"), encoding="utf-8") as stream:
+            vigente = os.path.join(primero["index_path"], stream.read().strip())
+        self.assertTrue(os.path.isfile(os.path.join(vigente, "index", "lexicon.spimi.jsonl")))
+        self.assertTrue(os.path.isfile(os.path.join(vigente, "documents.json")))
+        self.assertTrue(self.spimi(self.buscar("machine"))["reused"])
+
+    def test_insert_reconstruye_el_indice(self):
+        self.buscar()
+        self.engine.run("INSERT INTO documentos VALUES (4, 'bases vectoriales nuevas')")
+        resultado = self.buscar("nuevas")
+        self.assertFalse(self.spimi(resultado)["reused"])
+        self.assertEqual([row["id"] for row in resultado.rows], [4])
+        builds = [x for x in os.listdir(self.spimi(resultado)["index_path"]) if x.startswith("build-")]
+        self.assertEqual(len(builds), 1)
+
+    def test_drop_table_borra_el_indice(self):
+        path = self.spimi(self.buscar())["index_path"]
+        self.engine.catalog.drop_table("documentos")
+        self.assertFalse(os.path.exists(path))
+
+    def test_filtro_extra_usa_el_mismo_indice(self):
+        resultado = self.engine.run(
+            "SELECT * FROM documentos WHERE MATCH(contenido, 'base de datos') AND id > 1 USING BM25"
+        )
+        self.assertTrue(resultado.success, resultado.error)
+        self.assertEqual([row["id"] for row in resultado.rows], [3])
+
+
+class TestIndiceSPIMIConRutaRelativa(unittest.TestCase):
+    def test_data_dir_relativo(self):
+        base = _temp_dir("bd2-spimi-rel-")
+        previo = os.getcwd()
+        os.chdir(base)
+        try:
+            engine = _Engine("datos")
+            engine.create_table("documentos", [("id", "INT"), ("contenido", "VARCHAR(200)")])
+            engine.run("INSERT INTO documentos VALUES (1, 'base de datos')")
+            for _ in range(2):
+                resultado = engine.run(
+                    "SELECT * FROM documentos WHERE MATCH(contenido, 'datos') USING BM25"
+                )
+                self.assertTrue(resultado.success, resultado.error)
+                self.assertEqual([row["id"] for row in resultado.rows], [1])
+        finally:
+            os.chdir(previo)
+            shutil.rmtree(base, ignore_errors=True)

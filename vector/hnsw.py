@@ -16,6 +16,7 @@ pequeño, testeable y fácil de integrar.
 
 from __future__ import annotations
 
+from curses import version
 import heapq
 import itertools
 import math
@@ -150,9 +151,20 @@ class HNSWIndex:
             "nodes": self.nodes,
             "rng_state": self._rng.getstate(),
             "source_signature": self.source_signature,
+            "kind": "hnsw",
+            "version": 1,
         }
 
     def _restore_persistence_state(self, state: dict) -> None:
+        kind = state.get("kind", "hnsw")
+        version = state.get("version", 1)
+
+        if kind != "hnsw":
+            raise ValueError("snapshot incompatible: no es un índice HNSW")
+
+        if version != 1:
+            raise ValueError(f"versión de snapshot HNSW no soportada: {version}")
+        
         """Restaura un snapshot persistido y valida sus invariantes."""
         required = {
             "M", "ef_construction", "ef_search", "level_multiplier",

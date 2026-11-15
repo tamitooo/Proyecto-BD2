@@ -223,6 +223,11 @@ class HNSWIndex:
     def drop_persistent_file(self) -> None:
         remove_if_exists(self.file_path)
         self.file_path = None
+    def serialized_size_bytes(self) -> int:
+        """Devuelve el tamaño en disco del snapshot persistido del índice."""
+        if self.file_path is None or not self.file_path.exists():
+            return 0
+        return self.file_path.stat().st_size
 
     @property
     def is_empty(self) -> bool:

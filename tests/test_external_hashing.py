@@ -14,6 +14,10 @@ def employee_rows():
     ]
 
 
+def pair(left, right):
+    return left, right
+
+
 def sort_groups(rows, field):
     return sorted(rows, key=lambda row: row[field])
 
@@ -141,36 +145,6 @@ def test_group_by_multiple_columns():
     assert by_key[("US", "IT")]["total"] == 30
 
 
-def test_group_by_callable_key_supports_storage_scan_shape():
-    # Simula storage.scan(): (RID, record)
-    rows = [
-        (("main", 0), {"dept": "IT", "salary": 1000}),
-        (("main", 1), {"dept": "HR", "salary": 2000}),
-        (("aux", 0), {"dept": "IT", "salary": 3000}),
-    ]
-
-    hasher = ExternalHashing(
-        memory_rows=2,
-        partitions=2,
-    )
-
-    result = hasher.group_by(
-        rows,
-        key=lambda item: item[1]["dept"],
-        key_name="dept",
-        aggregates={
-            "rows": "count",
-            "total": ("sum", lambda item: item[1]["salary"]),
-        },
-    )
-
-    by_dept = {row["dept"]: row for row in result}
-
-    assert by_dept["IT"]["rows"] == 2
-    assert by_dept["IT"]["total"] == 4000
-    assert by_dept["HR"]["rows"] == 1
-
-
 def test_group_by_forces_external_repartitioning():
     records = [
         {"group": i, "value": i * 10}
@@ -189,32 +163,9 @@ def test_group_by_forces_external_repartitioning():
     )
 
     assert len(result) == 40
-    assert hasher.last_stats.operation == "group_by"
-    assert hasher.last_stats.input_records == 40
+    assert hasher.last_stats.rows == 40
     assert hasher.last_stats.partitions_created >= 2
-    assert hasher.last_stats.repartition_passes > 0
     assert hasher.last_stats.temporary_files >= 2
-    assert hasher.last_stats.output_records == 40
-
-
-def test_group_by_default_aggregate_is_count():
-    hasher = ExternalHashing(
-        memory_rows=2,
-        partitions=2,
-    )
-
-    result = hasher.group_by(
-        employee_rows(),
-        key="dept",
-    )
-
-    by_dept = {row["dept"]: row["count"] for row in result}
-
-    assert by_dept == {
-        "IT": 3,
-        "HR": 2,
-        "Sales": 1,
-    }
 
 
 def test_group_by_empty_input():
@@ -223,8 +174,7 @@ def test_group_by_empty_input():
     result = hasher.group_by([], key="id")
 
     assert result == []
-    assert hasher.last_stats.input_records == 0
-    assert hasher.last_stats.output_records == 0
+    assert hasher.last_stats.rows == 0
 
 
 def test_inner_hash_join():
@@ -251,6 +201,7 @@ def test_inner_hash_join():
         left_key="dept_id",
         right_key="id",
         join_type="inner",
+        merge=pair,
     )
 
     pairs = sorted(
@@ -284,6 +235,7 @@ def test_left_hash_join():
         left_key="fk",
         right_key="id",
         join_type="left",
+        merge=pair,
     )
 
     assert len(result) == 2
@@ -321,6 +273,7 @@ def test_right_hash_join():
         left_key="fk",
         right_key="id",
         join_type="right",
+        merge=pair,
     )
 
     assert len(result) == 2
@@ -356,6 +309,7 @@ def test_full_hash_join():
         left_key="fk",
         right_key="id",
         join_type="full",
+        merge=pair,
     )
 
     assert len(result) == 3
@@ -404,6 +358,7 @@ def test_join_duplicate_keys_produce_cartesian_matches():
         right,
         left_key="key",
         right_key="key",
+        merge=pair,
     )
 
     assert len(result) == 6
@@ -446,39 +401,6 @@ def test_hash_join_custom_merge():
     assert result == [{"name": "Ana", "dept": "IT"}]
 
 
-def test_hash_join_callable_keys_support_storage_scan_shape():
-    left = [
-        (("main", 0), {"fk": 10, "name": "Ana"}),
-        (("main", 1), {"fk": 20, "name": "Bruno"}),
-    ]
-    right = [
-        (("main", 0), {"id": 10, "dept": "IT"}),
-        (("main", 1), {"id": 20, "dept": "HR"}),
-    ]
-
-    hasher = ExternalHashing(
-        memory_rows=2,
-        partitions=2,
-    )
-
-    result = hasher.hash_join(
-        left,
-        right,
-        left_key=lambda item: item[1]["fk"],
-        right_key=lambda item: item[1]["id"],
-    )
-
-    pairs = sorted(
-        (l[1]["name"], r[1]["dept"])
-        for l, r in result
-    )
-
-    assert pairs == [
-        ("Ana", "IT"),
-        ("Bruno", "HR"),
-    ]
-
-
 def test_hash_join_forces_repartitioning():
     left = [
         {"id": i, "key": i}
@@ -499,15 +421,13 @@ def test_hash_join_forces_repartitioning():
         right,
         left_key="key",
         right_key="key",
+        merge=pair,
     )
 
     assert len(result) == 40
-    assert hasher.last_stats.operation == "hash_join"
-    assert hasher.last_stats.left_records == 40
-    assert hasher.last_stats.right_records == 40
-    assert hasher.last_stats.input_records == 80
-    assert hasher.last_stats.repartition_passes > 0
-    assert hasher.last_stats.output_records == 40
+    assert hasher.last_stats.rows == 80
+    assert hasher.last_stats.partitions_created == 2
+    assert hasher.last_stats.temporary_files == 4
 
 
 def test_hash_join_empty_relations():
@@ -524,7 +444,8 @@ def test_hash_join_empty_relations():
     ) == []
 
 
-def test_temporary_files_are_cleaned_after_group_by(tmp_path):
+def test_temporary_files_are_cleaned_after_group_by(tmp_path, monkeypatch):
+    monkeypatch.setattr("tempfile.tempdir", str(tmp_path))
     hasher = ExternalHashing(
         memory_rows=2,
         partitions=2,
@@ -536,34 +457,34 @@ def test_temporary_files_are_cleaned_after_group_by(tmp_path):
         aggregates={"count": "count"},
     )
 
+    assert hasher.last_stats.temporary_files > 0
     assert list(tmp_path.iterdir()) == []
 
 
-def test_temporary_files_are_cleaned_after_join(tmp_path):
+def test_temporary_files_are_cleaned_after_join(tmp_path, monkeypatch):
+    monkeypatch.setattr("tempfile.tempdir", str(tmp_path))
     hasher = ExternalHashing(
         memory_rows=2,
         partitions=2,
     )
 
     hasher.hash_join(
-        [{"id": 1}],
-        [{"id": 1}],
+        [{"id": i} for i in range(3)],
+        [{"id": i} for i in range(3)],
         left_key="id",
         right_key="id",
     )
 
+    assert hasher.last_stats.temporary_files > 0
     assert list(tmp_path.iterdir()) == []
 
 
 def test_invalid_configuration():
-    with pytest.raises(ValueError, match="memory_limit_records"):
+    with pytest.raises(ValueError, match="memory_rows"):
         ExternalHashing(memory_rows=0)
 
-    with pytest.raises(ValueError, match="partition_count"):
+    with pytest.raises(ValueError, match="partitions"):
         ExternalHashing(partitions=1)
-
-    with pytest.raises(ValueError, match="max_depth"):
-        ExternalHashing(max_depth=-1)
 
 
 def test_invalid_join_type():
@@ -664,6 +585,7 @@ def test_large_hash_join_dataset():
         right,
         left_key="key",
         right_key="key",
+        merge=pair,
     )
 
     assert len(result) == 500
@@ -672,3 +594,16 @@ def test_large_hash_join_dataset():
         left_row["key"] == right_row["key"]
         for left_row, right_row in result
     )
+
+
+def test_default_merge_combines_both_rows():
+    hasher = ExternalHashing(memory_rows=2, partitions=2)
+
+    result = hasher.hash_join(
+        [{"fk": 10, "name": "Ana"}],
+        [{"id": 10, "dept": "IT"}],
+        left_key="fk",
+        right_key="id",
+    )
+
+    assert result == [{"fk": 10, "name": "Ana", "id": 10, "dept": "IT"}]

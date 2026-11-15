@@ -94,6 +94,17 @@ class TestIndiceIVFPersistido(unittest.TestCase):
         self.ok("DELETE FROM imagenes WHERE id = 999")
         self.assertNotIn(999, [row["id"] for row in self.knn(k=2).rows])
 
+    def test_update_del_vector_actualiza_el_indice(self):
+        far = [x + 50 for x in self.query]
+        self.ok(f"UPDATE imagenes SET embedding = '{far}' WHERE id = 5")
+        self.assertNotIn(5, [row["id"] for row in self.knn(k=3).rows])
+        self.query = far
+        self.assertEqual(self.knn(k=1).rows[0]["id"], 5)
+
+    def test_update_de_otra_columna_conserva_el_indice(self):
+        self.ok("UPDATE imagenes SET id = 5 WHERE id = 5")
+        self.assertEqual(self.knn(k=1).rows[0]["id"], 5)
+
     def test_otra_metrica_no_usa_el_indice(self):
         result = self.knn(metric="euclidean")
         self.assertEqual(result.execution_plan["used_indexes"], ["embedding"])

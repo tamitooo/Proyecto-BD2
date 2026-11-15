@@ -255,10 +255,11 @@ class TestCatalogoOficial(unittest.TestCase):
         index = catalog.get_index("alumnos", "idx_clus").implementation
         index.validate()
 
-        encontrados = index.search("alumno-010")
+        tabla = catalog.get_table("alumnos")
+        encontrados = [tabla.read_rid(rid) for rid in index.search("alumno-010")]
         self.assertEqual(len(encontrados), 1)
         self.assertEqual(encontrados[0]["id"], 10)
-        rango = index.range_search("alumno-004", "alumno-006")
+        rango = [tabla.read_rid(rid) for rid in index.range_search("alumno-004", "alumno-006")]
         self.assertEqual([row["id"] for row in rango], [4, 5, 6])
 
     def test_solo_un_indice_agrupado_por_tabla(self):

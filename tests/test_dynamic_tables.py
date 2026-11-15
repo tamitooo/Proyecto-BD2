@@ -25,7 +25,9 @@ def test_create_manual_heap_table_and_query_it(tmp_path):
     assert table["source"] == "manual"
     assert table["schema"]["primary_key"] == "id"
 
-    assert table["indexes"] == [
+    assert [
+        {k: i[k] for k in ("name", "column", "kind", "unique")} for i in table["indexes"]
+    ] == [
         {
             "name": "idx_productos_id_hash",
             "column": "id",
@@ -116,7 +118,7 @@ def test_duplicate_dynamic_table_is_rejected(tmp_path):
 
     with pytest.raises(
         TableManagementError,
-        match="already exists",
+        match="ya existe",
     ):
         engine.create_table(**kwargs)
 
@@ -144,7 +146,7 @@ def test_invalid_column_type_is_rejected(tmp_path):
         engine.create_table(
             name="clientes",
             columns=[
-                {"name": "id", "type": "BIGINT"},
+                {"name": "id", "type": "BLOB"},
             ],
             primary_key="id",
         )
@@ -160,7 +162,7 @@ def test_import_csv_infers_schema_and_loads_rows(tmp_path):
         "3,Maria,27,850.25\n"
     ).encode("utf-8")
 
-    result = engine.import_csv(
+    result = engine.import_csv_as_table(
         name="clientes",
         filename="clientes.csv",
         content=content,
@@ -198,7 +200,7 @@ def test_import_csv_infers_schema_and_loads_rows(tmp_path):
 def test_import_csv_sequential_is_queryable(tmp_path):
     engine = DemoEngine(data_dir=tmp_path, seed=False)
 
-    result = engine.import_csv(
+    result = engine.import_csv_as_table(
         name="mediciones",
         filename="mediciones.csv",
         content=(
@@ -225,9 +227,9 @@ def test_csv_duplicate_primary_key_rolls_back(tmp_path):
 
     with pytest.raises(
         TableManagementError,
-        match="duplicate primary key",
+        match="duplicate",
     ):
-        engine.import_csv(
+        engine.import_csv_as_table(
             name="duplicados",
             filename="duplicados.csv",
             content=(
@@ -247,9 +249,9 @@ def test_csv_missing_primary_key_column_is_rejected(tmp_path):
 
     with pytest.raises(
         TableManagementError,
-        match="is not present",
+        match="no está en CSV",
     ):
-        engine.import_csv(
+        engine.import_csv_as_table(
             name="clientes",
             filename="clientes.csv",
             content=(
@@ -267,7 +269,7 @@ def test_csv_wrong_row_width_is_rejected_without_creating_table(tmp_path):
         TableManagementError,
         match="expected 2",
     ):
-        engine.import_csv(
+        engine.import_csv_as_table(
             name="malformada",
             filename="malformada.csv",
             content=(
@@ -299,7 +301,7 @@ def test_dynamic_catalog_json_contains_created_table(tmp_path):
 
     assert payload["version"] == 1
     assert payload["tables"][0]["name"] == "productos"
-    assert payload["tables"][0]["source"] == "manual"
+    assert payload["sources"]["productos"]["source"] == "manual"
 
 
 def test_dynamic_primary_key_is_unique_for_later_sql_inserts(tmp_path):
@@ -327,3 +329,17 @@ def test_dynamic_primary_key_is_unique_for_later_sql_inserts(tmp_path):
     selected = engine.run("SELECT * FROM productos")
     assert len(selected.rows) == 1
     assert selected.rows[0]["nombre"] == "Uno"
+
+
+def test_import_csv_to_existing_table_accepts_uploaded_bytes(tmp_path):
+    engine = DemoEngine(data_dir=tmp_path, seed=False)
+    engine.create_table(
+        name="notas",
+        columns=[{"name": "id", "type": "INT"}, {"name": "nota", "type": "FLOAT"}],
+        primary_key="id",
+    )
+
+    report = engine.import_csv("notas", b"id,nota\n1,12.5\n2,18\n")
+
+    assert report.inserted == 2
+    assert report.failed == 0

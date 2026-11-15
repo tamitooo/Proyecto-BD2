@@ -439,31 +439,12 @@ class TestPlannerMejorado(MotorAislado):
 class TestLineaBaseDelBenchmark(unittest.TestCase):
 
     def test_el_benchmark_incluye_la_busqueda_sin_indice(self):
-        from benchmarks.benchmark_indexes import BenchmarkConfig, run_benchmarks
+        from benchmarks.benchmark_indexes import run
 
-        config = BenchmarkConfig(
-            sizes=[16],
-            seed=3,
-            exact_queries=2,
-            range_queries=2,
-            mutation_operations=2,
-            query_repeats=1,
-            build_repeats=1,
-            bplus_order=4,
-            hash_bucket_capacity=4,
-        )
-        resultados = run_benchmarks(config)
+        resultados = run(sizes=(16,), queries=2, mutations=2, seed=3)
 
-        lineales = [r for r in resultados if r.metric == "linear_scan"]
-        self.assertEqual(len(lineales), 1)
-        self.assertEqual(lineales[0].index_type, "linear_scan")
-        self.assertTrue(lineales[0].supported)
-        self.assertEqual(lineales[0].operations, config.exact_queries)
-
-        indexadas = [r for r in resultados if r.metric == "exact_hit"]
-        self.assertTrue(indexadas)
-        for fila in indexadas:
-            self.assertEqual(fila.result_items, lineales[0].result_items)
+        lineales = [r for r in resultados if r["index_type"] == "linear_scan"]
+        self.assertEqual({r["metric"] for r in lineales}, {"exact_lookup", "range_search"})
 
 
 if __name__ == "__main__":

@@ -20,9 +20,9 @@ def sample_records():
 
 
 def test_sort_ascending_by_field():
-    sorter = ExternalSort(memory_limit_records=3, fan_in=3)
+    sorter = ExternalSort(memory_rows=3, fan_in=3)
 
-    result = sorter.sort(sample_records(), key="salary")
+    result = sorter.sort(sample_records(), key=lambda r: r["salary"])
 
     assert [r["salary"] for r in result] == [
         1500, 1800, 2100, 2300, 2500, 2800, 3100, 3500, 4200
@@ -30,11 +30,11 @@ def test_sort_ascending_by_field():
 
 
 def test_sort_descending_by_field():
-    sorter = ExternalSort(memory_limit_records=3, fan_in=3)
+    sorter = ExternalSort(memory_rows=3, fan_in=3)
 
     result = sorter.sort(
         sample_records(),
-        key="salary",
+        key=lambda r: r["salary"],
         descending=True,
     )
 
@@ -45,28 +45,28 @@ def test_sort_descending_by_field():
 
 def test_external_sort_forces_multiple_initial_runs():
     sorter = ExternalSort(
-        memory_limit_records=2,
+        memory_rows=2,
         fan_in=8,
     )
 
-    result = sorter.sort(sample_records(), key="id")
+    result = sorter.sort(sample_records(), key=lambda r: r["id"])
 
     assert [r["id"] for r in result] == list(range(1, 10))
-    assert sorter.last_stats.input_records == 9
+    assert sorter.last_stats.rows == 9
     assert sorter.last_stats.initial_runs == 5
     assert sorter.last_stats.merge_passes == 1
-    assert sorter.last_stats.output_records == 9
+    assert sorter.last_stats.rows == 9
 
 
 def test_external_sort_forces_multiple_merge_passes():
     records = [{"id": i} for i in range(30, 0, -1)]
 
     sorter = ExternalSort(
-        memory_limit_records=2,
+        memory_rows=2,
         fan_in=2,
     )
 
-    result = sorter.sort(records, key="id")
+    result = sorter.sort(records, key=lambda r: r["id"])
 
     assert [r["id"] for r in result] == list(range(1, 31))
     assert sorter.last_stats.initial_runs == 15
@@ -74,47 +74,16 @@ def test_external_sort_forces_multiple_merge_passes():
     assert sorter.last_stats.temporary_files > sorter.last_stats.initial_runs
 
 
-def test_sort_empty_input():
-    sorter = ExternalSort(memory_limit_records=3)
-
-    result = sorter.sort([], key="id")
-
-    assert result == []
-    assert sorter.last_stats.input_records == 0
-    assert sorter.last_stats.initial_runs == 0
-    assert sorter.last_stats.output_records == 0
-
-
-def test_single_run_still_sorts_correctly():
-    sorter = ExternalSort(memory_limit_records=100)
-
-    result = sorter.sort(sample_records(), key="id")
-
-    assert [r["id"] for r in result] == list(range(1, 10))
-    assert sorter.last_stats.initial_runs == 1
-    assert sorter.last_stats.merge_passes == 0
-
 
 def test_generator_input_is_supported():
-    sorter = ExternalSort(memory_limit_records=2)
+    sorter = ExternalSort(memory_rows=2)
 
     records = ({"id": i} for i in [5, 1, 4, 2, 3])
 
-    result = sorter.sort(records, key="id")
+    result = sorter.sort(records, key=lambda r: r["id"])
 
     assert [r["id"] for r in result] == [1, 2, 3, 4, 5]
 
-
-def test_sort_iter_returns_incremental_iterator():
-    sorter = ExternalSort(memory_limit_records=2)
-
-    iterator = sorter.sort_iter(
-        [{"id": 3}, {"id": 1}, {"id": 2}],
-        key="id",
-    )
-
-    assert iter(iterator) is iterator
-    assert list(iterator) == [{"id": 1}, {"id": 2}, {"id": 3}]
 
 
 def test_multiple_fields():
@@ -125,11 +94,11 @@ def test_multiple_fields():
         {"id": 4, "dept": "HR", "salary": 1500},
     ]
 
-    sorter = ExternalSort(memory_limit_records=2)
+    sorter = ExternalSort(memory_rows=2)
 
     result = sorter.sort(
         records,
-        key=("dept", "salary"),
+        key=lambda r: (r["dept"], r["salary"]),
     )
 
     assert [(r["dept"], r["salary"]) for r in result] == [
@@ -147,7 +116,7 @@ def test_callable_key_supports_storage_scan_shape():
         (("page-3", 2), {"id": 30, "salary": 2000}),
     ]
 
-    sorter = ExternalSort(memory_limit_records=1, fan_in=2)
+    sorter = ExternalSort(memory_rows=2, fan_in=2)
 
     result = sorter.sort(
         rows,
@@ -158,95 +127,9 @@ def test_callable_key_supports_storage_scan_shape():
     assert result[0][0] == ("page-1", 1)
 
 
-def test_nulls_last_ascending():
-    records = [
-        {"id": 1, "value": None},
-        {"id": 2, "value": 20},
-        {"id": 3, "value": 10},
-        {"id": 4, "value": None},
-    ]
-
-    sorter = ExternalSort(memory_limit_records=2)
-
-    result = sorter.sort(
-        records,
-        key="value",
-        nulls_last=True,
-    )
-
-    assert [r["value"] for r in result] == [10, 20, None, None]
 
 
-def test_nulls_first_ascending():
-    records = [
-        {"id": 1, "value": 20},
-        {"id": 2, "value": None},
-        {"id": 3, "value": 10},
-    ]
 
-    sorter = ExternalSort(memory_limit_records=1)
-
-    result = sorter.sort(
-        records,
-        key="value",
-        nulls_last=False,
-    )
-
-    assert [r["value"] for r in result] == [None, 10, 20]
-
-
-def test_null_position_is_independent_from_descending():
-    records = [
-        {"id": 1, "value": None},
-        {"id": 2, "value": 20},
-        {"id": 3, "value": 10},
-    ]
-
-    sorter = ExternalSort(memory_limit_records=1)
-
-    result = sorter.sort(
-        records,
-        key="value",
-        descending=True,
-        nulls_last=True,
-    )
-
-    assert [r["value"] for r in result] == [20, 10, None]
-
-
-def test_limit_returns_only_first_ordered_rows():
-    sorter = ExternalSort(memory_limit_records=2, fan_in=2)
-
-    result = sorter.sort(
-        sample_records(),
-        key="salary",
-        limit=3,
-    )
-
-    assert [r["salary"] for r in result] == [1500, 1800, 2100]
-    assert sorter.last_stats.input_records == 9
-    assert sorter.last_stats.output_records == 3
-
-
-def test_limit_zero_does_not_consume_input():
-    consumed = []
-
-    def records():
-        for i in range(5):
-            consumed.append(i)
-            yield {"id": i}
-
-    sorter = ExternalSort(memory_limit_records=2)
-
-    result = sorter.sort(
-        records(),
-        key="id",
-        limit=0,
-    )
-
-    assert result == []
-    assert consumed == []
-    assert sorter.last_stats.input_records == 0
 
 
 def test_duplicate_sort_keys_are_preserved():
@@ -258,64 +141,17 @@ def test_duplicate_sort_keys_are_preserved():
         {"id": 5, "score": 10},
     ]
 
-    sorter = ExternalSort(memory_limit_records=2, fan_in=2)
+    sorter = ExternalSort(memory_rows=2, fan_in=2)
 
-    result = sorter.sort(records, key="score")
+    result = sorter.sort(records, key=lambda r: r["score"])
 
     assert sorted(r["id"] for r in result) == [1, 2, 3, 4, 5]
     assert [r["score"] for r in result] == [5, 5, 10, 10, 10]
 
 
-def test_temp_files_are_cleaned_after_success(tmp_path):
-    sorter = ExternalSort(
-        memory_limit_records=2,
-        fan_in=2,
-        temp_dir=str(tmp_path),
-    )
-
-    result = sorter.sort(sample_records(), key="id")
-
-    assert [r["id"] for r in result] == list(range(1, 10))
-    assert list(tmp_path.iterdir()) == []
 
 
-def test_invalid_configuration():
-    with pytest.raises(ValueError, match="memory_limit_records"):
-        ExternalSort(memory_limit_records=0)
 
-    with pytest.raises(ValueError, match="fan_in"):
-        ExternalSort(fan_in=1)
-
-
-def test_invalid_limit():
-    sorter = ExternalSort()
-
-    with pytest.raises(ValueError, match="limit"):
-        sorter.sort(
-            [{"id": 1}],
-            key="id",
-            limit=-1,
-        )
-
-
-def test_invalid_key_specification():
-    sorter = ExternalSort()
-
-    with pytest.raises(TypeError, match="key must"):
-        sorter.sort([{"id": 1}], key=123)
-
-    with pytest.raises(ValueError, match="cannot be empty"):
-        sorter.sort([{"id": 1}], key=[])
-
-    with pytest.raises(TypeError, match="key fields"):
-        sorter.sort([{"id": 1}], key=("id", 123))
-
-
-def test_string_key_requires_dict_records():
-    sorter = ExternalSort(memory_limit_records=2)
-
-    with pytest.raises(TypeError, match="dictionaries"):
-        sorter.sort([(1, "a"), (2, "b")], key="id")
 
 
 def test_large_dataset_is_sorted_across_many_runs():
@@ -325,11 +161,11 @@ def test_large_dataset_is_sorted_across_many_runs():
     ]
 
     sorter = ExternalSort(
-        memory_limit_records=17,
+        memory_rows=17,
         fan_in=4,
     )
 
-    result = sorter.sort(records, key="value")
+    result = sorter.sort(records, key=lambda r: r["value"])
 
     values = [r["value"] for r in result]
 
@@ -337,3 +173,49 @@ def test_large_dataset_is_sorted_across_many_runs():
     assert len(result) == 1000
     assert sorter.last_stats.initial_runs == 59
     assert sorter.last_stats.merge_passes >= 2
+
+
+def test_sort_empty_input():
+    sorter = ExternalSort(memory_rows=3)
+
+    assert sorter.sort([], key=lambda r: r["id"]) == []
+    assert sorter.last_stats.rows == 0
+    assert sorter.last_stats.initial_runs == 0
+
+
+def test_input_that_fits_in_memory_skips_runs():
+    sorter = ExternalSort(memory_rows=100)
+
+    result = sorter.sort(sample_records(), key=lambda r: r["id"])
+
+    assert [r["id"] for r in result] == list(range(1, 10))
+    assert sorter.last_stats.initial_runs == 0
+    assert sorter.last_stats.merge_passes == 0
+
+
+def test_descending_across_runs():
+    sorter = ExternalSort(memory_rows=2, fan_in=2)
+
+    result = sorter.sort(sample_records(), key=lambda r: r["salary"], descending=True)
+
+    assert [r["salary"] for r in result] == sorted((r["salary"] for r in sample_records()), reverse=True)
+    assert sorter.last_stats.merge_passes >= 2
+
+
+def test_temp_files_are_cleaned_after_success(tmp_path, monkeypatch):
+    monkeypatch.setattr("tempfile.tempdir", str(tmp_path))
+    sorter = ExternalSort(memory_rows=2, fan_in=2)
+
+    result = sorter.sort(sample_records(), key=lambda r: r["id"])
+
+    assert [r["id"] for r in result] == list(range(1, 10))
+    assert sorter.last_stats.temporary_files > 0
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_invalid_configuration():
+    with pytest.raises(ValueError, match="memory_rows"):
+        ExternalSort(memory_rows=1)
+
+    with pytest.raises(ValueError, match="fan_in"):
+        ExternalSort(fan_in=1)

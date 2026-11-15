@@ -106,19 +106,22 @@ class TestSQLDelEnunciadoSinIndice(TestSQLDelEnunciadoConIndice):
         self.skipTest("el polígono sin índice no es parte del enunciado")
 
 
-class TestVariablesDeSesion(unittest.TestCase):
+class TestVariablesDeSesion(_ConTiendas):
     def test_variable_no_definida_da_error_claro(self):
-        with self.assertRaisesRegex(SQLParseError, "SET mi_ubicacion"):
-            SQLParser().parse("SELECT * FROM t ORDER BY distancia(ubicacion, mi_ubicacion) LIMIT 3")
+        r = self.engine.run("SELECT * FROM tiendas ORDER BY distancia(ubicacion, mi_ubicacion) LIMIT 3")
+        self.assertFalse(r.success)
+        self.assertIn("SET mi_ubicacion", r.error)
 
     def test_set_valida_el_rango_de_coordenadas(self):
         with self.assertRaises(SQLParseError):
             SQLParser().parse("SET mi_ubicacion = POINT(-77.04, -212.0)")
 
     def test_arroba_es_equivalente(self):
-        parser = SQLParser({"mi_ubicacion": (-12.0, -77.0)})
-        sentencia = parser.parse("SELECT * FROM t ORDER BY distancia(u, @mi_ubicacion) LIMIT 1")
-        self.assertEqual(sentencia.query_spec.order_by[0].distance.point, (-12.0, -77.0))
+        self.run_ok("SET mi_ubicacion = POINT(-12.0, -77.0)")
+        con = self.run_ok("SELECT * FROM tiendas ORDER BY distancia(ubicacion, @mi_ubicacion) LIMIT 3")
+        sin = self.run_ok("SELECT * FROM tiendas ORDER BY distancia(ubicacion, mi_ubicacion) LIMIT 3")
+        self.assertEqual([r["id"] for r in con.rows], [r["id"] for r in sin.rows])
+        self.assertEqual([r["id"] for r in con.rows], self.fuerza_bruta_knn((-12.0, -77.0), 3))
 
 
 class TestMetricaEuclidiana(_ConTiendas):
@@ -145,7 +148,7 @@ class TestMetricaEuclidiana(_ConTiendas):
 
     def test_panel_convierte_el_radio_a_grados(self):
         r = self.engine.spatial_query(
-            "tiendas", kind="range", lat=CENTRO[0], lon=CENTRO[1],
+            table="tiendas", kind="range", lat=CENTRO[0], lon=CENTRO[1],
             radius_m=3000, metric="euclidean",
         )
         self.assertTrue(r["success"], r["error"])

@@ -53,7 +53,7 @@ export default function TextPanel({ tables, selectedTable, onSelectTable, onRun,
         <label className="field">
           <span>Columna de texto</span>
           <select className="select" value={activeColumn} onChange={(e) => setColumn(e.target.value)}>
-            {columns.map((c) => <option key={c} value={c}>{c} · {typeOf(c)}</option>)}
+            {textColumns.map((c) => <option key={c} value={c}>{c} · {typeOf(c)}</option>)}
           </select>
         </label>
         {table && textColumns.length === 0 && (

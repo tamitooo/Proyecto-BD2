@@ -255,6 +255,8 @@ class HNSWIndex:
         values = tuple(float(value) for value in vector)
         if not values:
             raise ValueError("vector no puede estar vacío")
+        if not all(math.isfinite(value) for value in values):
+            raise ValueError("vector debe contener solo valores finitos")
         if self.dimension is not None and len(values) != self.dimension:
             raise ValueError(
                 f"dimensión inválida: esperada {self.dimension}, recibida {len(values)}"

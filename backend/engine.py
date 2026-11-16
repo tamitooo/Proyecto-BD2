@@ -2,7 +2,7 @@ from __future__ import annotations
 import json,os,threading,time
 from pathlib import Path
 from typing import Any,Dict,Optional
-from backend.media import extract_media as extract_media_file
+from backend.media import extract_media as extract_media_file, media_file
 from indexes.clustered_bplus import ClusteredBPlusIndex
 from indexes.unclustered_bplus import UnclusteredBPlusIndex
 from indexes.extendible_hash import ExtendibleHash
@@ -98,6 +98,8 @@ class DemoEngine:
     def extract_media(self,*,filename,content,kind=None):
         """Guarda una imagen/audio en ``<data_dir>/media`` y extrae su vector BoVW."""
         return extract_media_file(self.media_dir,filename,content,kind=kind,model_root=self.model_dir)
+    def media_file(self,name):
+        return media_file(self.media_dir,name)
     def spatial_points(self,name):
         t=self.catalog.get_table(name);reg=self.catalog.spatial_index_for(name)
         if reg:

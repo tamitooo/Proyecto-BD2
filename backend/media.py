@@ -71,6 +71,41 @@ def save_media(media_dir: Path, filename: Optional[str], content: bytes) -> Path
     return target
 
 
+# Solo tipos que el navegador muestra sin ejecutar nada (sin SVG ni HTML).
+SERVABLE_MEDIA_TYPES = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".bmp": "image/bmp",
+    ".tif": "image/tiff",
+    ".tiff": "image/tiff",
+    ".wav": "audio/wav",
+    ".wave": "audio/wav",
+    ".mp3": "audio/mpeg",
+    ".ogg": "audio/ogg",
+    ".oga": "audio/ogg",
+    ".opus": "audio/ogg",
+    ".flac": "audio/flac",
+    ".m4a": "audio/mp4",
+    ".aac": "audio/aac",
+}
+
+
+def media_file(media_dir: Path, name: str) -> tuple[Path, str]:
+    """Ruta y tipo MIME de una imagen o audio de ``media_dir``.
+
+    Solo nombres planos (sin ``..`` ni ocultos) y extensiones de
+    ``SERVABLE_MEDIA_TYPES``: un HTML subido por /api/media/extract no se sirve.
+    """
+    path = Path(media_dir) / name
+    media_type = SERVABLE_MEDIA_TYPES.get(path.suffix.lower())
+    if name != safe_media_name(name) or media_type is None or not path.is_file():
+        raise FileNotFoundError(f"no existe el archivo multimedia '{name}'")
+    return path, media_type
+
+
 def extract_media(
     media_dir: Path,
     filename: Optional[str],

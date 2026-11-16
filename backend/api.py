@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import List,Optional
 from fastapi import FastAPI,File,Form,HTTPException,UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel,Field
 from backend.engine import DemoEngine
 
@@ -43,6 +44,11 @@ def query(body:QueryBody):return engine.run(body.sql).to_dict()
 async def media_extract(file:UploadFile=File(...),kind:str=Form("")):
     try:return engine.extract_media(filename=file.filename or "archivo",content=await file.read(),kind=kind or None)
     except Exception as e:raise HTTPException(400,str(e))
+@app.get("/api/media/{name}")
+def media_file(name:str):
+    try:path,media_type=engine.media_file(name)
+    except FileNotFoundError as e:raise HTTPException(404,str(e))
+    return FileResponse(path,media_type=media_type,headers={"X-Content-Type-Options":"nosniff"})
 @app.get("/api/spatial/points/{name}")
 def spatial_points(name:str):
     try:return engine.spatial_points(name)

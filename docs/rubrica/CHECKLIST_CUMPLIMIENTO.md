@@ -77,3 +77,22 @@ repositorio. ✅ = implementado y cubierto por pruebas o por benchmark.
 | Pruebas de punta a punta y comparación con fuerza bruta | ✅ | `tests/test_feature_extraction.py`, `tests/test_media_sql.py`, `tests/test_media_engine.py` |
 | Demo reproducible | ✅ | `python -m examples.demo_media` |
 | Teoría y limitaciones | ✅ | `docs/extraccion_caracteristicas.md` |
+
+## Parte 4 · comparación experimental (2.4.4)
+
+| Requisito | Estado | Evidencia |
+|---|---|---|
+| Datasets de 1 000, 10 000 y 100 000 imágenes y audios | ✅ | `data/multimedia/<n>/` (no versionado); resúmenes en `benchmarks/results/multimedia/extraccion_<n>.json`; tabla en `benchmarks/results/multimedia/README.md` |
+| Comparación IVF vs HNSW sobre esos datasets | ✅ | `benchmarks/results/vector/ivf_hnsw_corpus_image.csv` (12 filas) |
+| Distancia euclidiana vs similitud del coseno | ✅ | misma tabla, columna `metrica` |
+| Recall@10 contra fuerza bruta | ✅ | columna `recall10` |
+| Tiempo de construcción y de consulta | ✅ | columnas `construccion_s`, `consulta_ms` |
+| Uso de memoria | ✅ | columna `memoria_mb` (`deep_size`) |
+| Gráficas de tiempo vs tamaño del dataset | ✅ | `benchmarks/results/vector/plots/vector_corpus_{construccion,consulta,recall,memoria}.png` |
+| Galería de casos de éxito y error | ✅ | `benchmarks/results/multimedia/plots/galeria_multimedia.png` (35/40 aciertos) |
+| Tabla comparativa y cuándo usar cada índice | ✅ | `docs/informe/comparacion_vector.md` |
+
+Salvedad declarada: en audio, Recall@10 no es interpretable porque el corpus
+tiene duplicados exactos (60 vectores con similitud 1.000000 en 10 000); la
+comparación que sostiene la conclusión es la de imagen. Detalle y medición en
+`docs/informe/comparacion_vector.md`, sección Audio.

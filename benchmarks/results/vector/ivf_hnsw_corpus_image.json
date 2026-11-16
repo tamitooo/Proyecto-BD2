@@ -1,0 +1,164 @@
+{
+  "meta": {
+    "sizes": [
+      1000,
+      10000,
+      100000
+    ],
+    "metricas": [
+      "euclidean",
+      "cosine"
+    ],
+    "k": 10,
+    "consultas": 100,
+    "dim": 32,
+    "grupos": null,
+    "fuente": "corpus multimedia (image)"
+  },
+  "results": [
+    {
+      "dataset_size": 1000,
+      "indice": "ivf",
+      "metrica": "euclidean",
+      "construccion_s": 0.167,
+      "consulta_ms": 0.57,
+      "recall10": 0.996,
+      "memoria_mb": 1.15,
+      "fuente": "corpus-image",
+      "n_lists": 31,
+      "n_probe": 6
+    },
+    {
+      "dataset_size": 1000,
+      "indice": "hnsw",
+      "metrica": "euclidean",
+      "construccion_s": 4.84,
+      "consulta_ms": 5.02,
+      "recall10": 0.982,
+      "memoria_mb": 2.26,
+      "fuente": "corpus-image",
+      "M": 16,
+      "ef_search": 50
+    },
+    {
+      "dataset_size": 1000,
+      "indice": "ivf",
+      "metrica": "cosine",
+      "construccion_s": 0.563,
+      "consulta_ms": 3.321,
+      "recall10": 0.997,
+      "memoria_mb": 1.15,
+      "fuente": "corpus-image",
+      "n_lists": 31,
+      "n_probe": 6
+    },
+    {
+      "dataset_size": 1000,
+      "indice": "hnsw",
+      "metrica": "cosine",
+      "construccion_s": 7.145,
+      "consulta_ms": 4.735,
+      "recall10": 0.982,
+      "memoria_mb": 2.26,
+      "fuente": "corpus-image",
+      "M": 16,
+      "ef_search": 50
+    },
+    {
+      "dataset_size": 10000,
+      "indice": "ivf",
+      "metrica": "euclidean",
+      "construccion_s": 13.38,
+      "consulta_ms": 2.517,
+      "recall10": 0.994,
+      "memoria_mb": 11.19,
+      "fuente": "corpus-image",
+      "n_lists": 100,
+      "n_probe": 10
+    },
+    {
+      "dataset_size": 10000,
+      "indice": "hnsw",
+      "metrica": "euclidean",
+      "construccion_s": 97.293,
+      "consulta_ms": 5.814,
+      "recall10": 0.97,
+      "memoria_mb": 22.42,
+      "fuente": "corpus-image",
+      "M": 16,
+      "ef_search": 50
+    },
+    {
+      "dataset_size": 10000,
+      "indice": "ivf",
+      "metrica": "cosine",
+      "construccion_s": 14.906,
+      "consulta_ms": 18.258,
+      "recall10": 0.998,
+      "memoria_mb": 11.19,
+      "fuente": "corpus-image",
+      "n_lists": 100,
+      "n_probe": 10
+    },
+    {
+      "dataset_size": 10000,
+      "indice": "hnsw",
+      "metrica": "cosine",
+      "construccion_s": 89.265,
+      "consulta_ms": 6.306,
+      "recall10": 0.97,
+      "memoria_mb": 22.42,
+      "fuente": "corpus-image",
+      "M": 16,
+      "ef_search": 50
+    },
+    {
+      "dataset_size": 100000,
+      "indice": "ivf",
+      "metrica": "euclidean",
+      "construccion_s": 343.882,
+      "consulta_ms": 27.419,
+      "recall10": 0.998,
+      "memoria_mb": 113.75,
+      "fuente": "corpus-image",
+      "n_lists": 316,
+      "n_probe": 18
+    },
+    {
+      "dataset_size": 100000,
+      "indice": "hnsw",
+      "metrica": "euclidean",
+      "construccion_s": 1323.01,
+      "consulta_ms": 7.525,
+      "recall10": 0.946,
+      "memoria_mb": 225.1,
+      "fuente": "corpus-image",
+      "M": 16,
+      "ef_search": 50
+    },
+    {
+      "dataset_size": 100000,
+      "indice": "ivf",
+      "metrica": "cosine",
+      "construccion_s": 392.414,
+      "consulta_ms": 154.773,
+      "recall10": 0.999,
+      "memoria_mb": 113.77,
+      "fuente": "corpus-image",
+      "n_lists": 316,
+      "n_probe": 18
+    },
+    {
+      "dataset_size": 100000,
+      "indice": "hnsw",
+      "metrica": "cosine",
+      "construccion_s": 1413.02,
+      "consulta_ms": 9.137,
+      "recall10": 0.946,
+      "memoria_mb": 225.1,
+      "fuente": "corpus-image",
+      "M": 16,
+      "ef_search": 50
+    }
+  ]
+}

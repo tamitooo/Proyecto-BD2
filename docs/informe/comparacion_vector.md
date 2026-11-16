@@ -117,14 +117,15 @@ decir algo. Arreglarlo pide un descriptor de audio con mas resolucion (mas
 palabras auditivas, o MFCC por segmento en vez de por clip completo); queda como
 limitacion declarada del corpus, no del indice.
 
-## Cuando usar cada uno
+## Tabla comparativa con recomendaciones
 
-- **Recall como requisito duro**: IVF, con `n_probe` ajustado al corpus. Nunca
-  baja de 0.994 en las seis celdas medidas.
-- **Latencia critica con 100 000 o mas objetos**: HNSW, aceptando 0.946 de
-  recall y el doble de memoria; se recupera recall subiendo `ef_search` a
-  cambio de latencia.
-- **Hasta 10 000**: IVF gana en las tres dimensiones (construccion, memoria y,
-  en euclidiana, consulta). HNSW solo compite antes si la metrica es coseno y
-  el corpus es grande.
-- **Menos de 1 000**: fuerza bruta, sin construir nada.
+Todo lo que sigue sale de la tabla de imagenes de arriba, no de literatura
+general.
+
+| | IVF | HNSW |
+|---|---|---|
+| **Ventajas medidas** | Construccion 3.8-29x mas rapida; mitad de memoria (113.75 MB contra 225.10 MB a 100 000); recall 0.994-0.999 en las seis celdas, sin degradarse con el tamano | Consulta casi constante: 5.02 -> 7.53 ms al multiplicar por 100 los objetos, contra 0.57 -> 27.42 ms de IVF; gana en latencia desde 100 000 (7.53 contra 27.42 ms) |
+| **Desventajas medidas** | La consulta crece con el corpus: 48x al pasar de 1 000 a 100 000 objetos | Construccion 3.8-29x mas cara; el doble de memoria; pierde recall al crecer con `ef_search` fijo (0.982 -> 0.970 -> 0.946) |
+| **Recomendacion** | **Por defecto**, y obligatorio cuando el recall es requisito duro o la memoria esta acotada. Ajustar `n_probe` al corpus | Solo si la latencia a 100 000+ es el cuello de botella y se acepta 0.946 de recall; subir `ef_search` para recuperarlo, pagando latencia |
+| **Cuando no usarlo** | Cuando la consulta debe estar por debajo de ~10 ms con 100 000 objetos y recall 0.95 basta | Hasta 10 000 objetos: IVF gana en construccion, memoria y latencia (euclidiana). Con audio: el recall de HNSW no es interpretable (ver seccion Audio) |
+| **Alternativa** | - | Fuerza bruta por debajo de 1 000 objetos: sin construccion y recall exacto |

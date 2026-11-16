@@ -38,7 +38,8 @@ def infer_schema_from_csv(text, *, primary_key=None, delimiter=",", has_header=T
                 for v in vals: float(v)
                 typ = "FLOAT"
             except ValueError:
-                typ = f"VARCHAR({max([len(v) for v in vals] or [1])})"
+                # En bytes: storage/record.py guarda VARCHAR en UTF-8 y corta lo que sobra.
+                typ = f"VARCHAR({max([len(v.encode('utf-8')) for v in vals] or [1])})"
         out.append((name, typ))
     if primary_key and primary_key.lower() not in [n for n, _ in out]: raise CsvImportError(
         f"primary key '{primary_key}' no está en CSV")

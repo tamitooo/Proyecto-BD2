@@ -5,10 +5,13 @@ similitud coseno y dibuja una fila por consulta. Un borde marca si el vecino
 pertenece a la misma familia.
 
 Requiere haber generado antes el dataset con ``benchmarks.multimedia_corpus``.
+Lee ``vectors.jsonl``, que se escribe en streaming y por eso aguanta 100 000
+objetos sin cargar el corpus completo en memoria de golpe.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import math
 from pathlib import Path
@@ -16,7 +19,7 @@ from pathlib import Path
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 
-BASE = Path("data/multimedia")
+CORPUS = Path("data/multimedia/1000")
 SALIDA = Path("benchmarks/results/multimedia/plots")
 VECINOS = 5
 
@@ -28,17 +31,47 @@ def coseno(a, b) -> float:
     return producto / (na * nb) if na and nb else 0.0
 
 
+def leer_vectores(corpus: Path) -> list[dict]:
+    archivo = corpus / "vectors.jsonl"
+    if not archivo.exists():
+        archivo = corpus / "vectors.json"
+        if not archivo.exists():
+            raise SystemExit(f"no hay vectores en {corpus}; corre benchmarks.multimedia_corpus primero")
+        return json.loads(archivo.read_text(encoding="utf-8"))["objetos"]
+    objetos = []
+    with archivo.open(encoding="utf-8") as lineas:
+        for linea in lineas:
+            objeto = json.loads(linea)
+            # La galeria dibuja imagenes: el corpus tambien trae audio, que se
+            # evalua aparte porque su espacio vectorial no es comparable.
+            if objeto.get("vector") and objeto.get("modalidad") == "image":
+                objetos.append(objeto)
+    return objetos
+
+
 def main() -> None:
-    datos = json.loads((BASE / "vectors.json").read_text(encoding="utf-8"))["objetos"]
-    objetos = [o for o in datos if o["vector"]]
+    ap = argparse.ArgumentParser(description="Galeria de aciertos y errores del pipeline multimedia")
+    ap.add_argument("--corpus", default=str(CORPUS), help="directorio del corpus con vectors.jsonl")
+    ap.add_argument("--salida", default=str(SALIDA / "galeria_multimedia.png"))
+    args = ap.parse_args()
+
+    corpus = Path(args.corpus)
+    objetos = leer_vectores(corpus)
     if not objetos:
         raise SystemExit("no hay vectores; corre benchmarks.multimedia_corpus primero")
+
+    # vectors.jsonl guarda rutas relativas al corpus, para que el dataset se
+    # pueda mover de maquina sin editar los metadatos.
+    for objeto in objetos:
+        ruta = Path(objeto["ruta"])
+        objeto["ruta"] = str(ruta if ruta.is_absolute() else corpus / ruta)
 
     consultas = {}
     for objeto in objetos:
         consultas.setdefault(objeto["familia"], objeto)
 
-    SALIDA.mkdir(parents=True, exist_ok=True)
+    destino = Path(args.salida)
+    destino.parent.mkdir(parents=True, exist_ok=True)
     filas = list(consultas.items())
     fig, ejes = plt.subplots(len(filas), VECINOS + 1, figsize=(15, 2.0 * len(filas)))
     aciertos = 0
@@ -76,7 +109,6 @@ def main() -> None:
         fontsize=11,
     )
     fig.tight_layout()
-    destino = SALIDA / "galeria_multimedia.png"
     fig.savefig(destino, dpi=130)
     plt.close(fig)
     print(f"aciertos: {aciertos}/{total} ({aciertos / total:.3f})")

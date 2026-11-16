@@ -16,7 +16,6 @@ pequeño, testeable y fácil de integrar.
 
 from __future__ import annotations
 
-from curses import version
 import heapq
 import itertools
 import math

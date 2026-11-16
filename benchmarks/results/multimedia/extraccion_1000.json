@@ -1,0 +1,44 @@
+{
+  "tamano": 1000,
+  "semilla": 2026,
+  "imagenes": 1000,
+  "audios": 1000,
+  "archivos_escritos": 0,
+  "generacion_s": 0.6,
+  "entrenamiento_s": 108.7,
+  "objetos_entrenamiento": 2000,
+  "extraccion_s": 16.9,
+  "disco_mb": 48.4,
+  "audio_con_vector": true,
+  "vectores": 2000,
+  "dimension": 32,
+  "vectores_cero": 0,
+  "ms_por_objeto": {
+    "image": {
+      "p50": 9.1,
+      "p95": 23.8
+    },
+    "audio": {
+      "p50": 5.2,
+      "p95": 7.1
+    }
+  },
+  "por_modalidad": {
+    "image": {
+      "vectores": 1000,
+      "coseno_misma_familia": 0.7846,
+      "coseno_distinta_familia": 0.1927,
+      "precision_at_10": 0.8615,
+      "consultas_p10": 200,
+      "pares_coseno": 20000
+    },
+    "audio": {
+      "vectores": 1000,
+      "coseno_misma_familia": 0.4934,
+      "coseno_distinta_familia": 0.0286,
+      "precision_at_10": 0.953,
+      "consultas_p10": 200,
+      "pares_coseno": 20000
+    }
+  }
+}

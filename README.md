@@ -273,6 +273,20 @@ Luego se levanta el API y el frontend como siempre.
 
 Diseño, teoría y limitaciones: `docs/extraccion_caracteristicas.md`.
 
+### Dataset multimedia de los experimentos
+
+El corpus de imágenes y audio también se genera en local con semilla fija, sin
+descargas, y no se versiona:
+
+```powershell
+python -m benchmarks.multimedia_corpus --sizes 1000 10000 100000
+python -m benchmarks.multimedia_gallery --corpus data/multimedia/1000
+```
+
+Volumen (hasta 4.8 GB en el tamaño de 100 000), tiempos de entrenamiento y
+extracción, y calidad del espacio vectorial por tamaño y por modalidad:
+`benchmarks/results/multimedia/README.md`.
+
 ### Preparación para la exposición: MP3 y SIFT de OpenCV
 
 Estas dependencias son **opcionales**; el sistema funciona sin ellas con WAV y

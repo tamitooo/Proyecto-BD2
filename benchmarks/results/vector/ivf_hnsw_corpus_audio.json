@@ -1,0 +1,115 @@
+{
+  "meta": {
+    "sizes": [
+      1000,
+      10000
+    ],
+    "metricas": [
+      "euclidean",
+      "cosine"
+    ],
+    "k": 10,
+    "consultas": 100,
+    "dim": 32,
+    "grupos": null,
+    "fuente": "corpus multimedia (audio)"
+  },
+  "results": [
+    {
+      "dataset_size": 1000,
+      "indice": "ivf",
+      "metrica": "euclidean",
+      "construccion_s": 0.239,
+      "consulta_ms": 0.4,
+      "recall10": 1.0,
+      "memoria_mb": 1.15,
+      "fuente": "corpus-audio",
+      "n_lists": 31,
+      "n_probe": 6
+    },
+    {
+      "dataset_size": 1000,
+      "indice": "hnsw",
+      "metrica": "euclidean",
+      "construccion_s": 5.083,
+      "consulta_ms": 2.196,
+      "recall10": 0.791,
+      "memoria_mb": 2.26,
+      "fuente": "corpus-audio",
+      "M": 16,
+      "ef_search": 50
+    },
+    {
+      "dataset_size": 1000,
+      "indice": "ivf",
+      "metrica": "cosine",
+      "construccion_s": 0.543,
+      "consulta_ms": 3.381,
+      "recall10": 1.0,
+      "memoria_mb": 1.15,
+      "fuente": "corpus-audio",
+      "n_lists": 31,
+      "n_probe": 6
+    },
+    {
+      "dataset_size": 1000,
+      "indice": "hnsw",
+      "metrica": "cosine",
+      "construccion_s": 5.417,
+      "consulta_ms": 2.212,
+      "recall10": 0.791,
+      "memoria_mb": 2.26,
+      "fuente": "corpus-audio",
+      "M": 16,
+      "ef_search": 50
+    },
+    {
+      "dataset_size": 10000,
+      "indice": "ivf",
+      "metrica": "euclidean",
+      "construccion_s": 9.813,
+      "consulta_ms": 1.773,
+      "recall10": 1.0,
+      "memoria_mb": 11.18,
+      "fuente": "corpus-audio",
+      "n_lists": 100,
+      "n_probe": 10
+    },
+    {
+      "dataset_size": 10000,
+      "indice": "hnsw",
+      "metrica": "euclidean",
+      "construccion_s": 62.379,
+      "consulta_ms": 1.881,
+      "recall10": 0.28,
+      "memoria_mb": 22.23,
+      "fuente": "corpus-audio",
+      "M": 16,
+      "ef_search": 50
+    },
+    {
+      "dataset_size": 10000,
+      "indice": "ivf",
+      "metrica": "cosine",
+      "construccion_s": 12.748,
+      "consulta_ms": 28.285,
+      "recall10": 1.0,
+      "memoria_mb": 11.18,
+      "fuente": "corpus-audio",
+      "n_lists": 100,
+      "n_probe": 10
+    },
+    {
+      "dataset_size": 10000,
+      "indice": "hnsw",
+      "metrica": "cosine",
+      "construccion_s": 64.68,
+      "consulta_ms": 2.495,
+      "recall10": 0.28,
+      "memoria_mb": 22.23,
+      "fuente": "corpus-audio",
+      "M": 16,
+      "ef_search": 50
+    }
+  ]
+}

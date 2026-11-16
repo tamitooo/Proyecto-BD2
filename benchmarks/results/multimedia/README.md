@@ -71,10 +71,14 @@ construccion. No es comparable entre tamanos.
 
 - **Corpus sintetico.** La familia se usa como etiqueta de relevancia; la
   relevancia esta definida por construccion, no por juicio humano.
-- **Audio saturado.** Las seis familias de audio son casi separables (tono bajo,
-  tono alto, barrido, ruido, cuadrada, dos tonos): P@10 llega a 1.000 desde
-  10 000 objetos y deja de informar. Para que la metrica discrimine haria falta
-  audio con variabilidad intra-clase real (mezclas, ruido de fondo, habla).
+- **Audio saturado por duplicados.** Las seis familias de audio son casi
+  separables (tono bajo, tono alto, barrido, ruido, cuadrada, dos tonos) y la
+  cuantizacion colapsa senales distintas al mismo histograma: en el corpus de
+  10 000 hay **60 vectores con similitud exactamente 1.000000** contra una misma
+  consulta, y el top-50 tiene un solo valor de similitud distinto. Por eso P@10
+  marca 1.000 y el Recall@10 de los indices mide desempates, no calidad
+  (`docs/informe/comparacion_vector.md`, seccion Audio). Se arregla con un
+  descriptor de mayor resolucion (mas palabras auditivas o MFCC por segmento).
 - **Vocabulario e IDF por muestra.** Se entrenan con 2 000 objetos por
   modalidad, no con el corpus completo: `fit()` extrae descriptores dos veces
   por objeto y a 100 000 eso cuesta horas sin cambiar el resultado de forma

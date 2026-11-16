@@ -1,0 +1,13 @@
+dataset_size,indice,metrica,construccion_s,consulta_ms,recall10,memoria_mb,fuente,n_lists,n_probe,M,ef_search
+1000,ivf,euclidean,0.167,0.57,0.996,1.15,corpus-image,31,6,,
+1000,hnsw,euclidean,4.84,5.02,0.982,2.26,corpus-image,,,16,50
+1000,ivf,cosine,0.563,3.321,0.997,1.15,corpus-image,31,6,,
+1000,hnsw,cosine,7.145,4.735,0.982,2.26,corpus-image,,,16,50
+10000,ivf,euclidean,13.38,2.517,0.994,11.19,corpus-image,100,10,,
+10000,hnsw,euclidean,97.293,5.814,0.97,22.42,corpus-image,,,16,50
+10000,ivf,cosine,14.906,18.258,0.998,11.19,corpus-image,100,10,,
+10000,hnsw,cosine,89.265,6.306,0.97,22.42,corpus-image,,,16,50
+100000,ivf,euclidean,343.882,27.419,0.998,113.75,corpus-image,316,18,,
+100000,hnsw,euclidean,1323.01,7.525,0.946,225.1,corpus-image,,,16,50
+100000,ivf,cosine,392.414,154.773,0.999,113.77,corpus-image,316,18,,
+100000,hnsw,cosine,1413.02,9.137,0.946,225.1,corpus-image,,,16,50

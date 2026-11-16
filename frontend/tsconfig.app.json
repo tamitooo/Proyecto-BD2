@@ -14,7 +14,9 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "types": ["vite/client"],
-    "allowArbitraryExtensions": true
+    "allowArbitraryExtensions": true,
+    "allowImportingTsExtensions": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts"]
 }

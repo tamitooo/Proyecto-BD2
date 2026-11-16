@@ -8,6 +8,19 @@ services:
     ports:
       - "8000:8000"
 
+  # Carga la tienda de la Parte 5 por la API y termina. Es repetible: si ya está
+  # cargada no hace nada. Comparte el volumen para copiar imágenes y vocabulario.
+  seed:
+    build: .
+    command: ["python", "-m", "tools.seed_tienda", "--api", "http://backend:8000"]
+    environment:
+      BD2_DATA_DIR: /data
+    volumes:
+      - bd2-data:/data
+    depends_on:
+      - backend
+    restart: "no"
+
   frontend:
     build: ./frontend
     depends_on:

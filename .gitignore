@@ -13,6 +13,8 @@ demo_parte1_data/
 # Carpetas temporales de las pruebas (cuando %TEMP% no es utilizable)
 .pytest_tmp/
 .pytest_tmp_*/
+.bd2-tests/
+.tmp_check/
 
 # Andamiaje local de revisiones y sondeos: no forma parte del entregable
 .review/

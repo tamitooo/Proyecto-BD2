@@ -132,6 +132,36 @@ python -m tools.seed_tienda
 # o subir una imagen en "Buscar productos por imagen"
 ```
 
+### Verificación sin servidor
+
+Si quieres comprobar g/h sin instalar OpenCV/librosa ni levantar el backend:
+
+```powershell
+python -m tools.verify_persona3_visual
+```
+
+El script:
+
+1. copia los 30 productos de muestra a un `data_dir` temporal;
+2. entrena un vocabulario BoVW denso;
+3. inserta los productos con `EXTRACT_FEATURES`;
+4. crea el IVF con `CREATE INDEX ... USING IVF`;
+5. ejecuta `recommend_by_visual(1)`;
+6. ejecuta `search_by_image(producto_001.png)`;
+7. verifica que X no aparezca, el orden sea descendente y el IVF esté en el plan.
+
+Salida esperada (resumida):
+
+```text
+1. vocabulario BoVW: 16 palabras, 30 imágenes
+2. productos cargados con EXTRACT_FEATURES: 30
+3. IVF creado con CREATE INDEX ... USING IVF
+4. recommend_by_visual(1): 4, 5, 3, 2, 20
+5. search_by_image(producto_001.png): 1, 4, 5, 3, 2
+6. EXPLAIN: el IVF persistente aparece en el plan
+OK
+```
+
 ## 7. Dependencias
 
 | Dependencia | Uso |

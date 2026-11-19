@@ -103,6 +103,25 @@ npm run dev
 
 Leaflet y los tiles de OpenStreetMap se cargan desde CDN, por lo que el mapa base requiere acceso a Internet; el motor espacial y las consultas no dependen de Internet.
 
+### Con Docker
+
+```powershell
+docker compose up --build
+```
+
+Levanta el backend (`http://localhost:8000`), el frontend (`http://localhost:5173`)
+y el servicio `seed`, que carga la tienda de la Parte 5 y termina. Los datos viven
+en el volumen `bd2-data`, así que sobreviven a reinicios; `docker compose down -v`
+los borra.
+
+Si el volumen ya tiene otro vocabulario de imágenes (por ejemplo, el de los
+experimentos), el `seed` se detiene sin tocarlo. Para reemplazarlo por el de la
+tienda:
+
+```powershell
+docker compose run --rm seed python -m tools.seed_tienda --api http://backend:8000 --reemplazar-modelo
+```
+
 ## Pruebas
 
 ```powershell
@@ -357,6 +376,71 @@ El dataset llega a 100 000 registros para búsqueda y espacio. En la corrida his
 ### Nota metodológica de espacio espacial
 
 El benchmark actualizado usa `deep_size()` para estimar recursivamente la memoria ocupada por todo el objeto R-Tree de Python, en vez de `nodes * 64`. Esta cifra es memoria del proceso Python y **no es directamente equivalente** a `pg_relation_size()` de PostgreSQL; ambas se muestran con su metodología explícita.
+
+## Tienda (Parte 5)
+
+Recomendador de productos en la pestaña **Tienda** del frontend. Todo pasa por
+`/api/query`: cada fuente de recomendación es una consulta SQL al motor.
+
+### Datos y carga
+
+`examples/tienda/` trae una muestra con las columnas del dataset final:
+
+| Archivo | Columnas |
+|---|---|
+| `productos.csv` (30) | id, nombre, categoria, precio, descripcion, imagen |
+| `tiendas.csv` (5) | id, nombre, lat, lon, distrito |
+| `stock.csv` (91) | id, tienda_id, producto_id, cantidad |
+| `compras.csv` (200) | id, usuario_id, producto_id, fecha, cantidad |
+
+Además, `imagenes/` (una por producto) y `modelo/bow_image.npz` (vocabulario BoVW
+entrenado con esas imágenes). `python examples/tienda/generar_muestra.py` la
+regenera igual (semilla fija).
+
+Sin Docker, con el backend corriendo:
+
+```powershell
+python -m tools.seed_tienda
+```
+
+Copia imágenes y vocabulario a la carpeta de datos del backend, crea las cuatro
+tablas, calcula el vector de cada producto con `EXTRACT_FEATURES(imagen, 'image')`
+y crea `idx_tiendas_ubicacion` (R-Tree) e `idx_productos_embedding` (IVF coseno).
+Se puede correr varias veces: solo inserta lo que falta. `--datos <carpeta>` carga
+otro dataset con la misma estructura.
+
+### Ficha de producto
+
+`#tienda/producto/<id>` muestra el producto, sus 10 recomendaciones y las tiendas
+cercanas. Cada recomendación tiene una barra con lo que aportó cada fuente, y el
+peso de cada fuente se ajusta en la misma ficha sin volver a consultar. Para
+enlazar a una ficha desde otra vista: `enlaceProducto(id)` de
+`frontend/src/tienda/rutas.ts`.
+
+### Cómo agregar una fuente
+
+Una fuente recibe el id del producto que se está viendo y devuelve
+`{ producto_id, score }[]`, con score más alto = más recomendado (si la consulta da
+distancias, invertirlas, por ejemplo `1 / (1 + d)`). El contrato está en
+`frontend/src/tienda/tipos.ts`. Para que la ficha la use, se registra en
+`frontend/src/tienda/fuentes.ts`:
+
+```ts
+export const FUENTES: FuenteRegistrada[] = [
+  { id: 'texto', nombre: 'Descripción similar', ejecutar: recomendarPorTexto },
+];
+```
+
+La fusión (`fusion.ts`) quita el propio producto, normaliza cada fuente a [0, 1]
+(min-max), promedia con los pesos y se queda con los 10 mejores. Si una fuente
+falla, la ficha lo avisa y sigue con las demás.
+
+Pruebas del frontend:
+
+```powershell
+cd frontend
+npm test
+```
 
 ## Documentación
 

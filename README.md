@@ -363,6 +363,7 @@ El benchmark actualizado usa `deep_size()` para estimar recursivamente la memori
 - `docs/rubrica/COMPLIANCE_CHECKLIST.md`: checklist contra el enunciado.
 - `docs/informe/informe_incremental.md`: informe incremental completo y limitaciones.
 - `docs/informe/parte2_espacial.md`: diseño, SQL y resultados espaciales sincronizados con la corrida definitiva documentada.
+- `docs/parte5/persona4_recomendador.md`: fuentes i, j y k del recomendador (Parte 5), contrato de datos y límites.
 
 ## Persistencia física de índices — corrección de rúbrica
 

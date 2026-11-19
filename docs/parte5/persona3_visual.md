@@ -8,7 +8,7 @@ Este documento cubre la parte de Persona 3:
 | h | Recomendación visual desde X y búsqueda con imagen subida | `recommend_by_visual`, `search_by_image`, `frontend/src/tienda/visual.ts`, `BusquedaVisual.tsx` |
 | p | Pruebas de g/h | `tests/test_recommender_visual.py` |
 | q | README/informe | este documento |
-| r | Video/presentación | guion al final |
+| r | Video/presentación | Descartado: la exposición será en vivo |
 
 ## 1. Contrato compartido
 
@@ -203,7 +203,7 @@ OK
   persistente; para la demo se crea con `CREATE INDEX`.
 - Una imagen sin textura no produce descriptores SIFT; el error lo explica.
 
-## 9. Guion de demo (r)
+## 9. Guion de exposición (sin video)
 
 1. Abrir `Tienda`, elegir un producto (X).
 2. En la ficha, mostrar `Imagen similar` y explicar que usa el embedding ya

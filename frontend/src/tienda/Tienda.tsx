@@ -5,11 +5,14 @@ import { FUENTES } from "./fuentes.ts";
 import { productoDelHash } from "./rutas.ts";
 import CatalogoProductos from "./CatalogoProductos";
 
+type OrdenCatalogo = "relevancia" | "precio_asc" | "precio_desc";
+
 export default function Tienda() {
   const [texto, setTexto] = useState("");
   const [categoria, setCategoria] = useState("");
   const [precioMin, setPrecioMin] = useState("");
   const [precioMax, setPrecioMax] = useState("");
+  const [orden, setOrden] = useState<OrdenCatalogo>("relevancia");
   const [buscando, setBuscando] = useState(false);
 
   const [productoId, setProductoId] = useState(() =>
@@ -58,7 +61,14 @@ export default function Tienda() {
   useEffect(() => {
     let vigente = true;
 
-    if (!texto.trim() && !categoria && !precioMin && !precioMax) {
+    const sinFiltros =
+      !texto.trim() &&
+      !categoria &&
+      !precioMin &&
+      !precioMax &&
+      orden === "relevancia";
+
+    if (sinFiltros) {
       setCatalogo(catalogoBase);
       setError(null);
       setBuscando(false);
@@ -76,7 +86,7 @@ export default function Tienda() {
         categoria: categoria || undefined,
         precioMin: precioMin ? Number(precioMin) : undefined,
         precioMax: precioMax ? Number(precioMax) : undefined,
-        orden: "relevancia",
+        orden,
       })
         .then((productos) => {
           if (!vigente) return;
@@ -100,7 +110,7 @@ export default function Tienda() {
       vigente = false;
       window.clearTimeout(timer);
     };
-  }, [texto, categoria, precioMin, precioMax, catalogoBase]);
+  }, [texto, categoria, precioMin, precioMax, orden, catalogoBase]);
 
   const categorias = useMemo(
     () =>
@@ -178,6 +188,19 @@ export default function Tienda() {
               placeholder="Sin límite"
               onChange={(e) => setPrecioMax(e.target.value)}
             />
+          </label>
+
+          <label className="field">
+            Ordenar por
+            <select
+              className="select"
+              value={orden}
+              onChange={(e) => setOrden(e.target.value as OrdenCatalogo)}
+            >
+              <option value="relevancia">Relevancia</option>
+              <option value="precio_asc">Precio: menor a mayor</option>
+              <option value="precio_desc">Precio: mayor a menor</option>
+            </select>
           </label>
 
           {buscando && <span className="panel__hint">Buscando…</span>}

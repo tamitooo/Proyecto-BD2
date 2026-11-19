@@ -125,6 +125,21 @@ export default function Tienda() {
     [catalogoBase],
   );
 
+  const limpiarFiltros = () => {
+    setTexto("");
+    setCategoria("");
+    setPrecioMin("");
+    setPrecioMax("");
+    setOrden("relevancia");
+  };
+
+  const hayFiltros =
+    Boolean(texto.trim()) ||
+    Boolean(categoria) ||
+    Boolean(precioMin) ||
+    Boolean(precioMax) ||
+    orden !== "relevancia";
+
   return (
     <main className="tienda">
       <section className="panel">
@@ -203,13 +218,38 @@ export default function Tienda() {
             </select>
           </label>
 
+          <button
+            type="button"
+            className="button"
+            onClick={limpiarFiltros}
+            disabled={!hayFiltros}
+          >
+            Limpiar filtros
+          </button>
+
           {buscando && <span className="panel__hint">Buscando…</span>}
+        </div>
+
+        <div className="tienda__resumen">
+          <span className="panel__hint">
+            {catalogo.length} producto
+            {catalogo.length === 1 ? "" : "s"} encontrado
+            {catalogo.length === 1 ? "" : "s"}
+          </span>
         </div>
 
         {error ? (
           <div className="alert alert--error">
             No se pudieron leer los productos ({error}). Carga la tienda con{" "}
             <code>python -m tools.seed_tienda</code>.
+          </div>
+        ) : catalogo.length === 0 && !buscando ? (
+          <div className="tienda__vacio">
+            <p>No encontramos productos con los filtros seleccionados.</p>
+
+            <button type="button" className="button" onClick={limpiarFiltros}>
+              Ver todos los productos
+            </button>
           </div>
         ) : (
           <CatalogoProductos productos={catalogo} />

@@ -47,7 +47,7 @@ export default function FichaProducto({ productoId, fuentes, catalogo }: Props) 
   if (!producto) return <div className="alert">No existe el producto {productoId}.</div>;
 
   return (
-    <div className="ficha" aria-busy={cargando}>
+    <div className="ficha" id="ficha-producto" aria-busy={cargando}>
       <section className="panel ficha__producto">
         <img className="ficha__imagen" src={urlImagen(producto.imagen)} alt={producto.nombre} />
         <div>

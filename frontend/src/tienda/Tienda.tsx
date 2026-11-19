@@ -19,39 +19,117 @@ export default function Tienda() {
       setProductoId(productoDelHash(window.location.hash));
       window.scrollTo(0, 0);
     };
-    window.addEventListener('hashchange', alCambiar);
-    return () => window.removeEventListener('hashchange', alCambiar);
+
+    window.addEventListener("hashchange", alCambiar);
+
+    return () => {
+      window.removeEventListener("hashchange", alCambiar);
+    };
   }, []);
 
   useEffect(() => {
-    cargarCatalogo().then(setCatalogo).catch(e => setError(e instanceof Error ? e.message : String(e)));
-  }, []);
+    let vigente = true;
 
-  const porId = useMemo(() => new Map(catalogo.map(p => [p.id, p])), [catalogo]);
+    if (!texto.trim()) {
+      setBuscando(true);
+
+      cargarCatalogo()
+        .then((productos) => {
+          if (!vigente) return;
+
+          setCatalogo(productos);
+          setError(null);
+        })
+        .catch((e) => {
+          if (!vigente) return;
+
+          setError(e instanceof Error ? e.message : String(e));
+        })
+        .finally(() => {
+          if (vigente) setBuscando(false);
+        });
+
+      return () => {
+        vigente = false;
+      };
+    }
+
+    setBuscando(true);
+
+    const timer = window.setTimeout(() => {
+      buscarProductos({
+        texto,
+        orden: "relevancia",
+      })
+        .then((productos) => {
+          if (!vigente) return;
+
+          setCatalogo(productos);
+          setError(null);
+        })
+        .catch((e) => {
+          if (!vigente) return;
+
+          setError(e instanceof Error ? e.message : String(e));
+        })
+        .finally(() => {
+          if (vigente) setBuscando(false);
+        });
+    }, 300);
+
+    return () => {
+      vigente = false;
+      window.clearTimeout(timer);
+    };
+  }, [texto]);
+
+  const porId = useMemo(
+    () => new Map(catalogo.map((producto) => [producto.id, producto])),
+    [catalogo],
+  );
 
   return (
     <main className="tienda">
       <section className="panel">
         <h2 className="panel__title">Tienda</h2>
+
         <p className="panel__hint">
-          Recomendación de productos combinando texto, imágenes, historial de compras y ubicación de tiendas.
+          Recomendación de productos combinando texto, imágenes, historial de
+          compras y ubicación de tiendas.
         </p>
+
+        <div className="tienda__controles">
+          <label className="field">
+            Buscar productos
+            <input
+              className="input"
+              type="search"
+              value={texto}
+              placeholder="Ej. laptop gaming"
+              onChange={(e) => setTexto(e.target.value)}
+            />
+          </label>
+
+          {buscando && <span className="panel__hint">Buscando…</span>}
+        </div>
+
         {error ? (
           <div className="alert alert--error">
-            No se pudieron leer los productos ({error}). Carga la tienda con <code>python -m tools.seed_tienda</code>.
+            No se pudieron leer los productos ({error}). Carga la tienda con{" "}
+            <code>python -m tools.seed_tienda</code>.
           </div>
         ) : (
-          <label className="field tienda__selector">
-            Producto (selector provisional hasta el catálogo, #139)
-            <select className="select" value={productoId ?? ''}
-              onChange={e => { window.location.hash = e.target.value ? enlaceProducto(Number(e.target.value)) : '#tienda'; }}>
-              <option value="">— elige un producto —</option>
-              {catalogo.map(p => <option key={p.id} value={p.id}>{p.id}. {p.nombre} ({p.categoria})</option>)}
-            </select>
-          </label>
+          <CatalogoProductos productos={catalogo} />
         )}
       </section>
-      {productoId !== null && <FichaProducto productoId={productoId} fuentes={FUENTES} catalogo={porId} />}
+
+      {productoId !== null && (
+        <FichaProducto
+          productoId={productoId}
+          fuentes={FUENTES}
+          catalogo={porId}
+        />
+      )}
     </main>
   );
 }

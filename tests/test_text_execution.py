@@ -76,6 +76,49 @@ class TestEjecucionTextual(unittest.TestCase):
         self.assertEqual(resultado.execution_plan["access_path"], "TEXT_BM25")
         self.assertEqual(resultado.execution_plan["used_indexes"], ["contenido"])
 
+    def test_bm25_con_filtro_de_categoria(self):
+    self.engine.create_table(
+        "productos",
+        [
+            ("id", "INT"),
+            ("descripcion", "VARCHAR(200)"),
+            ("categoria", "VARCHAR(50)"),
+        ],
+    )
+
+    productos = (
+        (1, "laptop gaming potente", "laptops"),
+        (2, "laptop ultraligera oficina", "laptops"),
+        (3, "mochila para laptop gaming", "mochilas"),
+    )
+
+    for producto_id, descripcion, categoria in productos:
+        self.engine.run(
+            "INSERT INTO productos VALUES "
+            f"({producto_id}, '{descripcion}', '{categoria}')"
+        )
+
+    resultado = self.engine.run(
+        "SELECT id, categoria, SCORE() AS score "
+        "FROM productos "
+        "WHERE MATCH(descripcion, 'laptop gaming') "
+        "AND categoria = 'laptops' "
+        "USING BM25 "
+        "ORDER BY score DESC"
+    )
+
+    self.assertTrue(resultado.success, resultado.error)
+    self.assertGreater(len(resultado.rows), 0)
+
+    self.assertTrue(
+        all(row["categoria"] == "laptops" for row in resultado.rows)
+    )
+
+    self.assertNotIn(
+        3,
+        [row["id"] for row in resultado.rows],
+    )
+
     def test_tf_idf(self):
         resultado = self.engine.run(
             "SELECT * FROM documentos WHERE MATCH(contenido, 'base de datos') USING TF_IDF"

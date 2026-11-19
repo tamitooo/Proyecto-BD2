@@ -47,6 +47,95 @@ class TestTokenize(unittest.TestCase):
 
 
 class TestEjecucionTextual(unittest.TestCase):
+    def test_busqueda_productos_ordena_por_relevancia_y_precio(self):
+        self.engine.create_table(
+            "productos_orden",
+            [
+                ("id", "INT"),
+                ("descripcion", "VARCHAR(200)"),
+                ("precio", "FLOAT"),
+            ],
+        )
+
+        productos = (
+            (1, "laptop gaming gaming potente", 4200.0),
+            (2, "laptop gaming ligera", 2800.0),
+            (3, "laptop gaming económica", 1900.0),
+        )
+
+        for producto_id, descripcion, precio in productos:
+            self.engine.run(
+                "INSERT INTO productos_orden VALUES "
+                f"({producto_id}, '{descripcion}', {precio})"
+            )
+
+        por_relevancia = self.engine.run(
+            "SELECT id, precio, SCORE() AS score "
+            "FROM productos_orden "
+            "WHERE MATCH(descripcion, 'laptop gaming') "
+            "USING BM25 "
+            "ORDER BY score DESC"
+        )
+
+        self.assertTrue(por_relevancia.success, por_relevancia.error)
+        self.assertEqual(por_relevancia.rows[0]["id"], 1)
+
+        por_precio = self.engine.run(
+            "SELECT id, precio, SCORE() AS score "
+            "FROM productos_orden "
+            "WHERE MATCH(descripcion, 'laptop gaming') "
+            "USING BM25 "
+            "ORDER BY precio ASC"
+        )
+
+        self.assertTrue(por_precio.success, por_precio.error)
+        self.assertEqual(
+            [row["id"] for row in por_precio.rows],
+            [3, 2, 1],
+        )
+
+    def test_bm25_con_filtro_de_precio(self):
+        self.engine.create_table(
+            "productos_precio",
+            [
+                ("id", "INT"),
+                ("descripcion", "VARCHAR(200)"),
+                ("precio", "FLOAT"),
+            ],
+        )
+
+        productos = (
+            (1, "laptop gaming potente", 3500.0),
+            (2, "laptop gaming económica", 1800.0),
+            (3, "laptop gaming profesional", 6200.0),
+        )
+
+        for producto_id, descripcion, precio in productos:
+            self.engine.run(
+                "INSERT INTO productos_precio VALUES "
+                f"({producto_id}, '{descripcion}', {precio})"
+            )
+
+        resultado = self.engine.run(
+            "SELECT id, precio, SCORE() AS score "
+            "FROM productos_precio "
+            "WHERE MATCH(descripcion, 'laptop gaming') "
+            "AND precio >= 2000 "
+            "AND precio <= 5000 "
+            "USING BM25 "
+            "ORDER BY score DESC"
+        )
+
+        self.assertTrue(resultado.success, resultado.error)
+        self.assertEqual(
+            [row["id"] for row in resultado.rows],
+            [1],
+        )
+
+        self.assertTrue(
+            all(2000 <= row["precio"] <= 5000 for row in resultado.rows)
+        )
+
     def setUp(self):
         self._dir = _temp_dir("bd2-text-")
         self.engine = _Engine(self._dir)
@@ -75,6 +164,49 @@ class TestEjecucionTextual(unittest.TestCase):
         self.assertEqual(scores, sorted(scores, reverse=True))
         self.assertEqual(resultado.execution_plan["access_path"], "TEXT_BM25")
         self.assertEqual(resultado.execution_plan["used_indexes"], ["contenido"])
+
+    def test_bm25_con_filtro_de_categoria(self):
+        self.engine.create_table(
+            "productos",
+            [
+                ("id", "INT"),
+                ("descripcion", "VARCHAR(200)"),
+                ("categoria", "VARCHAR(50)"),
+            ],
+        )
+
+        productos = (
+            (1, "laptop gaming potente", "laptops"),
+            (2, "laptop ultraligera oficina", "laptops"),
+            (3, "mochila para laptop gaming", "mochilas"),
+        )
+
+        for producto_id, descripcion, categoria in productos:
+            self.engine.run(
+                "INSERT INTO productos VALUES "
+                f"({producto_id}, '{descripcion}', '{categoria}')"
+            )
+
+        resultado = self.engine.run(
+            "SELECT id, categoria, SCORE() AS score "
+            "FROM productos "
+            "WHERE MATCH(descripcion, 'laptop gaming') "
+            "AND categoria = 'laptops' "
+            "USING BM25 "
+            "ORDER BY score DESC"
+        )
+
+        self.assertTrue(resultado.success, resultado.error)
+        self.assertGreater(len(resultado.rows), 0)
+
+        self.assertTrue(
+            all(row["categoria"] == "laptops" for row in resultado.rows)
+        )
+
+        self.assertNotIn(
+            3,
+            [row["id"] for row in resultado.rows],
+        )
 
     def test_tf_idf(self):
         resultado = self.engine.run(

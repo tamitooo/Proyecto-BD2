@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel,Field
 from backend.engine import DemoEngine
+from recommender import stores_with_product
 
 app=FastAPI(title="Minigestor de Base de Datos Multimodal",version="2.0")
 app.add_middleware(CORSMiddleware,allow_origins=["http://localhost:5173","http://127.0.0.1:5173"],allow_credentials=True,allow_methods=["*"],allow_headers=["*"])
@@ -58,6 +59,14 @@ def spatial_query(body:SpatialBody):
     try:
         polygon=[(float(x[0]),float(x[1])) for x in body.polygon] if body.polygon else None
         return engine.spatial_query(table=body.table,kind=body.kind,lat=body.lat,lon=body.lon,radius_m=body.radius_m,k=body.k,metric=body.metric,polygon=polygon)
+    except Exception as e:raise HTTPException(400,str(e))
+@app.get("/api/recommend/stores/{producto_id}")
+def recommend_stores(producto_id:int,lat:float=-12.0464,lon:float=-77.0428,radius_m:float=15000.0,limit:int=10):
+    """Tiendas dentro del radio que tienen stock del producto (issue #137)."""
+    try:
+        tiendas=stores_with_product(engine,producto_id,(lat,lon),radius_m=radius_m,limit=limit)
+        return {"producto_id":producto_id,"centro":{"lat":lat,"lon":lon},"radio_m":radius_m,
+                "tiendas":[tienda.as_dict() for tienda in tiendas]}
     except Exception as e:raise HTTPException(400,str(e))
 
 if __name__=="__main__":

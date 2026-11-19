@@ -1,6 +1,7 @@
 import type {
   CreateTableRequest,
   MediaFeatures,
+  NearbyStoresResponse,
   QueryResult,
   SpatialPoints,
   SpatialQueryRequest,
@@ -95,4 +96,20 @@ export async function runSpatialQuery(body: SpatialQueryRequest): Promise<Spatia
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   }));
+}
+
+export async function fetchNearbyStores(
+  productoId: number,
+  lat: number,
+  lon: number,
+  radiusM: number,
+): Promise<NearbyStoresResponse> {
+  const params = new URLSearchParams({
+    lat: String(lat),
+    lon: String(lon),
+    radius_m: String(radiusM),
+  });
+  return parse<NearbyStoresResponse>(
+    await fetch(`${BASE}/recommend/stores/${Math.trunc(productoId)}?${params}`),
+  );
 }

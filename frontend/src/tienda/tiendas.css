@@ -1,0 +1,54 @@
+.tiendas__controles {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.tiendas__cuerpo {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.tiendas__mapa {
+  height: 300px;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #e2e8f0;
+}
+
+.tiendas__lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tienda-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.82rem;
+}
+
+.tienda-item__datos {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 900px) {
+  .tiendas__cuerpo {
+    grid-template-columns: 1fr;
+  }
+}

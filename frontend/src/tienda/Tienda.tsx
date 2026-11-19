@@ -7,11 +7,15 @@ import CatalogoProductos from "./CatalogoProductos";
 
 export default function Tienda() {
   const [texto, setTexto] = useState("");
+  const [categoria, setCategoria] = useState("");
   const [buscando, setBuscando] = useState(false);
+
   const [productoId, setProductoId] = useState(() =>
     productoDelHash(window.location.hash),
   );
+
   const [catalogo, setCatalogo] = useState<Producto[]>([]);
+  const [catalogoBase, setCatalogoBase] = useState<Producto[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -30,24 +34,32 @@ export default function Tienda() {
   useEffect(() => {
     let vigente = true;
 
-    if (!texto.trim()) {
-      setBuscando(true);
+    cargarCatalogo()
+      .then((productos) => {
+        if (!vigente) return;
 
-      cargarCatalogo()
-        .then((productos) => {
-          if (!vigente) return;
+        setCatalogo(productos);
+        setCatalogoBase(productos);
+        setError(null);
+      })
+      .catch((e) => {
+        if (!vigente) return;
 
-          setCatalogo(productos);
-          setError(null);
-        })
-        .catch((e) => {
-          if (!vigente) return;
+        setError(e instanceof Error ? e.message : String(e));
+      });
 
-          setError(e instanceof Error ? e.message : String(e));
-        })
-        .finally(() => {
-          if (vigente) setBuscando(false);
-        });
+    return () => {
+      vigente = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let vigente = true;
+
+    if (!texto.trim() && !categoria) {
+      setCatalogo(catalogoBase);
+      setError(null);
+      setBuscando(false);
 
       return () => {
         vigente = false;
@@ -58,7 +70,8 @@ export default function Tienda() {
 
     const timer = window.setTimeout(() => {
       buscarProductos({
-        texto,
+        texto: texto || undefined,
+        categoria: categoria || undefined,
         orden: "relevancia",
       })
         .then((productos) => {
@@ -81,11 +94,19 @@ export default function Tienda() {
       vigente = false;
       window.clearTimeout(timer);
     };
-  }, [texto]);
+  }, [texto, categoria, catalogoBase]);
+
+  const categorias = useMemo(
+    () =>
+      [...new Set(catalogoBase.map((producto) => producto.categoria))]
+        .filter(Boolean)
+        .sort(),
+    [catalogoBase],
+  );
 
   const porId = useMemo(
-    () => new Map(catalogo.map((producto) => [producto.id, producto])),
-    [catalogo],
+    () => new Map(catalogoBase.map((producto) => [producto.id, producto])),
+    [catalogoBase],
   );
 
   return (
@@ -108,6 +129,23 @@ export default function Tienda() {
               placeholder="Ej. laptop gaming"
               onChange={(e) => setTexto(e.target.value)}
             />
+          </label>
+
+          <label className="field">
+            Categoría
+            <select
+              className="select"
+              value={categoria}
+              onChange={(e) => setCategoria(e.target.value)}
+            >
+              <option value="">Todas</option>
+
+              {categorias.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
           </label>
 
           {buscando && <span className="panel__hint">Buscando…</span>}

@@ -13,7 +13,7 @@ import './styles.css';
 
 const DEFAULT_SQL='SELECT * FROM users WHERE age >= 20 ORDER BY age DESC';
 type Vista='motor'|'tienda';
-const vistaDelHash=():Vista=>window.location.hash==='#tienda'?'tienda':'motor';
+const vistaDelHash=():Vista=>window.location.hash.startsWith('#tienda')?'tienda':'motor';
 export default function App(){
   const [vista,setVista]=useState<Vista>(vistaDelHash);
   useEffect(()=>{const alCambiar=()=>setVista(vistaDelHash());window.addEventListener('hashchange',alCambiar);return()=>window.removeEventListener('hashchange',alCambiar);},[]);

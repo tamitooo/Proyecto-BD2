@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fusionar, normalizar, recomendar } from './fusion.ts';
+import { consultarFuentes, fusionar, normalizar, recomendar } from './fusion.ts';
 import type { FuenteRegistrada, Recomendacion } from './tipos.ts';
 
 const r = (producto_id: number, score: number): Recomendacion => ({ producto_id, score });
@@ -76,4 +76,14 @@ test('recomendar pasa el id del producto a cada fuente', async () => {
   let recibido: number | null = null;
   await recomendar(7, [{ id: 'a', nombre: 'A', ejecutar: async id => { recibido = id; return []; } }]);
   assert.equal(recibido, 7);
+});
+
+test('consultarFuentes separa resultados por fuente y las fallidas', async () => {
+  const fuentes: FuenteRegistrada[] = [
+    { id: 'a', nombre: 'A', ejecutar: async () => [r(2, 1)] },
+    { id: 'b', nombre: 'B', ejecutar: async () => { throw 'caída'; } },
+  ];
+  const { porFuente, fallidas } = await consultarFuentes(1, fuentes);
+  assert.deepEqual(porFuente, { a: [r(2, 1)] });
+  assert.deepEqual(fallidas, [{ fuente: 'b', error: 'caída' }]);
 });

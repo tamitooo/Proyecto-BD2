@@ -53,12 +53,15 @@ export function fusionar(
     .slice(0, k);
 }
 
-export async function recomendar(
+export interface ResultadosPorFuente {
+  porFuente: Record<string, Recomendacion[]>;
+  fallidas: FuenteFallida[];
+}
+
+export async function consultarFuentes(
   productoId: number,
   fuentes: FuenteRegistrada[],
-  pesos?: Record<string, number>,
-  k: number = TOP_K,
-): Promise<ResultadoFusion> {
+): Promise<ResultadosPorFuente> {
   const resultados = await Promise.allSettled(fuentes.map(f => f.ejecutar(productoId)));
   const porFuente: Record<string, Recomendacion[]> = {};
   const fallidas: FuenteFallida[] = [];
@@ -70,6 +73,19 @@ export async function recomendar(
       error: resultado.reason instanceof Error ? resultado.reason.message : String(resultado.reason),
     });
   });
-  const pesosEfectivos = pesos ?? Object.fromEntries(fuentes.map(f => [f.id, f.peso ?? 1]));
-  return { recomendaciones: fusionar(productoId, porFuente, pesosEfectivos, k), fallidas };
+  return { porFuente, fallidas };
+}
+
+export function pesosPorDefecto(fuentes: FuenteRegistrada[]): Record<string, number> {
+  return Object.fromEntries(fuentes.map(f => [f.id, f.peso ?? 1]));
+}
+
+export async function recomendar(
+  productoId: number,
+  fuentes: FuenteRegistrada[],
+  pesos?: Record<string, number>,
+  k: number = TOP_K,
+): Promise<ResultadoFusion> {
+  const { porFuente, fallidas } = await consultarFuentes(productoId, fuentes);
+  return { recomendaciones: fusionar(productoId, porFuente, pesos ?? pesosPorDefecto(fuentes), k), fallidas };
 }

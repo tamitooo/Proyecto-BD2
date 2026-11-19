@@ -58,17 +58,35 @@ export async function recomendarPorImagen(productoId: number): Promise<Recomenda
 /**
  * Búsqueda visual subiendo una imagen. La imagen se guarda en el servidor con
  * `/api/media/extract`; luego se consulta con `SIMILAR_TO('archivo')`.
+ *
+ * Si la imagen es exactamente la de un producto del catálogo, ese producto
+ * aparece primero con score ≈ 1. Por defecto lo descartamos para mostrar
+ * "similares" y no la coincidencia consigo misma.
  */
-export async function buscarPorImagen(archivo: File): Promise<Recomendacion[]> {
+export interface OpcionesBusquedaVisual {
+  excluirCoincidenciaExacta?: boolean;
+}
+
+export async function buscarPorImagen(
+  archivo: File,
+  opciones: OpcionesBusquedaVisual = {},
+): Promise<Recomendacion[]> {
   const media = await extractMedia(archivo);
   const nombre = escaparSql(media.name);
   const resultado = await consultar(
     `SELECT id, SIMILARITY_SCORE() AS score FROM productos ` +
-    `WHERE SIMILAR_TO('${nombre}', k=${K}) ` +
+    `WHERE SIMILAR_TO('${nombre}', k=${K + 1}) ` +
     `USING IVF WITH METRIC=${METRIC} ORDER BY score DESC`,
   );
-  return resultado
+  const recomendaciones = resultado
     .map(aRecomendacion)
-    .filter((item): item is Recomendacion => item !== null)
-    .slice(0, K);
+    .filter((item): item is Recomendacion => item !== null);
+  if (
+    opciones.excluirCoincidenciaExacta !== false
+    && recomendaciones.length > 1
+    && recomendaciones[0].score >= 0.999
+  ) {
+    return recomendaciones.slice(1, K + 1);
+  }
+  return recomendaciones.slice(0, K);
 }

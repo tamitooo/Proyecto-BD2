@@ -78,6 +78,13 @@ export default function FichaProducto({ productoId, fuentes, catalogo }: Props) 
                 </label>
               ))}
             </fieldset>
+            {fuentes.length === 1 && (
+              <p className="panel__hint">
+                Con una sola fuente activa, su peso se normaliza a 1 y el orden no
+                cambia. Registra otra fuente (texto, metadatos o co-compra) para
+                ver el efecto de la fusión.
+              </p>
+            )}
             {resultados && resultados.fallidas.length > 0 && (
               <div className="alert alert--error">
                 Sin resultados de: {resultados.fallidas.map(f => `${nombreFuente(f.fuente)} (${f.error})`).join('; ')}

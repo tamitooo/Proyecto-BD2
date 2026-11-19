@@ -13,13 +13,14 @@ export default function BusquedaVisual({ catalogo }: Props) {
   const [resultados, setResultados] = useState<Recomendacion[] | null>(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [excluirExacta, setExcluirExacta] = useState(true);
 
   const buscar = async () => {
     if (!archivo) return;
     setCargando(true);
     setError(null);
     try {
-      setResultados(await buscarPorImagen(archivo));
+      setResultados(await buscarPorImagen(archivo, { excluirCoincidenciaExacta: excluirExacta }));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setResultados(null);
@@ -49,6 +50,20 @@ export default function BusquedaVisual({ catalogo }: Props) {
               setError(null);
             }}
           />
+        </label>
+        <label className="field field--wide">
+          <span>
+            <input
+              type="checkbox"
+              checked={excluirExacta}
+              disabled={cargando}
+              onChange={e => {
+                setExcluirExacta(e.target.checked);
+                setResultados(null);
+              }}
+            />{' '}
+            Excluir la coincidencia exacta (si la imagen es de un producto del catálogo)
+          </span>
         </label>
       </div>
       <div className="button-row">

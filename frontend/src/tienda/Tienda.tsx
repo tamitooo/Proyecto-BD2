@@ -1,11 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
-import { cargarCatalogo, type Producto } from './datos.ts';
-import FichaProducto from './FichaProducto';
-import { FUENTES } from './fuentes.ts';
-import { enlaceProducto, productoDelHash } from './rutas.ts';
+import { useEffect, useMemo, useState } from "react";
+import { buscarProductos, cargarCatalogo, type Producto } from "./datos.ts";
+import FichaProducto from "./FichaProducto";
+import { FUENTES } from "./fuentes.ts";
+import { productoDelHash } from "./rutas.ts";
+import CatalogoProductos from "./CatalogoProductos";
 
 export default function Tienda() {
-  const [productoId, setProductoId] = useState(() => productoDelHash(window.location.hash));
+  const [texto, setTexto] = useState("");
+  const [buscando, setBuscando] = useState(false);
+  const [productoId, setProductoId] = useState(() =>
+    productoDelHash(window.location.hash),
+  );
   const [catalogo, setCatalogo] = useState<Producto[]>([]);
   const [error, setError] = useState<string | null>(null);
 

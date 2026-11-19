@@ -47,6 +47,53 @@ class TestTokenize(unittest.TestCase):
 
 
 class TestEjecucionTextual(unittest.TestCase):
+    def test_busqueda_productos_ordena_por_relevancia_y_precio(self):
+        self.engine.create_table(
+            "productos_orden",
+            [
+                ("id", "INT"),
+                ("descripcion", "VARCHAR(200)"),
+                ("precio", "FLOAT"),
+            ],
+        )
+
+        productos = (
+            (1, "laptop gaming gaming potente", 4200.0),
+            (2, "laptop gaming ligera", 2800.0),
+            (3, "laptop gaming económica", 1900.0),
+        )
+
+        for producto_id, descripcion, precio in productos:
+            self.engine.run(
+                "INSERT INTO productos_orden VALUES "
+                f"({producto_id}, '{descripcion}', {precio})"
+            )
+
+        por_relevancia = self.engine.run(
+            "SELECT id, precio, SCORE() AS score "
+            "FROM productos_orden "
+            "WHERE MATCH(descripcion, 'laptop gaming') "
+            "USING BM25 "
+            "ORDER BY score DESC"
+        )
+
+        self.assertTrue(por_relevancia.success, por_relevancia.error)
+        self.assertEqual(por_relevancia.rows[0]["id"], 1)
+
+        por_precio = self.engine.run(
+            "SELECT id, precio, SCORE() AS score "
+            "FROM productos_orden "
+            "WHERE MATCH(descripcion, 'laptop gaming') "
+            "USING BM25 "
+            "ORDER BY precio ASC"
+        )
+
+        self.assertTrue(por_precio.success, por_precio.error)
+        self.assertEqual(
+            [row["id"] for row in por_precio.rows],
+            [3, 2, 1],
+        )
+
     def test_bm25_con_filtro_de_precio(self):
         self.engine.create_table(
             "productos_precio",
@@ -88,7 +135,7 @@ class TestEjecucionTextual(unittest.TestCase):
         self.assertTrue(
             all(2000 <= row["precio"] <= 5000 for row in resultado.rows)
         )
-        
+
     def setUp(self):
         self._dir = _temp_dir("bd2-text-")
         self.engine = _Engine(self._dir)

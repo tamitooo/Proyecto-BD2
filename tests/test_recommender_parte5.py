@@ -235,5 +235,42 @@ class TestComprasDuplicadas(unittest.TestCase):
         self.assertEqual(by_id[2].evidencia["compras"], 4)
 
 
+def test_endpoint_tiendas_cercanas(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    import backend.api as api
+
+    engine, path = _new_engine()
+    try:
+        monkeypatch.setattr(api, "engine", engine)
+        client = TestClient(api.app)
+        response = client.get(
+            "/api/recommend/stores/1",
+            params={"lat": _CENTRO[0], "lon": _CENTRO[1], "radius_m": 3000},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert [tienda["tienda_id"] for tienda in data["tiendas"]] == [1, 2]
+        assert data["tiendas"][0]["distancia_m"] == 0.0
+        assert data["tiendas"][1]["cantidad"] == 2
+    finally:
+        shutil.rmtree(path, ignore_errors=True)
+
+
+def test_endpoint_tiendas_radio_invalido(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    import backend.api as api
+
+    engine, path = _new_engine()
+    try:
+        monkeypatch.setattr(api, "engine", engine)
+        client = TestClient(api.app)
+        response = client.get("/api/recommend/stores/1", params={"radius_m": 0})
+        assert response.status_code == 400
+    finally:
+        shutil.rmtree(path, ignore_errors=True)
+
+
 if __name__ == "__main__":
     unittest.main()

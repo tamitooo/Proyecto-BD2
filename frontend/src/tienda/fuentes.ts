@@ -1,3 +1,4 @@
+import { recomendarPorImagen } from './visual.ts';
 import type { FuenteRegistrada } from './tipos.ts';
 
 /**
@@ -8,4 +9,11 @@ import type { FuenteRegistrada } from './tipos.ts';
  * `ejecutar` cumple el contrato de tipos.ts. `peso` es opcional (por defecto 1)
  * y el usuario lo puede cambiar desde la ficha.
  */
-export const FUENTES: FuenteRegistrada[] = [];
+export const FUENTES: FuenteRegistrada[] = [
+  {
+    id: 'visual',
+    nombre: 'Imagen similar',
+    ejecutar: recomendarPorImagen,
+    peso: 1,
+  },
+];

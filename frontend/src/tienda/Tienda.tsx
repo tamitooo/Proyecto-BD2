@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { cargarCatalogo, type Producto } from './datos.ts';
 import FichaProducto from './FichaProducto';
+import BusquedaVisual from './BusquedaVisual';
 import { FUENTES } from './fuentes.ts';
 import { enlaceProducto, productoDelHash } from './rutas.ts';
 
@@ -46,6 +47,7 @@ export default function Tienda() {
           </label>
         )}
       </section>
+      <BusquedaVisual catalogo={porId} />
       {productoId !== null && <FichaProducto productoId={productoId} fuentes={FUENTES} catalogo={porId} />}
     </main>
   );

@@ -364,6 +364,7 @@ El benchmark actualizado usa `deep_size()` para estimar recursivamente la memori
 - `docs/informe/informe_incremental.md`: informe incremental completo y limitaciones.
 - `docs/informe/parte2_espacial.md`: diseño, SQL y resultados espaciales sincronizados con la corrida definitiva documentada.
 - `docs/parte5/persona4_recomendador.md`: fuentes i, j y k del recomendador (Parte 5), contrato de datos y límites.
+- `docs/parte5/persona3_visual.md`: fuente visual (g/h), `EXTRACT_FEATURES`, IVF persistente, búsqueda por imagen y contrato con la fusión.
 
 ## Persistencia física de índices — corrección de rúbrica
 

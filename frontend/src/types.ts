@@ -150,3 +150,20 @@ export interface MediaFeatures {
   size_bytes: number;
   elapsed_ms: number;
 }
+
+export interface NearbyStore {
+  tienda_id: number;
+  nombre: string;
+  lat: number;
+  lon: number;
+  distrito: string;
+  distancia_m: number;
+  cantidad: number;
+}
+
+export interface NearbyStoresResponse {
+  producto_id: number;
+  centro: { lat: number; lon: number };
+  radio_m: number;
+  tiendas: NearbyStore[];
+}

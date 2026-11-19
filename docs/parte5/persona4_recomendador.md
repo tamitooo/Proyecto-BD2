@@ -145,8 +145,20 @@ La intersección se hace en Python porque el motor no puede filtrar por una
 columna del lado derecho del join. Con 20-50 tiendas el costo es despreciable.
 
 Devuelve `NearbyStore` ordenado por distancia, con `distancia_m`,
-`cantidad` y `distrito`; el panel de mapa de la Persona 4 solo tiene que pintar
-esos puntos. `availability_score()` queda disponible si la fusión decide usar
+`cantidad` y `distrito`. La vista está en:
+
+- **API:** `GET /api/recommend/stores/{producto_id}?lat=&lon=&radius_m=15000`
+  (`backend/api.py`), que devuelve `{producto_id, centro, radio_m, tiendas}`.
+- **UI:** `frontend/src/tienda/TiendasCercanas.tsx`, dentro de la ficha. Deja
+  elegir el punto de referencia (Centro de Lima, Miraflores, San Isidro, Surco,
+  La Molina, Los Olivos), el radio (por defecto 15 km) y pinta el usuario y las
+  tiendas en Leaflet (`window.L`, cargado por CDN en `index.html`).
+
+El radio por defecto es 15 km porque las tiendas reales de
+`examples/tienda/tiendas.csv` están a 5.7–12.4 km del centro de Lima; con 3 km
+la lista sale vacía para casi cualquier producto.
+
+`availability_score()` queda disponible si la fusión decide usar
 disponibilidad como señal, pero **no** rankea productos: premia densidad
 comercial, no preferencia.
 

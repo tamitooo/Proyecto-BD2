@@ -8,6 +8,8 @@ import CatalogoProductos from "./CatalogoProductos";
 export default function Tienda() {
   const [texto, setTexto] = useState("");
   const [categoria, setCategoria] = useState("");
+  const [precioMin, setPrecioMin] = useState("");
+  const [precioMax, setPrecioMax] = useState("");
   const [buscando, setBuscando] = useState(false);
 
   const [productoId, setProductoId] = useState(() =>
@@ -56,7 +58,7 @@ export default function Tienda() {
   useEffect(() => {
     let vigente = true;
 
-    if (!texto.trim() && !categoria) {
+    if (!texto.trim() && !categoria && !precioMin && !precioMax) {
       setCatalogo(catalogoBase);
       setError(null);
       setBuscando(false);
@@ -72,6 +74,8 @@ export default function Tienda() {
       buscarProductos({
         texto: texto || undefined,
         categoria: categoria || undefined,
+        precioMin: precioMin ? Number(precioMin) : undefined,
+        precioMax: precioMax ? Number(precioMax) : undefined,
         orden: "relevancia",
       })
         .then((productos) => {
@@ -86,7 +90,9 @@ export default function Tienda() {
           setError(e instanceof Error ? e.message : String(e));
         })
         .finally(() => {
-          if (vigente) setBuscando(false);
+          if (vigente) {
+            setBuscando(false);
+          }
         });
     }, 300);
 
@@ -94,7 +100,7 @@ export default function Tienda() {
       vigente = false;
       window.clearTimeout(timer);
     };
-  }, [texto, categoria, catalogoBase]);
+  }, [texto, categoria, precioMin, precioMax, catalogoBase]);
 
   const categorias = useMemo(
     () =>
@@ -146,6 +152,32 @@ export default function Tienda() {
                 </option>
               ))}
             </select>
+          </label>
+
+          <label className="field">
+            Precio mínimo
+            <input
+              className="input"
+              type="number"
+              min="0"
+              step="0.01"
+              value={precioMin}
+              placeholder="0"
+              onChange={(e) => setPrecioMin(e.target.value)}
+            />
+          </label>
+
+          <label className="field">
+            Precio máximo
+            <input
+              className="input"
+              type="number"
+              min="0"
+              step="0.01"
+              value={precioMax}
+              placeholder="Sin límite"
+              onChange={(e) => setPrecioMax(e.target.value)}
+            />
           </label>
 
           {buscando && <span className="panel__hint">Buscando…</span>}

@@ -38,6 +38,9 @@ frontend/.vite/
 # Datos de la demo creados por el API
 backend/data/
 
+# Reportes locales de diagnostico de permisos
+.acl-reports/
+
 # Corpus sintetico de los experimentos de texto (se regenera con la semilla)
 data/text/
 

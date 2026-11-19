@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { buscarProductos, cargarCatalogo, type Producto } from "./datos.ts";
 import FichaProducto from "./FichaProducto";
+import BusquedaVisual from "./BusquedaVisual";
 import { FUENTES } from "./fuentes.ts";
 import { productoDelHash } from "./rutas.ts";
 import CatalogoProductos from "./CatalogoProductos";
@@ -26,7 +27,6 @@ export default function Tienda() {
   useEffect(() => {
     const alCambiar = () => {
       setProductoId(productoDelHash(window.location.hash));
-      window.scrollTo(0, 0);
     };
 
     window.addEventListener("hashchange", alCambiar);
@@ -35,6 +35,19 @@ export default function Tienda() {
       window.removeEventListener("hashchange", alCambiar);
     };
   }, []);
+
+  useEffect(() => {
+    if (productoId === null) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      document
+        .getElementById("ficha-producto")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+    return () => window.clearTimeout(timer);
+  }, [productoId]);
 
   useEffect(() => {
     let vigente = true;
@@ -255,6 +268,7 @@ export default function Tienda() {
           <CatalogoProductos productos={catalogo} />
         )}
       </section>
+      <BusquedaVisual catalogo={porId} />
 
       {productoId !== null && (
         <FichaProducto

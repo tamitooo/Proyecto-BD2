@@ -6,7 +6,7 @@ import heapq
 import json
 import os
 import shutil
-import tempfile
+import uuid
 from contextlib import nullcontext
 from dataclasses import dataclass
 from itertools import groupby
@@ -116,9 +116,10 @@ def merge_spimi_blocks(
     if destination.exists():
         raise FileExistsError(destination)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    temporary = Path(tempfile.mkdtemp(
-        dir=destination.parent, prefix=f".{destination.name}.building-",
-    ))
+    # Igual que en SPIMITextIndex: una carpeta normal hereda los permisos del
+    # índice; tempfile.mkdtemp crea una DACL protegida en Windows.
+    temporary = destination.parent / f".{destination.name}.building-{uuid.uuid4().hex}"
+    temporary.mkdir()
 
     try:
         run_directory = temporary / ".runs"

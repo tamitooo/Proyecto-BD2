@@ -1,0 +1,18 @@
+# Dependencias mínimas para la parte de Persona 3 (Parte 5, g/h).
+#
+# El motor y la fuente visual usan el SIFT denso de respaldo, que solo necesita
+# numpy + Pillow. No requiere OpenCV, librosa, soundfile ni psycopg2.
+#
+# Instalar SIEMPRE con el Python del venv:
+#   venv\Scripts\python.exe -m pip install -r requirements-persona3.txt
+
+pytest>=8.0
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+numpy>=1.26
+Pillow>=10.0
+
+# Opcional: solo si vas a usar el modelo de muestra
+# `examples/tienda/modelo/bow_image.npz`, que fue entrenado con OpenCV.
+# opencv-python-headless>=4.8,<5

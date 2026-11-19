@@ -11,7 +11,7 @@ import heapq
 import json
 import math
 import shutil
-import tempfile
+import uuid
 from collections import Counter
 from pathlib import Path
 from typing import Iterable, List, Optional, Sequence, Tuple
@@ -64,7 +64,11 @@ class SPIMITextIndex:
         """
         directory = Path(directory)
         directory.mkdir(parents=True, exist_ok=True)
-        building = Path(tempfile.mkdtemp(dir=directory, prefix="build-"))
+        # No usar tempfile.mkdtemp: en Windows crea la carpeta con una DACL
+        # protegida que deja al usuario sin acceso a ``blocks``. Una carpeta
+        # normal hereda los permisos del índice y se puede escribir/leer.
+        building = directory / f"build-{uuid.uuid4().hex}"
+        building.mkdir()
         try:
             lengths = [0] * len(texts)
 

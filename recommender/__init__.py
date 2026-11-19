@@ -1,9 +1,8 @@
-"""Recomendador de la Parte 5: fuentes de la Persona 4 (issues i, j, k).
+"""Recomendador de la Parte 5.
 
-Este paquete **no** fusiona puntajes ni expone endpoints: eso es de la Persona 5
-(issue l).  Cada fuente devuelve una lista ordenada de ``Recommendation`` con
-``{producto_id, score}`` y la evidencia cruda para que la fusión pueda
-normalizar sin volver a consultar el motor.
+Las fuentes de Persona 4 son i, j, k; la fuente visual (g/h) vive en
+``recommender.visual`` y comparte el mismo contrato ``Recommendation``.
+La fusión de puntajes y los endpoints son de Persona 5.
 """
 
 from .copurchase import recommend_by_copurchase
@@ -11,13 +10,21 @@ from .metadata import recommend_by_metadata
 from .schema import DDL, create_schema
 from .stores import stores_with_product
 from .types import NearbyStore, Recommendation
+from .visual import (
+    product_embedding,
+    recommend_by_visual,
+    search_by_image,
+)
 
 __all__ = [
     "DDL",
     "NearbyStore",
     "Recommendation",
     "create_schema",
+    "product_embedding",
     "recommend_by_copurchase",
     "recommend_by_metadata",
+    "recommend_by_visual",
+    "search_by_image",
     "stores_with_product",
 ]

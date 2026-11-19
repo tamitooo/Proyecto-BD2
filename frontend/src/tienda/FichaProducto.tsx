@@ -47,7 +47,7 @@ export default function FichaProducto({ productoId, fuentes, catalogo }: Props) 
   if (!producto) return <div className="alert">No existe el producto {productoId}.</div>;
 
   return (
-    <div className="ficha" aria-busy={cargando}>
+    <div className="ficha" id="ficha-producto" aria-busy={cargando}>
       <section className="panel ficha__producto">
         <img className="ficha__imagen" src={urlImagen(producto.imagen)} alt={producto.nombre} />
         <div>
@@ -78,6 +78,13 @@ export default function FichaProducto({ productoId, fuentes, catalogo }: Props) 
                 </label>
               ))}
             </fieldset>
+            {fuentes.length === 1 && (
+              <p className="panel__hint">
+                Con una sola fuente activa, su peso se normaliza a 1 y el orden no
+                cambia. Registra otra fuente (texto, metadatos o co-compra) para
+                ver el efecto de la fusión.
+              </p>
+            )}
             {resultados && resultados.fallidas.length > 0 && (
               <div className="alert alert--error">
                 Sin resultados de: {resultados.fallidas.map(f => `${nombreFuente(f.fuente)} (${f.error})`).join('; ')}

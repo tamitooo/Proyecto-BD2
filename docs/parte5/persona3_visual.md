@@ -108,9 +108,28 @@ fuente visual aparecerá como `Imagen similar`.
 
 ## 6. Cómo probar
 
+### 6.1 Instalación mínima (sin OpenCV/librosa)
+
+Usa el Python del venv, no el `pip` global:
+
 ```powershell
-python -m pytest tests/test_recommender_visual.py -q
-python -m pytest tests/test_recommender_parte5.py -q
+venv\Scripts\python.exe -m pip install -r requirements-persona3.txt
+venv\Scripts\python.exe -m tools.verify_persona3_visual
+```
+
+Si `pip --version` muestra Python 3.14 y el venv usa 3.13, estás instalando en
+el Python equivocado. Comprueba:
+
+```powershell
+venv\Scripts\python.exe --version
+venv\Scripts\python.exe -m pip --version
+```
+
+### 6.2 Pruebas automáticas
+
+```powershell
+venv\Scripts\python.exe -m pytest tests/test_recommender_visual.py -q
+venv\Scripts\python.exe -m pytest tests/test_recommender_parte5.py -q
 ```
 
 Cubren:
@@ -132,7 +151,7 @@ python -m tools.seed_tienda
 # o subir una imagen en "Buscar productos por imagen"
 ```
 
-### Verificación sin servidor
+### 6.3 Verificación sin servidor
 
 Si quieres comprobar g/h sin instalar OpenCV/librosa ni levantar el backend:
 

@@ -16,6 +16,10 @@ async function filas(sql: string): Promise<Record<string, CellValue>[]> {
   return resultado.rows;
 }
 
+function literalSql(valor: string): string {
+  return `'${valor.replace(/'/g, "''")}'`;
+}
+
 function aProducto(fila: Record<string, CellValue>): Producto {
   return {
     id: Number(fila.id),
@@ -26,9 +30,77 @@ function aProducto(fila: Record<string, CellValue>): Producto {
     descripcion: fila.descripcion == null ? undefined : String(fila.descripcion),
   };
 }
+export interface FiltrosProductos {
+  texto?: string;
+  categoria?: string;
+  precioMin?: number;
+  precioMax?: number;
+  orden?: 'relevancia' | 'precio_asc' | 'precio_desc';
+  limite?: number;
+}
 
 export async function cargarCatalogo(): Promise<Producto[]> {
   return (await filas('SELECT id, nombre, categoria, precio, imagen FROM productos ORDER BY id')).map(aProducto);
+}
+export async function buscarProductos(
+  filtros: FiltrosProductos = {},
+): Promise<Producto[]> {
+  const texto = filtros.texto?.trim();
+  const categoria = filtros.categoria?.trim();
+  const condiciones: string[] = [];
+
+  if (texto) {
+    condiciones.push(`MATCH(descripcion, ${literalSql(texto)})`);
+  }
+
+  if (categoria) {
+    condiciones.push(`categoria = ${literalSql(categoria)}`);
+  }
+
+  if (Number.isFinite(filtros.precioMin)) {
+    condiciones.push(`precio >= ${filtros.precioMin}`);
+  }
+
+  if (Number.isFinite(filtros.precioMax)) {
+    condiciones.push(`precio <= ${filtros.precioMax}`);
+  }
+
+  const columnas = texto
+    ? 'id, nombre, categoria, precio, imagen, SCORE() AS score'
+    : 'id, nombre, categoria, precio, imagen';
+
+  let sql = `SELECT ${columnas} FROM productos`;
+
+  if (condiciones.length > 0) {
+    sql += ` WHERE ${condiciones.join(' AND ')}`;
+  }
+
+  if (texto) {
+    sql += ' USING BM25';
+  }
+
+  switch (filtros.orden) {
+    case 'precio_asc':
+      sql += ' ORDER BY precio ASC';
+      break;
+    case 'precio_desc':
+      sql += ' ORDER BY precio DESC';
+      break;
+    case 'relevancia':
+    default:
+      sql += texto ? ' ORDER BY score DESC' : ' ORDER BY id';
+      break;
+  }
+
+  if (
+    Number.isInteger(filtros.limite)
+    && filtros.limite !== undefined
+    && filtros.limite > 0
+  ) {
+    sql += ` LIMIT ${filtros.limite}`;
+  }
+
+  return (await filas(sql)).map(aProducto);
 }
 
 export async function cargarProducto(id: number): Promise<Producto | null> {

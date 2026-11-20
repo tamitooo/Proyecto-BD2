@@ -306,6 +306,21 @@ Volumen (hasta 4.8 GB en el tamaño de 100 000), tiempos de entrenamiento y
 extracción, y calidad del espacio vectorial por tamaño y por modalidad:
 `benchmarks/results/multimedia/README.md`.
 
+### Reconocimiento de canciones (clips de 20 s)
+
+Panel **Motor → Reconocimiento de canciones**: busca un fragmento de audio por
+MFCC de 1 s (ignora el silencio) con IVF del motor (`/api/audio/search`). El
+dataset de música no se versiona ni viene en Docker; sin él el panel avisa y
+la búsqueda queda desactivada. Para instalarlo (pasos completos y licencias en
+`docs/INTEGRACION_MUSIC20.md`), con el backend corriendo:
+
+```powershell
+python -m tools.build_music20 --manifest data/music20/manifest.csv --output data/music20 --allow-download
+python -m tools.import_music20 --dataset data/music20 --data-dir backend/data
+```
+
+`--data-dir` debe ser el mismo `BD2_DATA_DIR` del backend.
+
 ### Preparación para la exposición: MP3 y SIFT de OpenCV
 
 Estas dependencias son **opcionales**; el sistema funciona sin ellas con WAV y
@@ -464,6 +479,7 @@ npm test
 - `docs/informe/informe_incremental.md`: informe incremental completo y limitaciones.
 - `docs/informe/parte2_espacial.md`: diseño, SQL y resultados espaciales sincronizados con la corrida definitiva documentada.
 - `docs/parte5/persona4_recomendador.md`: fuentes i, j y k del recomendador (Parte 5), contrato de datos y límites.
+- `docs/INTEGRACION_MUSIC20.md`: reconocimiento de canciones (dataset, carga e índice IVF).
 - `docs/parte5/persona3_visual.md`: fuente visual (g/h), `EXTRACT_FEATURES`, IVF persistente, búsqueda por imagen y contrato con la fusión.
 
 ## Persistencia física de índices — corrección de rúbrica

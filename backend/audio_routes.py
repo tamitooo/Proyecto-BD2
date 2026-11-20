@@ -38,11 +38,11 @@ def assets():
     root=Path(engine().data_dir)/"music20"
     path=root/"audio_index.npz"
     if not path.is_file() or not (root/"catalog.csv").is_file():
-        raise HTTPException(503,"Music dataset not installed; run tools.import_music20 first")
+        raise HTTPException(503,"El dataset de música no está instalado; corre python -m tools.import_music20")
     try:
         return _load_assets(str(root.resolve()),path.stat().st_mtime_ns)
     except (OSError,ValueError,KeyError) as exc:
-        raise HTTPException(503,f"Music index invalid: {exc}") from exc
+        raise HTTPException(503,f"Índice de música inválido: {exc}") from exc
 
 
 @router.get("/health")
@@ -58,14 +58,14 @@ async def audio_search(file:UploadFile=File(...),mode:str=Query("sql",pattern="^
                        k:int=Query(5,ge=1,le=10), candidates:int=Query(40,ge=10,le=100)):
     content=await file.read(40_000_001)
     if len(content)>40_000_000:
-        raise HTTPException(413,"audio upload larger than 40 MB")
+        raise HTTPException(413,"El audio subido pesa más de 40 MB")
     catalog,values=assets()
     try:
         decoded=decode_audio(content,file.filename or "query.wav",max_seconds=25)
         if mode=="sql":
             current=engine()
             if not current.catalog.has_table("audio_segmentos"):
-                raise HTTPException(503,"audio_segmentos SQL table missing; run tools.import_music20")
+                raise HTTPException(503,"Falta la tabla audio_segmentos; corre python -m tools.import_music20")
 
             def provider(queries:np.ndarray):
                 groups=[]

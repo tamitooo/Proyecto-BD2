@@ -70,7 +70,8 @@ body{margin:0}
 .tabs__link:hover{background:#f1f5f9}
 .tabs__link[aria-current="page"]{background:var(--accent);border-color:var(--accent);color:#fff}
 
-.tienda{padding:16px;display:flex;flex-direction:column;gap:16px}
+/* overflow-anchor: la ficha crece arriba al cargar y el navegador no debe seguir a la tarjeta clickeada. */
+.tienda{padding:16px;display:flex;flex-direction:column;gap:16px;overflow-anchor:none}
 .tienda__selector{margin-top:10px;max-width:520px}
 
 .ficha{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start;scroll-margin-top:12px}
@@ -129,6 +130,12 @@ body{margin:0}
   object-fit:cover;
   background:#f1f5f9;
   border-bottom:1px solid var(--border)
+}
+
+.catalogo-mas{
+  display:flex;
+  justify-content:center;
+  margin-top:16px
 }
 
 .catalogo-card__contenido{

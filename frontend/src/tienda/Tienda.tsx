@@ -36,17 +36,9 @@ export default function Tienda() {
     };
   }, []);
 
+  // La ficha va arriba del catálogo: al cambiar de producto se vuelve al inicio.
   useEffect(() => {
-    if (productoId === null) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
-    const timer = window.setTimeout(() => {
-      document
-        .getElementById("ficha-producto")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 50);
-    return () => window.clearTimeout(timer);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }, [productoId]);
 
   useEffect(() => {
@@ -155,6 +147,14 @@ export default function Tienda() {
 
   return (
     <main className="tienda">
+      {productoId !== null && (
+        <FichaProducto
+          productoId={productoId}
+          fuentes={FUENTES}
+          catalogo={porId}
+        />
+      )}
+
       <section className="panel">
         <h2 className="panel__title">Tienda</h2>
 
@@ -170,7 +170,7 @@ export default function Tienda() {
               className="input"
               type="search"
               value={texto}
-              placeholder="Ej. laptop gaming"
+              placeholder="Ej. silla de comedor"
               onChange={(e) => setTexto(e.target.value)}
             />
           </label>
@@ -269,14 +269,6 @@ export default function Tienda() {
         )}
       </section>
       <BusquedaVisual catalogo={porId} />
-
-      {productoId !== null && (
-        <FichaProducto
-          productoId={productoId}
-          fuentes={FUENTES}
-          catalogo={porId}
-        />
-      )}
     </main>
   );
 }

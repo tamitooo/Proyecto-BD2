@@ -24,22 +24,18 @@ new searchable view. Normal SQL and image search remain unchanged.
 - The score indicates **acoustic similarity**, not a legal copyright finding.
   It is not a neural music-ID system; timbre changes, covers and remixes can fail.
 
-## Step 1 — apply without overwriting existing code
+## Step 1 — code
 
-On Windows PowerShell (use **Proyecto-BD2-clean**, not your original checkout):
+The code is already in the repository (`audio_recognition/`, `backend/audio_routes.py`,
+`frontend/src/panels/SongRecognitionPanel.tsx`, `tools/*music20*`). Only the
+music dataset is missing; Steps 2 and 3 build and load it. Define `$py` as the
+Python of your virtual environment:
 
 ```powershell
-cd "$HOME\Documents\projects\Proyecto-BD2-clean"
-$py = "$HOME\Documents\projects\Proyecto-BD2\.venv\Scripts\python.exe"
-$installer = "$HOME\Downloads\BD2_Music20_Patch\apply_music20_patch.py"
-& $py $installer --repo . --dry-run
-# If no errors:
-& $py $installer --repo .
+$py = ".\.venv\Scripts\python.exe"
 ```
 
-This script only adds independent audio files and integrates the API/React
-panel via three anchored changes. It refuses unknown conflicts and is
-idempotent. It does not modify `vector/extract_features.py`, `vector/bow.py`,
+It does not modify `vector/extract_features.py`, `vector/bow.py`,
 `query/vector_queries.py`, or existing storage/index components.
 
 ## Step 2 — Prepare the 10 × 100 legally obtainable tracks
@@ -83,7 +79,6 @@ results must not be presented as SQL IVF speed/recall measurements.
 In one PowerShell terminal:
 
 ```powershell
-cd "$HOME\Documents\projects\Proyecto-BD2-clean"
 $env:BD2_DATA_DIR = (Join-Path (Get-Location) "backend/data/music20_test")
 & $py -m uvicorn backend.api:app --port 8000
 ```
@@ -91,7 +86,6 @@ $env:BD2_DATA_DIR = (Join-Path (Get-Location) "backend/data/music20_test")
 In another terminal (the `--data-dir` **must match** the running backend):
 
 ```powershell
-cd "$HOME\Documents\projects\Proyecto-BD2-clean"
 & $py -m tools.import_music20 --dataset data/music20 --data-dir backend/data/music20_test
 ```
 
@@ -109,8 +103,8 @@ npm run build
 npm run dev
 ```
 
-Open `http://localhost:5173` → **Motor** → **Audio recognition — 20-second
-clips**. Upload a music excerpt and select SQL + IVF. You can also compare
+Open `http://localhost:5173` → **Motor** → **Reconocimiento de canciones
+(clips de 20 s)**. Without the dataset the panel says so and disables the search. Upload a music excerpt and select SQL + IVF. You can also compare
 the exact-cosine baseline. The UI displays the uploaded audio, one-second
 activity timeline (silent vs analyzed), matched titles, source provenance,
 match confidence, timestamps and **playable 20-second excerpts**.

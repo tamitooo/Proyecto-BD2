@@ -13,7 +13,9 @@ maximiza Precision@10:
 4. Los pesos finales se aprenden con todos los usuarios.
 
 El resultado se escribe en frontend/src/tienda/pesosAprendidos.ts; la ficha lo
-ofrece con el botón "Usar pesos aprendidos".
+ofrece con el botón "Usar pesos aprendidos". La comparación de cada fuente sola
+contra la fusión (#141) queda en benchmarks/results/parte5/precision_fuentes.*
+y p5_precision_por_fuente.png.
 
     python -m tools.aprender_pesos [--api http://127.0.0.1:8000]
 """
@@ -34,6 +36,9 @@ from tools.seed_tienda import Api, SeedError, esperar_api
 
 RAIZ = Path(__file__).resolve().parent.parent
 SALIDA = RAIZ / "frontend" / "src" / "tienda" / "pesosAprendidos.ts"
+RESULTADOS = RAIZ / "benchmarks" / "results" / "parte5"
+NOMBRES = {"visual": "Imagen similar", "texto": "Descripción similar",
+           "cocompra": "Comprados juntos", "metadatos": "Misma categoría y precio"}
 FUENTES = ("visual", "texto", "cocompra", "metadatos")
 REJILLA = (0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0)
 TOP_K = 10
@@ -58,19 +63,28 @@ def normalizar(lista: Iterable[Tuple[int, float]]) -> Scores:
     return [(p, (s - minimo) / rango if rango > 0 else 1.0) for p, s in mejores.items()]
 
 
-def fusionar(producto_id: int, por_fuente: Mapping[str, Scores], pesos: Mapping[str, float],
-             k: int = TOP_K) -> List[int]:
-    activas = [f for f in por_fuente if pesos.get(f, 1) > 0]
+def preparar(producto_id: int, por_fuente: Mapping[str, Scores]) -> Dict[str, Scores]:
+    """Quita a X y normaliza cada fuente; no depende de los pesos."""
+    return {f: normalizar([(p, s) for p, s in lista if p != producto_id]) for f, lista in por_fuente.items()}
+
+
+def fusionar_preparadas(preparadas: Mapping[str, Scores], pesos: Mapping[str, float],
+                        k: int = TOP_K) -> List[int]:
+    activas = [f for f in preparadas if pesos.get(f, 1) > 0]
     total = sum(pesos.get(f, 1) for f in activas)
     score: Dict[int, float] = {}
     aportes: Dict[int, int] = {}
     for fuente in activas:
         peso = pesos.get(fuente, 1) / total
-        sin_x = [(p, s) for p, s in por_fuente[fuente] if p != producto_id]
-        for p, s in normalizar(sin_x):
+        for p, s in preparadas[fuente]:
             score[p] = score.get(p, 0.0) + s * peso
             aportes[p] = aportes.get(p, 0) + 1
     return sorted(score, key=lambda p: (-score[p], -aportes[p], p))[:k]
+
+
+def fusionar(producto_id: int, por_fuente: Mapping[str, Scores], pesos: Mapping[str, float],
+             k: int = TOP_K) -> List[int]:
+    return fusionar_preparadas(preparar(producto_id, por_fuente), pesos, k)
 
 
 # --- Casos y evaluación ------------------------------------------------------
@@ -114,23 +128,45 @@ def cocompra(producto_id: int, compras: Mapping[int, Set[int]], usuarios: Iterab
     return [(p, c / len(compradores)) for p, c in ordenados[:k]]
 
 
-def precision(casos: Sequence[Caso], fuentes_de: FuentesDe, pesos: Mapping[str, float]) -> float:
+def _precision_preparada(casos: Sequence[Caso], preparadas: Mapping[Caso, Mapping[str, Scores]],
+                         pesos: Mapping[str, float]) -> float:
     if not casos:
         return 0.0
-    aciertos = sum(len(c.relevantes.intersection(fusionar(c.producto, fuentes_de(c), pesos))) for c in casos)
+    aciertos = sum(len(c.relevantes.intersection(fusionar_preparadas(preparadas[c], pesos))) for c in casos)
     return aciertos / (TOP_K * len(casos))
+
+
+def precision(casos: Sequence[Caso], fuentes_de: FuentesDe, pesos: Mapping[str, float]) -> float:
+    return _precision_preparada(casos, {c: preparar(c.producto, fuentes_de(c)) for c in casos}, pesos)
+
+
+def techo(casos: Sequence[Caso]) -> float:
+    """Precision@10 máxima: un caso con menos de 10 relevantes no puede llenar el top 10."""
+    if not casos:
+        return 0.0
+    return sum(min(len(c.relevantes), TOP_K) for c in casos) / (TOP_K * len(casos))
+
+
+def _proporcion(combinacion: Sequence[float]) -> Tuple[float, ...]:
+    # Pesos proporcionales dan la misma fusión (se divide por la suma).
+    total = sum(combinacion)
+    return tuple(round(w / total, 9) for w in combinacion)
 
 
 def buscar_pesos(casos: Sequence[Caso], fuentes_de: FuentesDe,
                  fuentes: Sequence[str] = FUENTES, rejilla: Sequence[float] = REJILLA) -> Dict[str, float]:
     """Mayor Precision@10; a igualdad, lo más cercano a pesos iguales."""
-    calculadas = {c: fuentes_de(c) for c in casos}
+    preparadas = {c: preparar(c.producto, fuentes_de(c)) for c in casos}
+    medidas: Dict[Tuple[float, ...], float] = {}
     mejor_clave, mejor = None, None
     for combinacion in itertools.product(rejilla, repeat=len(fuentes)):
         if not any(combinacion):
             continue
         pesos = dict(zip(fuentes, combinacion))
-        clave = (precision(casos, calculadas.__getitem__, pesos), -sum(abs(w - 1) for w in combinacion))
+        forma = _proporcion(combinacion)
+        if forma not in medidas:
+            medidas[forma] = _precision_preparada(casos, preparadas, pesos)
+        clave = (medidas[forma], -sum(abs(w - 1) for w in combinacion))
         if mejor_clave is None or clave > mejor_clave:
             mejor_clave, mejor = clave, pesos
     return mejor
@@ -153,11 +189,16 @@ def evaluar(fijas: Mapping[int, Mapping[str, Scores]], compras: Mapping[int, Set
         fuentes_de = fuentes_con(entrenamiento)
         casos_prueba = casos_de(cestas, prueba)
         pesos = buscar_pesos(casos_de(cestas, entrenamiento), fuentes_de, rejilla=rejilla)
+        preparadas = {c: preparar(c.producto, fuentes_de(c)) for c in casos_prueba}
         resultados.append({
             "usuarios": len(prueba),
             "casos": len(casos_prueba),
-            "iguales": round(precision(casos_prueba, fuentes_de, iguales), 4),
-            "aprendidos": round(precision(casos_prueba, fuentes_de, pesos), 4),
+            "iguales": round(_precision_preparada(casos_prueba, preparadas, iguales), 4),
+            "aprendidos": round(_precision_preparada(casos_prueba, preparadas, pesos), 4),
+            "solas": {f: round(_precision_preparada(casos_prueba, preparadas,
+                                                    {g: float(g == f) for g in FUENTES}), 4)
+                      for f in FUENTES},
+            "techo": round(techo(casos_prueba), 4),
             "pesos": pesos,
         })
 
@@ -172,6 +213,9 @@ def evaluar(fijas: Mapping[int, Mapping[str, Scores]], compras: Mapping[int, Set
         "casos": len(todos),
         "precision_iguales": media("iguales"),
         "precision_aprendidos": media("aprendidos"),
+        "precision_solas": {f: round(sum(r["solas"][f] for r in resultados) / len(resultados), 4)
+                            for f in FUENTES},
+        "techo": media("techo"),
         "pliegues": resultados,
     }
 
@@ -241,12 +285,66 @@ def escribir_ts(resultado: dict, destino: Path = SALIDA) -> None:
     )
 
 
+def filas_resultado(resultado: dict) -> List[Tuple[str, float, List[float]]]:
+    filas = [(NOMBRES[f], resultado["precision_solas"][f], [r["solas"][f] for r in resultado["pliegues"]])
+             for f in FUENTES]
+    filas.append(("Fusión, pesos iguales", resultado["precision_iguales"],
+                  [r["iguales"] for r in resultado["pliegues"]]))
+    filas.append(("Fusión, pesos aprendidos", resultado["precision_aprendidos"],
+                  [r["aprendidos"] for r in resultado["pliegues"]]))
+    return filas
+
+
+def escribir_resultados(resultado: dict, carpeta: Path = RESULTADOS) -> None:
+    carpeta.mkdir(parents=True, exist_ok=True)
+    (carpeta / "precision_fuentes.json").write_text(
+        json.dumps(resultado, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    filas = filas_resultado(resultado)
+    n = len(resultado["pliegues"])
+    with (carpeta / "precision_fuentes.csv").open("w", encoding="utf-8", newline="") as f:
+        f.write(",".join(["metodo", "precision_at_10"] + [f"pliegue_{i}" for i in range(1, n + 1)]) + "\n")
+        for nombre, media, por_pliegue in filas:
+            f.write(",".join([nombre, f"{media:.4f}"] + [f"{v:.4f}" for v in por_pliegue]) + "\n")
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except ImportError:
+        print("matplotlib no está instalado: no se generó el gráfico", file=sys.stderr)
+        return
+    nombres = [f[0] for f in filas][::-1]
+    valores = [f[1] for f in filas][::-1]
+    colores = ["#2a78d6" if n.startswith("Fusión") else "#86b6ef" for n in nombres]
+    fig, ax = plt.subplots(figsize=(7.2, 3.4), dpi=200)
+    fig.patch.set_facecolor("#fcfcfb")
+    ax.set_facecolor("#fcfcfb")
+    ax.barh(nombres, valores, color=colores, height=0.6, edgecolor="#fcfcfb", linewidth=2)
+    tope = resultado["techo"]
+    ax.axvline(tope, color="#52514e", linestyle="--", linewidth=1)
+    ax.text(tope, len(nombres) - 0.45, f" máximo posible {tope:.3f}", color="#52514e",
+            fontsize=8, va="bottom", ha="right")
+    for y, v in enumerate(valores):
+        ax.text(v + tope * 0.01, y, f"{v:.3f}", va="center", fontsize=8, color="#0b0b0b")
+    ax.set_xlim(0, tope * 1.08)
+    ax.set_xlabel(f"Precision@10 (media de {n} pliegues por usuarios)", fontsize=8, color="#52514e")
+    ax.tick_params(labelsize=8, colors="#52514e", length=0)
+    for lado in ("top", "right", "left"):
+        ax.spines[lado].set_visible(False)
+    ax.spines["bottom"].set_color("#c3c2b7")
+    ax.grid(axis="x", color="#e8e7e2", linewidth=0.6)
+    ax.set_axisbelow(True)
+    fig.tight_layout()
+    fig.savefig(carpeta / "p5_precision_por_fuente.png", facecolor=fig.get_facecolor())
+    plt.close(fig)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="python -m tools.aprender_pesos", description=__doc__.splitlines()[0])
     p.add_argument("--api", default=os.environ.get("BD2_API_URL", "http://127.0.0.1:8000"))
     p.add_argument("--pliegues", type=int, default=5)
     p.add_argument("--semilla", type=int, default=2026)
     p.add_argument("--salida", type=Path, default=SALIDA)
+    p.add_argument("--resultados", type=Path, default=RESULTADOS)
     args = p.parse_args(argv)
     api = Api(args.api)
     try:
@@ -259,12 +357,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 1
     escribir_ts(resultado, args.salida)
+    escribir_resultados(resultado, args.resultados)
     for i, r in enumerate(resultado["pliegues"], 1):
         print(f"pliegue {i}: iguales {r['iguales']:.4f}  aprendidos {r['aprendidos']:.4f}  {r['pesos']}")
     print(f"Precision@10 media ({resultado['usuarios']} usuarios, {resultado['casos']} casos): "
           f"iguales {resultado['precision_iguales']:.4f} -> aprendidos {resultado['precision_aprendidos']:.4f}")
+    for nombre, media, _ in filas_resultado(resultado):
+        print(f"  {nombre:28s} {media:.4f}")
+    print(f"  máximo posible               {resultado['techo']:.4f}")
     print(f"pesos finales: {resultado['pesos']}")
-    print(f"escrito {args.salida}")
+    print(f"escrito {args.salida} y {args.resultados}")
     return 0
 
 

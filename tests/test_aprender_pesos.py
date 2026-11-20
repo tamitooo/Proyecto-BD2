@@ -1,3 +1,5 @@
+import importlib.util
+import json
 import math
 import os
 import tempfile
@@ -140,6 +142,42 @@ def test_de_punta_a_punta_con_la_muestra(tmp_path, monkeypatch):
     monkeypatch.setattr(aprender_pesos, "Api", lambda _base: api)
 
     salida = tmp_path / "pesos.ts"
-    assert aprender_pesos.main(["--salida", str(salida), "--pliegues", "3"]) == 0
+    resultados = tmp_path / "resultados"
+    assert aprender_pesos.main(["--salida", str(salida), "--pliegues", "3",
+                                "--resultados", str(resultados)]) == 0
     texto = salida.read_text(encoding="utf-8")
     assert "PESOS_APRENDIDOS" in texto and '"casos": ' in texto
+    resumen = json.loads((resultados / "precision_fuentes.json").read_text(encoding="utf-8"))
+    assert set(resumen["precision_solas"]) == set(aprender_pesos.FUENTES)
+    assert 0 < resumen["techo"] <= 1
+    filas = (resultados / "precision_fuentes.csv").read_text(encoding="utf-8").splitlines()
+    assert filas[0] == "metodo,precision_at_10,pliegue_1,pliegue_2,pliegue_3" and len(filas) == 7
+    if importlib.util.find_spec("matplotlib"):
+        assert (resultados / "p5_precision_por_fuente.png").stat().st_size > 0
+
+
+def test_buscar_pesos_igual_a_probar_todas_las_combinaciones():
+    from tools.aprender_pesos import Caso, FUENTES, REJILLA, buscar_pesos, precision
+    import itertools
+    import random as rnd
+
+    r = rnd.Random(4)
+    fuentes = {p: {f: [(q, r.random()) for q in r.sample(range(1, 40), 12)] for f in FUENTES}
+               for p in range(1, 40)}
+    casos = [Caso(1, p, frozenset(r.sample(range(1, 40), 3))) for p in range(1, 40)]
+    de = lambda c: fuentes[c.producto]
+    mejor, clave = None, None
+    for comb in itertools.product(REJILLA, repeat=len(FUENTES)):
+        if any(comb):
+            pesos = dict(zip(FUENTES, comb))
+            k = (precision(casos, de, pesos), -sum(abs(w - 1) for w in comb))
+            if clave is None or k > clave:
+                mejor, clave = pesos, k
+    assert buscar_pesos(casos, de) == mejor
+
+
+def test_techo_cuenta_hasta_diez_relevantes():
+    from tools.aprender_pesos import Caso, techo
+
+    assert techo([Caso(1, 1, frozenset({2, 3})), Caso(1, 2, frozenset(range(10, 30)))]) == 0.6
+    assert techo([]) == 0.0

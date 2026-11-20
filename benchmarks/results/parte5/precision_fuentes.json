@@ -1,0 +1,117 @@
+{
+  "pesos": {
+    "visual": 0.0,
+    "texto": 0.0,
+    "cocompra": 1.0,
+    "metadatos": 0.0
+  },
+  "semilla": 2026,
+  "usuarios": 2500,
+  "casos": 8487,
+  "precision_iguales": 0.0569,
+  "precision_aprendidos": 0.0825,
+  "precision_solas": {
+    "visual": 0.0006,
+    "texto": 0.0007,
+    "cocompra": 0.0825,
+    "metadatos": 0.0008
+  },
+  "techo": 0.1273,
+  "pliegues": [
+    {
+      "usuarios": 500,
+      "casos": 1706,
+      "iguales": 0.0555,
+      "aprendidos": 0.0785,
+      "solas": {
+        "visual": 0.0006,
+        "texto": 0.0006,
+        "cocompra": 0.0785,
+        "metadatos": 0.0004
+      },
+      "techo": 0.1236,
+      "pesos": {
+        "visual": 0.0,
+        "texto": 0.0,
+        "cocompra": 1.0,
+        "metadatos": 0.0
+      }
+    },
+    {
+      "usuarios": 500,
+      "casos": 1710,
+      "iguales": 0.0581,
+      "aprendidos": 0.0847,
+      "solas": {
+        "visual": 0.0008,
+        "texto": 0.0008,
+        "cocompra": 0.0847,
+        "metadatos": 0.0009
+      },
+      "techo": 0.127,
+      "pesos": {
+        "visual": 0.0,
+        "texto": 0.0,
+        "cocompra": 1.0,
+        "metadatos": 0.0
+      }
+    },
+    {
+      "usuarios": 500,
+      "casos": 1695,
+      "iguales": 0.0576,
+      "aprendidos": 0.0828,
+      "solas": {
+        "visual": 0.0006,
+        "texto": 0.0006,
+        "cocompra": 0.0828,
+        "metadatos": 0.0008
+      },
+      "techo": 0.1278,
+      "pesos": {
+        "visual": 0.0,
+        "texto": 0.0,
+        "cocompra": 1.0,
+        "metadatos": 0.0
+      }
+    },
+    {
+      "usuarios": 500,
+      "casos": 1684,
+      "iguales": 0.0569,
+      "aprendidos": 0.0834,
+      "solas": {
+        "visual": 0.0003,
+        "texto": 0.0004,
+        "cocompra": 0.0834,
+        "metadatos": 0.0013
+      },
+      "techo": 0.1292,
+      "pesos": {
+        "visual": 0.0,
+        "texto": 0.0,
+        "cocompra": 1.0,
+        "metadatos": 0.0
+      }
+    },
+    {
+      "usuarios": 500,
+      "casos": 1692,
+      "iguales": 0.0562,
+      "aprendidos": 0.0829,
+      "solas": {
+        "visual": 0.0008,
+        "texto": 0.0009,
+        "cocompra": 0.0829,
+        "metadatos": 0.0008
+      },
+      "techo": 0.1287,
+      "pesos": {
+        "visual": 0.0,
+        "texto": 0.0,
+        "cocompra": 1.0,
+        "metadatos": 0.0
+      }
+    }
+  ]
+}

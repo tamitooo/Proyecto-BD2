@@ -1,0 +1,7 @@
+metodo,precision_at_10,pliegue_1,pliegue_2,pliegue_3,pliegue_4,pliegue_5
+Imagen similar,0.0006,0.0006,0.0008,0.0006,0.0003,0.0008
+Descripción similar,0.0007,0.0006,0.0008,0.0006,0.0004,0.0009
+Comprados juntos,0.0825,0.0785,0.0847,0.0828,0.0834,0.0829
+Misma categoría y precio,0.0008,0.0004,0.0009,0.0008,0.0013,0.0008
+Fusión, pesos iguales,0.0569,0.0555,0.0581,0.0576,0.0569,0.0562
+Fusión, pesos aprendidos,0.0825,0.0785,0.0847,0.0828,0.0834,0.0829

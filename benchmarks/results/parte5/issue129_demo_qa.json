@@ -1,0 +1,25 @@
+{
+  "purchases": 360,
+  "users": 180,
+  "baskets": 180,
+  "affinity_edges": {
+    "laptops->mochilas": 30,
+    "celulares->audifonos": 30,
+    "audifonos->celulares": 30,
+    "mochilas->laptops": 30,
+    "zapatillas->relojes": 30,
+    "relojes->zapatillas": 30
+  },
+  "same_category_fallbacks": [],
+  "paired_products": 30,
+  "coverage_fraction": 1.0,
+  "category_pairs": {
+    "laptops + mochilas": 60,
+    "audifonos + celulares": 60,
+    "relojes + zapatillas": 60
+  },
+  "held_out_user_queries": 360,
+  "held_out_user_hit_at10": 1.0,
+  "held_out_user_precision_at10": 0.1,
+  "evaluation_note": "SANITY CHECK on intentionally constructed synthetic affinities; not real purchase prediction accuracy; source catalogue: 30 illustrative products"
+}

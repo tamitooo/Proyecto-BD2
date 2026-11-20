@@ -110,16 +110,26 @@ docker compose up --build
 ```
 
 Levanta el backend (`http://localhost:8000`), el frontend (`http://localhost:5173`)
-y el servicio `seed`, que carga la tienda de la Parte 5 y termina. Los datos viven
-en el volumen `bd2-data`, así que sobreviven a reinicios; `docker compose down -v`
-los borra.
+y el servicio `seed`, que carga la tienda de la Parte 5 (los 2 531 productos de
+`examples/tienda_abo/`) y termina. La primera carga tarda de 3 a 10 minutos: calcula el
+vector de cada imagen; mientras tanto el catálogo sale incompleto. Los datos viven en
+el volumen `bd2-data`, así que sobreviven a reinicios; `docker compose down -v` los
+borra.
+
+Si el volumen se creó antes con la muestra de 30 productos, hay que borrarlo una vez
+para que cargue el dataset nuevo (si no, se mezclan los dos):
+
+```powershell
+docker compose down -v
+docker compose up --build
+```
 
 Si el volumen ya tiene otro vocabulario de imágenes (por ejemplo, el de los
 experimentos), el `seed` se detiene sin tocarlo. Para reemplazarlo por el de la
 tienda:
 
 ```powershell
-docker compose run --rm seed python -m tools.seed_tienda --api http://backend:8000 --reemplazar-modelo
+docker compose run --rm seed python -m tools.seed_tienda --api http://backend:8000 --datos examples/tienda_abo --reemplazar-modelo
 ```
 
 ## Pruebas
@@ -399,24 +409,43 @@ Recomendador de productos en la pestaña **Tienda** del frontend. Todo pasa por
 
 ### Datos y carga
 
-`examples/tienda/` trae una muestra con las columnas del dataset final:
+Hay dos datasets con la misma estructura:
 
-| Archivo | Columnas |
-|---|---|
-| `productos.csv` (30) | id, nombre, categoria, precio, descripcion, imagen |
-| `tiendas.csv` (5) | id, nombre, lat, lon, distrito |
-| `stock.csv` (91) | id, tienda_id, producto_id, cantidad |
-| `compras.csv` (200) | id, usuario_id, producto_id, fecha, cantidad |
+| Archivo | `examples/tienda_abo/` (final) | `examples/tienda/` (muestra) | Columnas |
+|---|---|---|---|
+| `productos.csv` | 2 531 | 30 | id, nombre, categoria, precio, descripcion, imagen |
+| `tiendas.csv` | 30 | 5 | id, nombre, lat, lon, distrito |
+| `stock.csv` | 6 432 | 91 | id, tienda_id, producto_id, cantidad |
+| `compras.csv` | 10 000 | 200 | id, usuario_id, producto_id, fecha, cantidad |
 
-Además, `imagenes/` (una por producto) y `modelo/bow_image.npz` (vocabulario BoVW
-entrenado con esas imágenes). `python examples/tienda/generar_muestra.py` la
-regenera igual (semilla fija).
+Cada uno trae `imagenes/` (una por producto) y `modelo/bow_image.npz` (vocabulario
+BoVW entrenado con esas imágenes). Docker carga el final; la muestra queda para las
+pruebas y para probar rápido (`python examples/tienda/generar_muestra.py` la regenera).
+
+El dataset final son productos reales de
+[Amazon Berkeley Objects](https://amazon-berkeley-objects.s3.amazonaws.com/index.html)
+(ABO, licencia CC BY-NC 4.0, ver `examples/tienda_abo/LICENCIA.txt`): 8 categorías que
+se compran juntas por pares (mesas y sillas, sofás y cojines, alfombras y lámparas,
+calzado y joyas), con nombre y descripción en español. ABO no trae precios, tiendas
+ni compras, así que se generan con semilla fija. Las compras vienen en canastas
+(mismo usuario y fecha) de un producto con sus complementos de la categoría pareja.
+`origen.csv` guarda el id de ABO de cada producto. Para regenerarlo (tarda unos minutos;
+baja unos 110 MB de metadata e imágenes a `data/abo_raw/`):
+
+```powershell
+python -m tools.preparar_abo --raw data/abo_raw --salida data/tienda_abo --por-categoria 450
+python -m tools.generate_part5_data --products data/tienda_abo/productos.csv --output examples/tienda_abo `
+  --images data/tienda_abo/imagenes --stores 30 --users 2500 --purchases 10000 --seed 2026
+copy data\tienda_abo\LICENCIA.txt, data\tienda_abo\origen.csv examples\tienda_abo\
+```
 
 Sin Docker, con el backend corriendo:
 
 ```powershell
-python -m tools.seed_tienda
+python -m tools.seed_tienda --datos examples/tienda_abo
 ```
+
+Sin `--datos` carga la muestra.
 
 Copia imágenes y vocabulario a la carpeta de datos del backend, crea las cuatro
 tablas, calcula el vector de cada producto con `EXTRACT_FEATURES(imagen, 'image')`
@@ -458,13 +487,16 @@ Con el backend corriendo y la tienda cargada:
 python -m tools.aprender_pesos
 ```
 
-Toma como relevantes los productos que se compraron juntos (mismo usuario y
+Tarda unos 30 minutos con el dataset final. Toma como relevantes los productos que se compraron juntos (mismo usuario y
 fecha), prueba los pesos de 0 a 3 de cada fuente con la misma fusión de
 `fusion.ts` y mide Precision@10 con validación cruzada por usuarios (5
 pliegues). La co-compra de un caso nunca usa las compras de ese usuario. El
 resultado queda en `frontend/src/tienda/pesosAprendidos.ts` y la ficha lo aplica
 con el botón "Usar pesos aprendidos". Hay que volver a correrlo cuando cambie el
-dataset.
+dataset. También escribe en `benchmarks/results/parte5/` la Precision@10 de cada fuente
+sola frente a la fusión (CSV, JSON y `p5_precision_por_fuente.png`). Con el dataset
+final, solo "Comprados juntos" predice lo que se compra junto (lo complementario), así
+que los pesos aprendidos la dejan sola.
 
 Pruebas del frontend:
 

@@ -435,6 +435,22 @@ La fusión (`fusion.ts`) quita el propio producto, normaliza cada fuente a [0, 1
 (min-max), promedia con los pesos y se queda con los 10 mejores. Si una fuente
 falla, la ficha lo avisa y sigue con las demás.
 
+### Pesos aprendidos
+
+Con el backend corriendo y la tienda cargada:
+
+```powershell
+python -m tools.aprender_pesos
+```
+
+Toma como relevantes los productos que se compraron juntos (mismo usuario y
+fecha), prueba los pesos de 0 a 3 de cada fuente con la misma fusión de
+`fusion.ts` y mide Precision@10 con validación cruzada por usuarios (5
+pliegues). La co-compra de un caso nunca usa las compras de ese usuario. El
+resultado queda en `frontend/src/tienda/pesosAprendidos.ts` y la ficha lo aplica
+con el botón "Usar pesos aprendidos". Hay que volver a correrlo cuando cambie el
+dataset.
+
 Pruebas del frontend:
 
 ```powershell

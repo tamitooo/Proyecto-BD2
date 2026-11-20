@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { consultarFuentes, fusionar, normalizar, recomendar } from './fusion.ts';
+import { consultarFuentes, fusionar, normalizar, pesosAprendidos, recomendar } from './fusion.ts';
 import type { FuenteRegistrada, Recomendacion } from './tipos.ts';
 
 const r = (producto_id: number, score: number): Recomendacion => ({ producto_id, score });
@@ -86,4 +86,13 @@ test('consultarFuentes separa resultados por fuente y las fallidas', async () =>
   const { porFuente, fallidas } = await consultarFuentes(1, fuentes);
   assert.deepEqual(porFuente, { a: [r(2, 1)] });
   assert.deepEqual(fallidas, [{ fuente: 'b', error: 'caída' }]);
+});
+
+test('pesosAprendidos usa lo aprendido y deja el peso propio a las fuentes nuevas', () => {
+  const fuentes: FuenteRegistrada[] = [
+    { id: 'a', nombre: 'A', ejecutar: async () => [] },
+    { id: 'b', nombre: 'B', peso: 2, ejecutar: async () => [] },
+    { id: 'c', nombre: 'C', ejecutar: async () => [] },
+  ];
+  assert.deepEqual(pesosAprendidos(fuentes, { a: 0, b: 1.5, z: 3 }), { a: 0, b: 1.5, c: 1 });
 });

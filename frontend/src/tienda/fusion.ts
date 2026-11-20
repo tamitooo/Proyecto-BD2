@@ -80,6 +80,14 @@ export function pesosPorDefecto(fuentes: FuenteRegistrada[]): Record<string, num
   return Object.fromEntries(fuentes.map(f => [f.id, f.peso ?? 1]));
 }
 
+// Pesos aprendidos para las fuentes registradas; las que no aparecen ahí conservan su peso.
+export function pesosAprendidos(
+  fuentes: FuenteRegistrada[],
+  aprendidos: Record<string, number>,
+): Record<string, number> {
+  return Object.fromEntries(fuentes.map(f => [f.id, aprendidos[f.id] ?? f.peso ?? 1]));
+}
+
 export async function recomendar(
   productoId: number,
   fuentes: FuenteRegistrada[],

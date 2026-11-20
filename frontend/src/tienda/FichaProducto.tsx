@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { consultarFuentes, fusionar, pesosPorDefecto, type ResultadosPorFuente } from './fusion.ts';
+import { consultarFuentes, fusionar, pesosAprendidos, pesosPorDefecto, type ResultadosPorFuente } from './fusion.ts';
+import { EVALUACION_PESOS, PESOS_APRENDIDOS } from './pesosAprendidos.ts';
 import { cargarProducto, formatoPrecio, urlImagen, type Producto } from './datos.ts';
 import { enlaceProducto } from './rutas.ts';
 import type { FuenteRegistrada } from './tipos.ts';
@@ -78,6 +79,18 @@ export default function FichaProducto({ productoId, fuentes, catalogo }: Props) 
                 </label>
               ))}
             </fieldset>
+            <div className="button-row pesos__acciones">
+              <button type="button" className="button" onClick={() => setPesos(pesosAprendidos(fuentes, PESOS_APRENDIDOS))}>
+                Usar pesos aprendidos
+              </button>
+              <button type="button" className="button" onClick={() => setPesos(pesosPorDefecto(fuentes))}>
+                Pesos iguales
+              </button>
+              <span className="panel__hint">
+                Aprendidos con el historial de compras: Precision@10 {EVALUACION_PESOS.precision_iguales.toFixed(3)} con
+                pesos iguales y {EVALUACION_PESOS.precision_aprendidos.toFixed(3)} con los aprendidos (validación cruzada).
+              </span>
+            </div>
             {fuentes.length === 1 && (
               <p className="panel__hint">
                 Con una sola fuente activa, su peso se normaliza a 1 y el orden no

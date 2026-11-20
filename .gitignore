@@ -61,3 +61,6 @@ data/multimedia/
 data/geometric*/
 data/part5_synthetic*/
 data/audio_synthetic*/
+# Amazon Berkeley Objects: descarga y dataset armado por tools.preparar_abo
+data/abo_raw/
+data/tienda_abo/

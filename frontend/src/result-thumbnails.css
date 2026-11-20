@@ -1,0 +1,18 @@
+.result-image-link, .result-media-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  max-width: 340px;
+  overflow-wrap: anywhere;
+}
+.result-thumbnail {
+  display: block;
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
+  object-fit: contain;
+  background: #f3f4f6;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.3rem;
+}
+.result-media-cell audio { width: 180px; max-width: 100%; }

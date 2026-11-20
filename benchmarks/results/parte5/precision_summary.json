@@ -1,0 +1,59 @@
+{
+  "products": 3000,
+  "total_purchases": 4000,
+  "train_purchases": 3300,
+  "held_out_purchases": 700,
+  "distinct_queries": 100,
+  "sources": [
+    "co_compra",
+    "metadatos",
+    "descripcion",
+    "visual"
+  ],
+  "k": 10,
+  "candidate_k": 50,
+  "protocol": "last chronological purchase per user is withheld; no held-out rows in co-purchase",
+  "engine_caveat": "offline BM25 reference and exact cosine, not SQL/IVF speed or runtime",
+  "results": [
+    {
+      "source": "co_compra",
+      "queries": 100,
+      "k": 10,
+      "precision_at_k": 0.001,
+      "recall_at_k": 0.01,
+      "hit_rate_at_k": 0.01
+    },
+    {
+      "source": "metadatos",
+      "queries": 100,
+      "k": 10,
+      "precision_at_k": 0.0,
+      "recall_at_k": 0.0,
+      "hit_rate_at_k": 0.0
+    },
+    {
+      "source": "descripcion",
+      "queries": 100,
+      "k": 10,
+      "precision_at_k": 0.0,
+      "recall_at_k": 0.0,
+      "hit_rate_at_k": 0.0
+    },
+    {
+      "source": "visual",
+      "queries": 100,
+      "k": 10,
+      "precision_at_k": 0.001,
+      "recall_at_k": 0.005,
+      "hit_rate_at_k": 0.01
+    },
+    {
+      "source": "fusion",
+      "queries": 100,
+      "k": 10,
+      "precision_at_k": 0.0,
+      "recall_at_k": 0.0,
+      "hit_rate_at_k": 0.0
+    }
+  ]
+}

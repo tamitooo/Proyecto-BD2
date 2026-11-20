@@ -1,0 +1,46 @@
+{
+  "method": "exact cosine on BoVW (offline baseline; not IVF)",
+  "products": 3000,
+  "queries": 90,
+  "k": 10,
+  "ground_truth": "most frequent geometric shape",
+  "random_shape_baseline": 0.2,
+  "averages": {
+    "precision_shape": 0.6833,
+    "precision_color": 0.1611,
+    "precision_both": 0.12,
+    "top1_shape": 0.7
+  },
+  "per_shape": {
+    "circulo": {
+      "precision_shape": 0.8222,
+      "precision_color": 0.1111,
+      "precision_both": 0.0833,
+      "top1_shape": 0.7778
+    },
+    "estrella": {
+      "precision_shape": 0.8056,
+      "precision_color": 0.1833,
+      "precision_both": 0.1667,
+      "top1_shape": 0.8333
+    },
+    "hexagono": {
+      "precision_shape": 0.4167,
+      "precision_color": 0.1444,
+      "precision_both": 0.0778,
+      "top1_shape": 0.4444
+    },
+    "pentagono": {
+      "precision_shape": 0.5222,
+      "precision_color": 0.1667,
+      "precision_both": 0.1111,
+      "top1_shape": 0.5556
+    },
+    "triangulo": {
+      "precision_shape": 0.85,
+      "precision_color": 0.2,
+      "precision_both": 0.1611,
+      "top1_shape": 0.8889
+    }
+  }
+}

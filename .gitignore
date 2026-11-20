@@ -56,3 +56,8 @@ data/multimedia/
 
 # IDE
 .idea/
+
+# Reproducible local Part 5 corpora (do not commit thousands of media files)
+data/geometric*/
+data/part5_synthetic*/
+data/audio_synthetic*/

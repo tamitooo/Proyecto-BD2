@@ -1,6 +1,6 @@
-import { runQuery } from '../api';
-import { cargarProducto } from './datos.ts';
-import type { Recomendacion } from './tipos.ts';
+import { runQuery } from "../api";
+import { cargarProducto } from "./datos.ts";
+import type { Recomendacion } from "./tipos.ts";
 
 const TOP_K_TEXTO = 10;
 
@@ -8,10 +8,22 @@ function literalSql(valor: string): string {
   return `'${valor.replace(/'/g, "''")}'`;
 }
 
+interface DependenciasFuenteTexto {
+  cargarProductoFn?: typeof cargarProducto;
+  runQueryFn?: typeof runQuery;
+}
+
 export async function recomendarPorTexto(
   productoId: number,
+  dependencias: DependenciasFuenteTexto = {},
 ): Promise<Recomendacion[]> {
-  const producto = await cargarProducto(productoId);
+  const cargarProductoFn =
+    dependencias.cargarProductoFn ?? cargarProducto;
+
+  const runQueryFn =
+    dependencias.runQueryFn ?? runQuery;
+
+  const producto = await cargarProductoFn(productoId);
 
   if (!producto) {
     throw new Error(`No existe el producto ${productoId}`);
@@ -23,8 +35,6 @@ export async function recomendarPorTexto(
     return [];
   }
 
-  // Pedimos uno adicional porque el propio producto X puede aparecer
-  // entre los mejores resultados de su descripción.
   const sql = `
     SELECT id, SCORE() AS score
     FROM productos
@@ -34,11 +44,11 @@ export async function recomendarPorTexto(
     LIMIT ${TOP_K_TEXTO + 1}
   `.trim();
 
-  const resultado = await runQuery(sql);
+  const resultado = await runQueryFn(sql);
 
   if (!resultado.success) {
     throw new Error(
-      resultado.error ?? 'Falló la recomendación textual con BM25',
+      resultado.error ?? "Falló la recomendación textual con BM25",
     );
   }
 
@@ -49,9 +59,9 @@ export async function recomendarPorTexto(
     }))
     .filter(
       (item) =>
-        item.producto_id !== productoId
-        && Number.isFinite(item.producto_id)
-        && Number.isFinite(item.score),
+        item.producto_id !== productoId &&
+        Number.isFinite(item.producto_id) &&
+        Number.isFinite(item.score),
     )
     .slice(0, TOP_K_TEXTO);
 }

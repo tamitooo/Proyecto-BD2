@@ -35,6 +35,49 @@ from vector.extract_features import ExtractFeatures, FeatureExtractionError
 
 _SAFE_NAME = re.compile(r"[^A-Za-z0-9._-]+")
 
+# Formatos que el extractor puede procesar. La validación ocurre antes de
+# guardar: un .txt/.html/.svg no debe quedar en <data_dir>/media.
+_IMAGE_UPLOAD_SUFFIXES = {
+    ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp", ".tif", ".tiff",
+    ".ppm", ".pgm", ".pnm",
+}
+_AUDIO_UPLOAD_SUFFIXES = {".wav", ".wave"}
+_COMPRESSED_AUDIO_UPLOAD_SUFFIXES = {
+    ".mp3", ".ogg", ".oga", ".flac", ".m4a", ".aac", ".wma", ".opus",
+}
+_UNSUPPORTED_UPLOAD_SUFFIXES = {
+    ".mp4", ".avi", ".mov", ".mkv", ".webm", ".heic",
+}
+_SUPPORTED_UPLOAD_SUFFIXES = (
+    _IMAGE_UPLOAD_SUFFIXES
+    | _AUDIO_UPLOAD_SUFFIXES
+    | _COMPRESSED_AUDIO_UPLOAD_SUFFIXES
+)
+
+
+def validate_media_upload(filename: Optional[str], content: bytes) -> None:
+    """Rechaza archivos que no son imagen/audio antes de guardarlos."""
+    if not content:
+        raise FeatureExtractionError("el archivo subido está vacío")
+    suffix = Path(filename or "").suffix.lower()
+    if suffix in _UNSUPPORTED_UPLOAD_SUFFIXES:
+        raise FeatureExtractionError(
+            f"el formato '{suffix}' no está soportado; usa imágenes "
+            "JPG/PNG/BMP/GIF/WebP/TIFF o audio WAV/MP3/OGG/FLAC/M4A"
+        )
+    if suffix and suffix not in _SUPPORTED_UPLOAD_SUFFIXES:
+        raise FeatureExtractionError(
+            f"tipo de archivo no soportado: '{suffix}'; sube una imagen o audio"
+        )
+    if not suffix:
+        # Sin extensión se valida por los primeros bytes (PNG, JPEG, WAV...).
+        try:
+            ExtractFeatures._detect_kind(content[:16], filename)
+        except FeatureExtractionError as exc:
+            raise FeatureExtractionError(
+                f"tipo de archivo no soportado: {exc}"
+            ) from exc
+
 
 def safe_media_name(filename: Optional[str]) -> str:
     """Nombre de archivo seguro; conserva la extensión que decide el extractor."""
@@ -117,6 +160,7 @@ def extract_media(
     """Guarda el archivo y devuelve el vector BoVW/TF-IDF y sus metadatos."""
     if not content:
         raise FeatureExtractionError("el archivo subido está vacío")
+    validate_media_upload(filename, content)
 
     started = time.perf_counter()
     path = save_media(media_dir, filename, content)
@@ -148,4 +192,4 @@ def extract_media(
     }
 
 
-__all__ = ["extract_media", "safe_media_name", "save_media"]
+__all__ = ["extract_media", "safe_media_name", "save_media", "validate_media_upload"]

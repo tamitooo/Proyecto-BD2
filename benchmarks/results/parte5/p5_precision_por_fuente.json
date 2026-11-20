@@ -1,0 +1,195 @@
+{
+  "protocol": "Same user+date basket; every other DISTINCT product is relevant",
+  "leakage_prevention": "5fold held-out USERS; co-purchase trained only on other users",
+  "evaluation_scope": "OFFLINE: BM25 reference + exact cosine, not live SQL/IVF",
+  "dataset_kind": "fixture or user-supplied; does not establish real Amazon/Flipkart provenance",
+  "seed": 2026,
+  "products": 30,
+  "purchases": 200,
+  "baskets": 86,
+  "eligible_cases": 196,
+  "evaluated_cases": 196,
+  "total_users": 38,
+  "folds": [
+    {
+      "fold": 1,
+      "train_users": 30,
+      "test_users": 8,
+      "test_cases": 50,
+      "chosen_model": "co_only",
+      "chosen_weights": {
+        "co_compra": 1.0,
+        "metadatos": 0.0,
+        "descripcion": 0.0
+      },
+      "inner_cv_precision": {
+        "equal": 0.04863,
+        "co_only": 0.058219,
+        "co_strong": 0.050685,
+        "co_text": 0.050685
+      }
+    },
+    {
+      "fold": 2,
+      "train_users": 30,
+      "test_users": 8,
+      "test_cases": 32,
+      "chosen_model": "co_only",
+      "chosen_weights": {
+        "co_compra": 1.0,
+        "metadatos": 0.0,
+        "descripcion": 0.0
+      },
+      "inner_cv_precision": {
+        "equal": 0.045732,
+        "co_only": 0.054878,
+        "co_strong": 0.045732,
+        "co_text": 0.045732
+      }
+    },
+    {
+      "fold": 3,
+      "train_users": 30,
+      "test_users": 8,
+      "test_cases": 49,
+      "chosen_model": "co_only",
+      "chosen_weights": {
+        "co_compra": 1.0,
+        "metadatos": 0.0,
+        "descripcion": 0.0
+      },
+      "inner_cv_precision": {
+        "equal": 0.059184,
+        "co_only": 0.065986,
+        "co_strong": 0.061224,
+        "co_text": 0.061224
+      }
+    },
+    {
+      "fold": 4,
+      "train_users": 31,
+      "test_users": 7,
+      "test_cases": 31,
+      "chosen_model": "co_only",
+      "chosen_weights": {
+        "co_compra": 1.0,
+        "metadatos": 0.0,
+        "descripcion": 0.0
+      },
+      "inner_cv_precision": {
+        "equal": 0.054545,
+        "co_only": 0.06,
+        "co_strong": 0.054545,
+        "co_text": 0.055152
+      }
+    },
+    {
+      "fold": 5,
+      "train_users": 31,
+      "test_users": 7,
+      "test_cases": 34,
+      "chosen_model": "co_only",
+      "chosen_weights": {
+        "co_compra": 1.0,
+        "metadatos": 0.0,
+        "descripcion": 0.0
+      },
+      "inner_cv_precision": {
+        "equal": 0.045062,
+        "co_only": 0.048765,
+        "co_strong": 0.046914,
+        "co_text": 0.046296
+      }
+    }
+  ],
+  "visual_included": false,
+  "results": [
+    {
+      "source": "co_compra",
+      "label": "Co-compra",
+      "queries": 196,
+      "k": 10,
+      "precision_at_k": 0.071429,
+      "recall_at_k": 0.548469,
+      "hit_rate_at_k": 0.642857,
+      "p_at_3": 0.086735,
+      "ndcg_at_k": 0.284534,
+      "mrr_at_k": 0.220845,
+      "coverage_at_k": 1.0,
+      "total_hits": 140
+    },
+    {
+      "source": "metadatos",
+      "label": "Metadatos",
+      "queries": 196,
+      "k": 10,
+      "precision_at_k": 0.005102,
+      "recall_at_k": 0.022959,
+      "hit_rate_at_k": 0.05102,
+      "p_at_3": 0.013605,
+      "ndcg_at_k": 0.020737,
+      "mrr_at_k": 0.030612,
+      "coverage_at_k": 1.0,
+      "total_hits": 10
+    },
+    {
+      "source": "descripcion",
+      "label": "Descripcion",
+      "queries": 196,
+      "k": 10,
+      "precision_at_k": 0.039796,
+      "recall_at_k": 0.251276,
+      "hit_rate_at_k": 0.357143,
+      "p_at_3": 0.013605,
+      "ndcg_at_k": 0.106345,
+      "mrr_at_k": 0.07941,
+      "coverage_at_k": 1.0,
+      "total_hits": 78
+    },
+    {
+      "source": "fusion_igual",
+      "label": "Fusion: pesos iguales",
+      "queries": 196,
+      "k": 10,
+      "precision_at_k": 0.052041,
+      "recall_at_k": 0.380527,
+      "hit_rate_at_k": 0.479592,
+      "p_at_3": 0.015306,
+      "ndcg_at_k": 0.156638,
+      "mrr_at_k": 0.10378,
+      "coverage_at_k": 1.0,
+      "total_hits": 102
+    },
+    {
+      "source": "fusion_cocompra",
+      "label": "Fusion: solo co-compra",
+      "queries": 196,
+      "k": 10,
+      "precision_at_k": 0.071429,
+      "recall_at_k": 0.548469,
+      "hit_rate_at_k": 0.642857,
+      "p_at_3": 0.086735,
+      "ndcg_at_k": 0.284534,
+      "mrr_at_k": 0.220845,
+      "coverage_at_k": 1.0,
+      "total_hits": 140
+    },
+    {
+      "source": "fusion_validada",
+      "label": "Fusion: pesos seleccionados en entrenamiento",
+      "queries": 196,
+      "k": 10,
+      "precision_at_k": 0.071429,
+      "recall_at_k": 0.548469,
+      "hit_rate_at_k": 0.642857,
+      "p_at_3": 0.086735,
+      "ndcg_at_k": 0.284534,
+      "mrr_at_k": 0.220845,
+      "coverage_at_k": 1.0,
+      "total_hits": 140
+    }
+  ],
+  "max_precision_at_k": 0.144898,
+  "expected_random_precision_at_k": 0.049965,
+  "nested_cv_weights": true
+}

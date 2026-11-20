@@ -1,0 +1,7 @@
+source,label,queries,k,precision_at_k,recall_at_k,hit_rate_at_k,p_at_3,ndcg_at_k,mrr_at_k,coverage_at_k,total_hits
+co_compra,Co-compra,196,10,0.071429,0.548469,0.642857,0.086735,0.284534,0.220845,1.0,140
+metadatos,Metadatos,196,10,0.005102,0.022959,0.05102,0.013605,0.020737,0.030612,1.0,10
+descripcion,Descripcion,196,10,0.039796,0.251276,0.357143,0.013605,0.106345,0.07941,1.0,78
+fusion_igual,Fusion: pesos iguales,196,10,0.052041,0.380527,0.479592,0.015306,0.156638,0.10378,1.0,102
+fusion_cocompra,Fusion: solo co-compra,196,10,0.071429,0.548469,0.642857,0.086735,0.284534,0.220845,1.0,140
+fusion_validada,Fusion: pesos seleccionados en entrenamiento,196,10,0.071429,0.548469,0.642857,0.086735,0.284534,0.220845,1.0,140

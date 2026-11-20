@@ -5,9 +5,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel,Field
 from backend.engine import DemoEngine
+from backend.audio_routes import router as music20_router
 from recommender import recommend_by_copurchase,recommend_by_metadata,stores_with_product
 
 app=FastAPI(title="Minigestor de Base de Datos Multimodal",version="2.0")
+app.include_router(music20_router)
 app.add_middleware(CORSMiddleware,allow_origins=["http://localhost:5173","http://127.0.0.1:5173"],allow_credentials=True,allow_methods=["*"],allow_headers=["*"])
 engine=DemoEngine()
 

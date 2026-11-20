@@ -1,0 +1,6 @@
+source,queries,k,precision_at_k,recall_at_k,hit_rate_at_k
+co_compra,100,10,0.001,0.01,0.01
+metadatos,100,10,0.0,0.0,0.0
+descripcion,100,10,0.0,0.0,0.0
+visual,100,10,0.001,0.005,0.01
+fusion,100,10,0.0,0.0,0.0

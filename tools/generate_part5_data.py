@@ -7,6 +7,11 @@ or images are altered. All generated stores are fictitious test locations.
       --output data/store_fixture --stores 30 --users 500 --purchases 2000
     python -m tools.generate_part5_data --verify data/store_fixture
 
+Purchases come in baskets (same user and date): a product plus, most of the
+time, one of the few products of the affine category that go with it, with a
+Zipf-like popularity. So co-purchase has item-level pairs to learn from.
+For the ABO store (tools.preparar_abo): --users 2500 --purchases 10000.
+
 The output follows tools.seed_tienda's exact CSV contracts:
   tiendas.csv: id,nombre,lat,lon,distrito
   stock.csv:   id,tienda_id,producto_id,cantidad
@@ -62,7 +67,18 @@ AFFINITIES = (
     ("consolas", "videojuegos"),
     ("televisores", "parlantes"),
     ("impresoras", "tintas"),
+    # Hogar y moda (dataset Amazon Berkeley Objects, tools.preparar_abo).
+    ("mesas", "sillas"),
+    ("sofas", "cojines"),
+    ("alfombras", "lamparas"),
+    ("calzado", "joyas"),
 )
+# Cada producto "combina" con unos pocos de la categoría afín (esta mesa con
+# estas sillas). Una cesta lleva el producto y casi siempre uno de ellos.
+COMPLEMENTOS = 3
+PROB_COMPLEMENTO = 0.85
+# Popularidad tipo Zipf: pocos productos se venden mucho, como en una tienda real.
+ZIPF = 0.7
 
 
 def _normalized(text: str) -> str:
@@ -147,6 +163,104 @@ def _affinity_groups(categories: dict[str, list[int]]) -> list[tuple[str, str]]:
     return list(zip(keys, keys[1:] + keys[:1]))
 
 
+def _complements(rng: random.Random, categories: dict[str, list[int]],
+                 groups: list[tuple[str, str]]) -> dict[int, list[int]]:
+    """Productos de la categoría afín que combinan con cada producto, en ambos sentidos."""
+    complements: dict[int, list[int]] = defaultdict(list)
+    for a, b in groups:
+        for pid in categories[a]:
+            pool = [x for x in categories[b] if x != pid]
+            for other in rng.sample(pool, k=min(COMPLEMENTOS, len(pool))):
+                if other not in complements[pid]:
+                    complements[pid].append(other)
+                if pid not in complements[other]:
+                    complements[other].append(pid)
+    return complements
+
+
+def _popularity(rng: random.Random, categories: dict[str, list[int]]) -> dict[str, list[float]]:
+    weights = {}
+    for name, ids in categories.items():
+        ranks = list(range(1, len(ids) + 1))
+        rng.shuffle(ranks)
+        weights[name] = [1 / r ** ZIPF for r in ranks]
+    return weights
+
+
+def _purchases(rng: random.Random, categories: dict[str, list[int]],
+               groups: list[tuple[str, str]], product_ids: list[int],
+               users: int, purchases: int) -> list[list]:
+    """Cestas (mismo usuario y fecha) de un producto y sus complementos.
+
+    Cada usuario compra en sus dos categorías afines y nunca repite producto;
+    la primera cesta trae un producto de cada una.
+    """
+    complements = _complements(rng, categories, groups)
+    popularity = _popularity(rng, categories)
+    user_pair = {u: groups[(u - 1) % len(groups)] for u in range(1, users + 1)}
+
+    # Cuántos productos compra cada usuario: 2 como mínimo y el resto repartido.
+    # Si sus dos categorías se agotan, puede seguir con productos de otras.
+    size = {u: 2 for u in user_pair}
+    capacity = {u: len(set(categories[a] + categories[b])) for u, (a, b) in user_pair.items()}
+    remaining = purchases - 2 * users
+    while remaining:
+        progressed = False
+        for u in rng.sample(range(1, users + 1), users):
+            if remaining and size[u] < capacity[u]:
+                size[u] += 1
+                remaining -= 1
+                progressed = True
+        if not progressed:
+            if all(c == len(product_ids) for c in capacity.values()):
+                raise ValueError("cannot assign remaining purchases without duplicates")
+            capacity = {u: len(product_ids) for u in capacity}
+
+    def popular(category: str, exclude: set[int]) -> int | None:
+        options = [(pid, w) for pid, w in zip(categories[category], popularity[category])
+                   if pid not in exclude]
+        if not options:
+            return None
+        return rng.choices([p for p, _ in options], weights=[w for _, w in options])[0]
+
+    rows: list[list] = []
+    start_date = date(2026, 1, 1)
+    for u in range(1, users + 1):
+        a, b = user_pair[u]
+        bought: set[int] = set()
+        baskets: list[list[int]] = []
+        while len(bought) < size[u]:
+            first = not baskets
+            side = a if first or rng.random() < 0.5 else b
+            anchor = popular(side, bought) or popular(b if side == a else a, bought)
+            if anchor is None:
+                anchor = rng.choice(sorted(set(product_ids) - bought))
+            basket = [anchor]
+            bought.add(anchor)
+            other_side = b if anchor in categories[a] else a
+            extras = [x for x in complements.get(anchor, []) if x not in bought]
+            rng.shuffle(extras)
+            wanted = 1 if first else (1 if rng.random() < PROB_COMPLEMENTO else 0)
+            if wanted and rng.random() < 0.3:
+                wanted = 2
+            for extra in extras[:wanted]:
+                if len(bought) < size[u]:
+                    basket.append(extra)
+                    bought.add(extra)
+            if first and len(basket) == 1 and len(bought) < size[u]:
+                extra = popular(other_side, bought)
+                if extra is not None:
+                    basket.append(extra)
+                    bought.add(extra)
+            baskets.append(basket)
+        days = sorted(rng.sample(range(0, 300), k=len(baskets)))
+        for day, basket in zip(days, baskets):
+            for pid in basket:
+                rows.append([len(rows) + 1, u, pid, (start_date + timedelta(days=day)).isoformat(),
+                             rng.randint(1, 2)])
+    return rows
+
+
 def generate(*, products_csv: Path, output: Path, stores: int = 30,
              users: int = 500, purchases: int = 2000, seed: int = 2026,
              image_dir: Path | None = None) -> dict:
@@ -182,44 +296,7 @@ def generate(*, products_csv: Path, output: Path, stores: int = 30,
         for store_id in sorted(rng.sample(range(1, stores + 1), k=rng.randint(1, min(stores, 4)))):
             stock_rows.append([len(stock_rows) + 1, store_id, pid, rng.randint(1, 40)])
 
-    basket = {u: set() for u in range(1, users + 1)}
-    user_category = {}
-    for u in range(1, users + 1):
-        a, b = groups[(u - 1) % len(groups)]
-        user_category[u] = (a, b)
-        primary = rng.choice(categories[a])
-        secondary_pool = [x for x in categories[b] if x != primary]
-        if not secondary_pool:
-            # Single-product dataset cannot provide two distinct purchases.
-            raise ValueError("at least two distinct product IDs are required")
-        basket[u].update((primary, rng.choice(secondary_pool)))
-
-    # Grow baskets in a deterministic round-robin order. Restrict each user
-    # to their two preferred categories until those categories are exhausted.
-    remaining = purchases - 2 * users
-    while remaining:
-        progressed = False
-        for u in rng.sample(range(1, users + 1), users):
-            if not remaining:
-                break
-            a, b = user_category[u]
-            preferred = set(categories[a] + categories[b]) - basket[u]
-            available = preferred or (set(product_ids) - basket[u])
-            if not available:
-                continue
-            basket[u].add(rng.choice(sorted(available)))
-            remaining -= 1
-            progressed = True
-        if not progressed:
-            raise ValueError("cannot assign remaining purchases without duplicates")
-
-    purchase_rows = []
-    start_date = date(2026, 1, 1)
-    for u in sorted(basket):
-        basket_day = start_date + timedelta(days=rng.randint(0, 270))
-        for pid in sorted(basket[u]):
-            day = basket_day + timedelta(days=rng.randint(0, 3))
-            purchase_rows.append([len(purchase_rows) + 1, u, pid, day.isoformat(), rng.randint(1, 2)])
+    purchase_rows = _purchases(rng, categories, groups, product_ids, users, purchases)
 
     output.mkdir(parents=True, exist_ok=False)
     # Copy rather than symlink: output is portable to Docker/Windows and remains

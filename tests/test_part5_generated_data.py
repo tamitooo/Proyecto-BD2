@@ -122,3 +122,44 @@ def test_end_to_end_precision_report_is_recomputed(tmp_path, product_csv):
     assert (tmp_path / "bench" / "precision_comparison.png").is_file()
     payload = json.loads((tmp_path / "bench" / "precision_summary.json").read_text())
     assert payload["held_out_purchases"] == 50
+
+
+def _baskets(path):
+    baskets = defaultdict(set)
+    with (path / "compras.csv").open(encoding="utf-8", newline="") as stream:
+        for row in csv.DictReader(stream):
+            baskets[(row["usuario_id"], row["fecha"])].add(int(row["producto_id"]))
+    return baskets
+
+
+def test_purchases_come_in_baskets_with_repeated_pairs(tmp_path, product_csv):
+    out = tmp_path / "baskets"
+    generate(products_csv=product_csv, output=out, stores=5, users=100, purchases=300, seed=3)
+    by_id = {int(r["id"]): r["categoria"] for r in read_products(product_csv)}
+    baskets = _baskets(out)
+    multi = [b for b in baskets.values() if len(b) > 1]
+    assert len(multi) >= len(baskets) // 2
+    # La primera cesta de cada usuario trae un producto de cada categoría afín.
+    first = {}
+    for (user, day), items in sorted(baskets.items()):
+        first.setdefault(user, items)
+    assert all(len({by_id[p] for p in items}) == 2 for items in first.values())
+    pairs = defaultdict(set)
+    for (user, _), items in baskets.items():
+        for a in items:
+            for b in items:
+                if a < b:
+                    pairs[(a, b)].add(user)
+    assert sum(len(users) >= 2 for users in pairs.values()) >= len(pairs) // 3
+
+
+def test_home_and_fashion_affinities(tmp_path):
+    path = tmp_path / "abo.csv"
+    with path.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(PRODUCT_FIELDS)
+        for i, category in enumerate(["mesas", "sillas", "sofas", "cojines"] * 4, 1):
+            writer.writerow([i, f"{category} {i}", category, "100.00", "descripción", f"p{i}.jpg"])
+    manifest = generate(products_csv=path, output=tmp_path / "out", stores=5,
+                        users=20, purchases=60, seed=1)
+    assert [list(g) for g in manifest["affinity_groups"]] == [["mesas", "sillas"], ["sofas", "cojines"]]

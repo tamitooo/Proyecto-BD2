@@ -20,6 +20,7 @@ from query.vector_queries import parse_vector
 from vector.bow import model_path, train_model
 from vector.extract_features import ExtractFeatures
 from vector.metrics import cosine_similarity
+from vector.sift import sift_backend
 
 
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -97,7 +98,10 @@ class _Engine:
             ExtractFeatures.local_descriptors(path, kind=kind)
             for path in paths
         ]
-        model = train_model(kind, documents, n_words, seed=7)
+        backend = sift_backend() if kind == "image" else None
+        model = train_model(
+            kind, documents, n_words, seed=7, descriptor_backend=backend
+        )
         model.save(model_path(self.model_dir, kind))
         return model
 

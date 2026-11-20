@@ -27,6 +27,7 @@ from recommender import (
 from recommender.sql import RecommenderError
 from vector.bow import model_path, train_model
 from vector.extract_features import ExtractFeatures
+from vector.sift import sift_backend
 
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -155,8 +156,17 @@ class TestBusquedaPorImagen(unittest.TestCase):
         documents = [
             ExtractFeatures.local_descriptors(path, kind="image") for path in products
         ]
-        model = train_model("image", documents, 8, seed=7, descriptor_backend="dense")
+        # El vocabulario debe usar el mismo backend que ExtractFeatures usará
+        # al insertar y consultar: opencv si está instalado, dense si no.
+        model = train_model(
+            "image",
+            documents,
+            8,
+            seed=7,
+            descriptor_backend=sift_backend(),
+        )
         model.save(model_path(self.models, "image"))
+        self.assertEqual(model.descriptor_backend, sift_backend())
 
         self.engine = DemoEngine(data_dir=self._dir, seed=False)
         create_schema(self.engine)

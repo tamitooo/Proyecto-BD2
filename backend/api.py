@@ -43,6 +43,9 @@ async def import_existing(name:str,file:UploadFile=File(...),delimiter:str=Form(
 def query(body:QueryBody):return engine.run(body.sql).to_dict()
 @app.post("/api/media/extract")
 async def media_extract(file:UploadFile=File(...),kind:str=Form("")):
+    content_type=(file.content_type or "").lower()
+    if content_type and content_type != "application/octet-stream" and not content_type.startswith(("image/","audio/")):
+        raise HTTPException(415,f"tipo de archivo no soportado: {content_type}; sube una imagen o audio")
     try:return engine.extract_media(filename=file.filename or "archivo",content=await file.read(),kind=kind or None)
     except Exception as e:raise HTTPException(400,str(e))
 @app.get("/api/media/{name}")

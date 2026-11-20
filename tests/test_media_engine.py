@@ -17,6 +17,7 @@ from PIL import Image, ImageDraw
 from backend.engine import DemoEngine
 from vector.bow import model_path, train_model
 from vector.extract_features import ExtractFeatures, FeatureExtractionError
+from vector.sift import sift_backend
 
 
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -74,7 +75,9 @@ def _train(engine: DemoEngine, kind: str, paths, n_words: int):
     documents = [
         ExtractFeatures.local_descriptors(path, kind=kind) for path in paths
     ]
-    model = train_model(kind, documents, n_words, seed=7)
+    # Igual que en la extracción: opencv si está instalado, dense si no.
+    backend = sift_backend() if kind == "image" else None
+    model = train_model(kind, documents, n_words, seed=7, descriptor_backend=backend)
     model.save(model_path(engine.model_dir, kind))
     return model
 
@@ -137,6 +140,30 @@ class TestMediaEngine(unittest.TestCase):
             )
         self.assertFalse(
             os.path.exists(os.path.join(self.engine.media_dir, "roto.png"))
+        )
+
+    def test_rechaza_tipos_no_soportados_antes_de_guardar(self):
+        casos = {
+            "nota.txt": b"texto plano",
+            "pagina.html": b"<html><body>hola</body></html>",
+            "icono.svg": b"<svg xmlns='http://www.w3.org/2000/svg'></svg>",
+            "video.mp4": b"\x00\x00\x00\x18ftypmp42",
+        }
+        for name, content in casos.items():
+            with self.subTest(name=name):
+                with self.assertRaisesRegex(
+                    FeatureExtractionError, "no soportado|no está soportado"
+                ):
+                    self.engine.extract_media(filename=name, content=content)
+                self.assertFalse(
+                    os.path.exists(os.path.join(self.engine.media_dir, name))
+                )
+
+    def test_archivo_sin_extension_pero_no_multimedia_se_rechaza(self):
+        with self.assertRaisesRegex(FeatureExtractionError, "no soportado"):
+            self.engine.extract_media(filename="archivo", content=b"hola mundo")
+        self.assertFalse(
+            os.path.exists(os.path.join(self.engine.media_dir, "archivo"))
         )
 
     def test_flujo_del_panel_hasta_la_consulta(self):

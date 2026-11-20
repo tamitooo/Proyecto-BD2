@@ -3,6 +3,7 @@ import type {
   MediaFeatures,
   NearbyStoresResponse,
   QueryResult,
+  RecommendResponse,
   SpatialPoints,
   SpatialQueryRequest,
   SpatialQueryResult,
@@ -111,5 +112,15 @@ export async function fetchNearbyStores(
   });
   return parse<NearbyStoresResponse>(
     await fetch(`${BASE}/recommend/stores/${Math.trunc(productoId)}?${params}`),
+  );
+}
+
+export async function fetchRecommendations(
+  fuente: 'copurchase' | 'metadata',
+  productoId: number,
+  k = 10,
+): Promise<RecommendResponse> {
+  return parse<RecommendResponse>(
+    await fetch(`${BASE}/recommend/${fuente}/${Math.trunc(productoId)}?k=${k}`),
   );
 }

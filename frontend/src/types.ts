@@ -167,3 +167,15 @@ export interface NearbyStoresResponse {
   radio_m: number;
   tiendas: NearbyStore[];
 }
+
+export interface BackendRecommendation {
+  producto_id: number;
+  score: number;
+  fuente: string;
+  evidencia: Record<string, unknown>;
+}
+
+export interface RecommendResponse {
+  producto_id: number;
+  recomendaciones: BackendRecommendation[];
+}

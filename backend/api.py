@@ -1,11 +1,11 @@
 from __future__ import annotations
 from typing import List,Optional
-from fastapi import FastAPI,File,Form,HTTPException,UploadFile
+from fastapi import FastAPI,File,Form,HTTPException,Query,UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel,Field
 from backend.engine import DemoEngine
-from recommender import stores_with_product
+from recommender import recommend_by_copurchase,recommend_by_metadata,stores_with_product
 
 app=FastAPI(title="Minigestor de Base de Datos Multimodal",version="2.0")
 app.add_middleware(CORSMiddleware,allow_origins=["http://localhost:5173","http://127.0.0.1:5173"],allow_credentials=True,allow_methods=["*"],allow_headers=["*"])
@@ -68,6 +68,17 @@ def recommend_stores(producto_id:int,lat:float=-12.0464,lon:float=-77.0428,radiu
         return {"producto_id":producto_id,"centro":{"lat":lat,"lon":lon},"radio_m":radius_m,
                 "tiendas":[tienda.as_dict() for tienda in tiendas]}
     except Exception as e:raise HTTPException(400,str(e))
+def _recomendaciones(fuente,producto_id:int,k:int):
+    try:return {"producto_id":producto_id,"recomendaciones":[r.as_dict() for r in fuente(engine,producto_id,k=k)]}
+    except Exception as e:raise HTTPException(400,str(e))
+@app.get("/api/recommend/copurchase/{producto_id}")
+def recommend_copurchase(producto_id:int,k:int=Query(10,ge=1,le=100)):
+    """Usuarios que compraron X también compraron Y (issue #135)."""
+    return _recomendaciones(recommend_by_copurchase,producto_id,k)
+@app.get("/api/recommend/metadata/{producto_id}")
+def recommend_metadata(producto_id:int,k:int=Query(10,ge=1,le=100)):
+    """Misma categoría y precio parecido (issue #136)."""
+    return _recomendaciones(recommend_by_metadata,producto_id,k)
 
 if __name__=="__main__":
     import uvicorn;uvicorn.run("backend.api:app",host="127.0.0.1",port=8000,reload=True)

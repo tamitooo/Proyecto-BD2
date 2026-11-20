@@ -35,12 +35,15 @@ def raw(tmp_path, monkeypatch):
     raw = tmp_path / "raw"
     raw.mkdir()
     listados = []
+    marcas = ["Marca Amazon - ", "Amazon Basics - ", "Marca de Amazon – ", "AmazonBasics ", "Marca Amazon - Amazon Collection ", "Amazon CollectionAmazon Collection "]
     for i in range(6):
-        listados.append(_listing(f"S{i}", "CHAIR", f"Marca Amazon - Silla modelo {i}, gris",
+        listados.append(_listing(f"S{i}", "CHAIR", f"{marcas[i]}Silla modelo {i}, gris",
                                  ["Madera maciza", "Fácil de armar"], f"img{i}"))
     for i in range(6):
-        listados.append(_listing(f"J{i}", "FINERING", f"Anillo de plata &amp; circonia {i}",
-                                 ["Plata de ley"], f"img{10 + i}"))
+        nombre = f"Anillo de plata &amp; circonia {i}"
+        if i == 1:
+            nombre = "find. Amazon Brand – " + nombre
+        listados.append(_listing(f"J{i}", "FINERING", nombre, ["Plata de ley"], f"img{10 + i}"))
     listados += [
         _listing("V1", "CHAIR", "Silla modelo 1, azul", ["Variante"], "img20"),
         _listing("V2", "CHAIR", "Otra silla con la misma foto", ["Repetida"], "img2"),
@@ -97,7 +100,9 @@ def test_elige_productos_en_espanol_sin_variantes(raw, tmp_path):
     nombres = [f["nombre"] for f in filas]
     assert "Silla modelo 0, gris" in nombres
     assert sum(n.startswith("Silla modelo 1,") for n in nombres) == 1
-    assert not any(n.startswith("Marca Amazon") for n in nombres)
+    assert not any("amazon" in n.casefold() or n.startswith("Marca") for n in nombres)
+    assert "Silla modelo 3, gris" in nombres
+    assert "find. Anillo de plata & circonia 1" in nombres
     assert "Anillo de plata & circonia 0" in nombres
     assert "Rivet alfombra de lana" in nombres
     assert not any("Muestra" in n or "Funda" in n or "Sofá" in n for n in nombres)

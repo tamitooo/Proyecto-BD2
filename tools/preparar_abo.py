@@ -61,7 +61,10 @@ PRECIOS = {
 LADO = 160
 MAX_NOMBRE = 120
 MAX_DESCRIPCION = 700
-PREFIJOS = re.compile(r"^\s*(marca amazon|amazon brand|amazonbasics|amazon collection)\s*[-–—:.]?\s*", re.I)
+# ABO a veces repite la marca pegada ("Amazon CollectionAmazon Collection ...").
+PREFIJOS = re.compile(r"^(\s*(amazon\s*basics|amazon\s*commercial|amazon\s+essentials|amazon\s+collection)\s*[-–—:.]?)+\s*", re.I)
+# Etiqueta de ABO que aparece al inicio o en medio del nombre ("find. Amazon Brand – ...").
+MARCA_AMAZON = re.compile(r"\b(marca\s+(de\s+)?amazon|amazon\s+brand)\b\s*[-–—:.,]?\s*", re.I)
 EXCLUIR = re.compile(r"\b(muestra|muestreo|swatch|renovad[oa])\b|\d{8}-\d{2}", re.I)
 # Traducciones automáticas de ABO que cambiaron el nombre de la marca.
 MARCAS = ((re.compile(r"\bRemache\b"), "Rivet"), (re.compile(r"^La soluci[oó]n\b"), "The Fix"))
@@ -112,7 +115,7 @@ def candidatos(raw: Path, semilla: int) -> dict[str, list[dict]]:
                 vinetas = _valores(d, "bullet_point", "es")
                 if not nombres or not vinetas:
                     continue
-                nombre = PREFIJOS.sub("", nombres[0])
+                nombre = PREFIJOS.sub("", MARCA_AMAZON.sub("", nombres[0])).strip(" -–—:,")
                 for patron, marca in MARCAS:
                     nombre = patron.sub(marca, nombre)
                 if EXCLUIR.search(nombre) or len(nombre) < 8:

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { fetchNearbyStores } from '../api';
 import type { NearbyStore } from '../types';
+import { escaparHtml } from './html';
 import './tiendas.css';
 
 declare global {
@@ -91,7 +92,7 @@ export default function TiendasCercanas({ productoId }: Props) {
     for (const tienda of tiendas) {
       L.marker([tienda.lat, tienda.lon])
         .bindPopup(
-          `<strong>${tienda.nombre}</strong><br>${tienda.distrito}<br>` +
+          `<strong>${escaparHtml(tienda.nombre)}</strong><br>${escaparHtml(tienda.distrito)}<br>` +
             `${(tienda.distancia_m / 1000).toFixed(2)} km · ${tienda.cantidad} u.`,
         )
         .addTo(layerRef.current);

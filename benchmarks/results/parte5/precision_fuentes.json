@@ -7,29 +7,67 @@
   },
   "semilla": 2026,
   "usuarios": 2500,
-  "casos": 8487,
-  "precision_iguales": 0.0569,
-  "precision_aprendidos": 0.0825,
+  "casos": 8537,
+  "precision_iguales": 0.055,
+  "precision_aprendidos": 0.0801,
   "precision_solas": {
-    "visual": 0.0006,
-    "texto": 0.0007,
-    "cocompra": 0.0825,
-    "metadatos": 0.0008
+    "visual": 0.0007,
+    "texto": 0.0005,
+    "cocompra": 0.0801,
+    "metadatos": 0.001
   },
-  "techo": 0.1273,
+  "techo": 0.1266,
   "pliegues": [
     {
       "usuarios": 500,
-      "casos": 1706,
-      "iguales": 0.0555,
-      "aprendidos": 0.0785,
+      "casos": 1718,
+      "iguales": 0.0536,
+      "aprendidos": 0.0777,
+      "solas": {
+        "visual": 0.0008,
+        "texto": 0.0003,
+        "cocompra": 0.0777,
+        "metadatos": 0.0007
+      },
+      "techo": 0.1237,
+      "pesos": {
+        "visual": 0.0,
+        "texto": 0.0,
+        "cocompra": 1.0,
+        "metadatos": 0.0
+      }
+    },
+    {
+      "usuarios": 500,
+      "casos": 1725,
+      "iguales": 0.0543,
+      "aprendidos": 0.082,
+      "solas": {
+        "visual": 0.0008,
+        "texto": 0.0003,
+        "cocompra": 0.082,
+        "metadatos": 0.0014
+      },
+      "techo": 0.1256,
+      "pesos": {
+        "visual": 0.0,
+        "texto": 0.0,
+        "cocompra": 1.0,
+        "metadatos": 0.0
+      }
+    },
+    {
+      "usuarios": 500,
+      "casos": 1719,
+      "iguales": 0.0556,
+      "aprendidos": 0.0769,
       "solas": {
         "visual": 0.0006,
         "texto": 0.0006,
-        "cocompra": 0.0785,
-        "metadatos": 0.0004
+        "cocompra": 0.0769,
+        "metadatos": 0.0008
       },
-      "techo": 0.1236,
+      "techo": 0.1246,
       "pesos": {
         "visual": 0.0,
         "texto": 0.0,
@@ -39,35 +77,16 @@
     },
     {
       "usuarios": 500,
-      "casos": 1710,
-      "iguales": 0.0581,
-      "aprendidos": 0.0847,
+      "casos": 1685,
+      "iguales": 0.0548,
+      "aprendidos": 0.0818,
       "solas": {
-        "visual": 0.0008,
-        "texto": 0.0008,
-        "cocompra": 0.0847,
-        "metadatos": 0.0009
-      },
-      "techo": 0.127,
-      "pesos": {
-        "visual": 0.0,
-        "texto": 0.0,
-        "cocompra": 1.0,
-        "metadatos": 0.0
-      }
-    },
-    {
-      "usuarios": 500,
-      "casos": 1695,
-      "iguales": 0.0576,
-      "aprendidos": 0.0828,
-      "solas": {
-        "visual": 0.0006,
+        "visual": 0.0005,
         "texto": 0.0006,
-        "cocompra": 0.0828,
-        "metadatos": 0.0008
+        "cocompra": 0.0818,
+        "metadatos": 0.0012
       },
-      "techo": 0.1278,
+      "techo": 0.1301,
       "pesos": {
         "visual": 0.0,
         "texto": 0.0,
@@ -77,35 +96,16 @@
     },
     {
       "usuarios": 500,
-      "casos": 1684,
-      "iguales": 0.0569,
-      "aprendidos": 0.0834,
+      "casos": 1690,
+      "iguales": 0.0566,
+      "aprendidos": 0.082,
       "solas": {
-        "visual": 0.0003,
-        "texto": 0.0004,
-        "cocompra": 0.0834,
-        "metadatos": 0.0013
+        "visual": 0.0007,
+        "texto": 0.0005,
+        "cocompra": 0.082,
+        "metadatos": 0.0011
       },
-      "techo": 0.1292,
-      "pesos": {
-        "visual": 0.0,
-        "texto": 0.0,
-        "cocompra": 1.0,
-        "metadatos": 0.0
-      }
-    },
-    {
-      "usuarios": 500,
-      "casos": 1692,
-      "iguales": 0.0562,
-      "aprendidos": 0.0829,
-      "solas": {
-        "visual": 0.0008,
-        "texto": 0.0009,
-        "cocompra": 0.0829,
-        "metadatos": 0.0008
-      },
-      "techo": 0.1287,
+      "techo": 0.1288,
       "pesos": {
         "visual": 0.0,
         "texto": 0.0,

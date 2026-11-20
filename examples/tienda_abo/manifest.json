@@ -1,0 +1,33 @@
+{
+  "source": "data/tienda_abo/productos.csv",
+  "synthetic_stores": true,
+  "synthetic_purchases": true,
+  "seed": 2026,
+  "products": 2531,
+  "stores": 30,
+  "stock": 6432,
+  "users": 2500,
+  "purchases": 10000,
+  "affinity_groups": [
+    [
+      "mesas",
+      "sillas"
+    ],
+    [
+      "sofas",
+      "cojines"
+    ],
+    [
+      "alfombras",
+      "lamparas"
+    ],
+    [
+      "calzado",
+      "joyas"
+    ]
+  ],
+  "schema": "tools.seed_tienda compatible",
+  "assets_copied": true,
+  "precomputed_embeddings": false,
+  "visual_model": true
+}

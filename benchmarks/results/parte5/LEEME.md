@@ -12,6 +12,7 @@ consultas que la ficha de producto (BM25, IVF coseno, co-compra y metadatos por 
 - "Máximo posible": una compra con menos de 10 productos no puede llenar el top 10.
 
 Los dos primeros pasos ya están hechos: el resultado es `examples/tienda_abo/`.
+Las salidas reales de la corrida (conteos, tiempos y resultados) están en `EVIDENCIA.md`.
 Para reproducir todo (unos 40 minutos):
 
 ```

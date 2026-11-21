@@ -1,7 +1,7 @@
 """Arma el dataset de productos de la tienda con Amazon Berkeley Objects (ABO).
 
 ABO (https://amazon-berkeley-objects.s3.amazonaws.com/index.html) son productos
-reales de Amazon con licencia CC BY-NC 4.0. Se eligen productos con nombre y
+reales de Amazon con licencia CC BY 4.0. Se eligen productos con nombre y
 descripción en español de 8 categorías que se compran juntas. ABO no trae
 precios: se generan por categoría con una semilla fija.
 
@@ -236,7 +236,8 @@ def preparar(*, raw: Path, salida: Path, por_cat: int = 400, semilla: int = 2026
         w.writerow(("id", "abo_item_id", "abo_image_id"))
         w.writerows(origen)
     (salida / "LICENCIA.txt").write_text(
-        "Productos e imágenes: Amazon Berkeley Objects (ABO), Amazon.com, licencia CC BY-NC 4.0\n"
+        "Productos e imágenes: Amazon Berkeley Objects (ABO), Amazon.com, licencia CC BY 4.0\n"
+        "https://creativecommons.org/licenses/by/4.0/\n"
         "https://amazon-berkeley-objects.s3.amazonaws.com/index.html\n"
         "Cambios: selección de productos, nombre y descripción en español tomados de ABO,\n"
         "imágenes reducidas a 160x160 con bordes blancos. Los precios NO son de Amazon:\n"

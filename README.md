@@ -424,7 +424,7 @@ pruebas y para probar rápido (`python examples/tienda/generar_muestra.py` la re
 
 El dataset final son productos reales de
 [Amazon Berkeley Objects](https://amazon-berkeley-objects.s3.amazonaws.com/index.html)
-(ABO, licencia CC BY-NC 4.0, ver `examples/tienda_abo/LICENCIA.txt`): 8 categorías que
+(ABO, licencia CC BY 4.0, ver `examples/tienda_abo/LICENCIA.txt`): 8 categorías que
 se compran juntas por pares (mesas y sillas, sofás y cojines, alfombras y lámparas,
 calzado y joyas), con nombre y descripción en español. ABO no trae precios, tiendas
 ni compras, así que se generan con semilla fija. Las compras vienen en canastas

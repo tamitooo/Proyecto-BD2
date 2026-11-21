@@ -6,7 +6,7 @@ Corrida del 2026-11-20 con Python 3.14.4 y OpenCV 5.0.0. Resultado: `examples/ti
 
 [Amazon Berkeley Objects (ABO)](https://amazon-berkeley-objects.s3.amazonaws.com/index.html):
 catálogo público de Amazon con fichas reales (nombre, viñetas, tipo de producto) y fotos, con
-licencia CC BY-NC 4.0. Se descarga de su bucket público de S3, sin cuenta.
+licencia CC BY 4.0. Se descarga de su bucket público de S3, sin cuenta.
 
 | Paso | Cantidad |
 |---|---|

@@ -1,4 +1,5 @@
-Productos e imágenes: Amazon Berkeley Objects (ABO), Amazon.com, licencia CC BY-NC 4.0
+Productos e imágenes: Amazon Berkeley Objects (ABO), Amazon.com, licencia CC BY 4.0
+https://creativecommons.org/licenses/by/4.0/
 https://amazon-berkeley-objects.s3.amazonaws.com/index.html
 Cambios: selección de productos, nombre y descripción en español tomados de ABO,
 imágenes reducidas a 160x160 con bordes blancos. Los precios NO son de Amazon:

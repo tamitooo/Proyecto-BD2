@@ -120,7 +120,7 @@ def test_imagenes_precios_modelo_y_licencia(raw, tmp_path):
         bajo, alto = PRECIOS[f["categoria"]]
         assert bajo <= float(f["precio"]) <= alto + 1
     assert FeatureModel.load(salida / "modelo" / "bow_image.npz").n_words == 4
-    assert "CC BY-NC 4.0" in (salida / "LICENCIA.txt").read_text(encoding="utf-8")
+    assert "CC BY 4.0" in (salida / "LICENCIA.txt").read_text(encoding="utf-8")
     with (salida / "origen.csv").open(encoding="utf-8") as f:
         origen = list(csv.DictReader(f))
     assert {o["abo_item_id"] for o in origen} >= {"S0", "J0", "R1"}

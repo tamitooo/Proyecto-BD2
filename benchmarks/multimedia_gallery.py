@@ -31,7 +31,22 @@ def coseno(a, b) -> float:
     return producto / (na * nb) if na and nb else 0.0
 
 
-def leer_vectores(corpus: Path) -> list[dict]:
+def espectrograma(ruta: str):
+    """Espectrograma en dB de un WAV mono, para dibujar un audio como imagen."""
+    import wave
+
+    import numpy as np
+
+    with wave.open(ruta, "rb") as wav:
+        muestras = np.frombuffer(wav.readframes(wav.getnframes()), dtype=np.int16).astype(float)
+    ventana, salto = 512, 128
+    tramas = [muestras[i:i + ventana] * np.hanning(ventana)
+              for i in range(0, len(muestras) - ventana, salto)]
+    potencia = np.abs(np.fft.rfft(np.array(tramas), axis=1)) ** 2
+    return 10 * np.log10(potencia.T + 1e-6)[::-1]
+
+
+def leer_vectores(corpus: Path, modalidad: str = "image") -> list[dict]:
     archivo = corpus / "vectors.jsonl"
     if not archivo.exists():
         archivo = corpus / "vectors.json"
@@ -42,9 +57,8 @@ def leer_vectores(corpus: Path) -> list[dict]:
     with archivo.open(encoding="utf-8") as lineas:
         for linea in lineas:
             objeto = json.loads(linea)
-            # La galeria dibuja imagenes: el corpus tambien trae audio, que se
-            # evalua aparte porque su espacio vectorial no es comparable.
-            if objeto.get("vector") and objeto.get("modalidad") == "image":
+            # Imagen y audio no se mezclan: cada modalidad tiene su propio vocabulario.
+            if objeto.get("vector") and objeto.get("modalidad") == modalidad:
                 objetos.append(objeto)
     return objetos
 
@@ -52,11 +66,15 @@ def leer_vectores(corpus: Path) -> list[dict]:
 def main() -> None:
     ap = argparse.ArgumentParser(description="Galeria de aciertos y errores del pipeline multimedia")
     ap.add_argument("--corpus", default=str(CORPUS), help="directorio del corpus con vectors.jsonl")
-    ap.add_argument("--salida", default=str(SALIDA / "galeria_multimedia.png"))
+    ap.add_argument("--salida", default=None)
+    ap.add_argument("--modalidad", choices=("image", "audio"), default="image")
     args = ap.parse_args()
+    if args.salida is None:
+        nombre = "galeria_multimedia.png" if args.modalidad == "image" else "galeria_audio.png"
+        args.salida = str(SALIDA / nombre)
 
     corpus = Path(args.corpus)
-    objetos = leer_vectores(corpus)
+    objetos = leer_vectores(corpus, args.modalidad)
     if not objetos:
         raise SystemExit("no hay vectores; corre benchmarks.multimedia_corpus primero")
 
@@ -96,7 +114,10 @@ def main() -> None:
                 titulo = f"{objeto['familia']} {puntaje:.2f} {marca}"
                 borde = "#2e7d32" if acierto else "#c62828"
 
-            eje.imshow(mpimg.imread(objeto["ruta"]), cmap="gray")
+            if args.modalidad == "audio":
+                eje.imshow(espectrograma(objeto["ruta"]), cmap="magma", aspect="auto")
+            else:
+                eje.imshow(mpimg.imread(objeto["ruta"]), cmap="gray")
             eje.set_xticks([])
             eje.set_yticks([])
             eje.set_title(titulo, fontsize=8)

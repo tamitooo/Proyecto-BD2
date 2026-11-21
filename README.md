@@ -507,6 +507,7 @@ npm test
 
 ## Documentación
 
+- `docs/informe/informe_final.pdf`: **informe final (Partes 1 a 5)**, con diseño, algoritmos, experimentos y resultados.
 - `docs/rubrica/COMPLIANCE_CHECKLIST.md`: checklist contra el enunciado.
 - `docs/informe/informe_incremental.md`: informe incremental completo y limitaciones.
 - `docs/informe/parte2_espacial.md`: diseño, SQL y resultados espaciales sincronizados con la corrida definitiva documentada.

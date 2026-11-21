@@ -319,8 +319,8 @@ def procesar(tamano: int, args, disponible: bool) -> dict:
     vectores = base / "vectors.jsonl"
     filas: list[dict] = []
     with vectores.open("w", encoding="utf-8") as salida:
-        extraccion = _extraer(pipeline, imagenes, "image", salida, filas)
-        extraccion += _extraer(pipeline, audios, "audio", salida, filas, disponible)
+        extraccion = _extraer(pipeline, imagenes, "image", salida, filas, base)
+        extraccion += _extraer(pipeline, audios, "audio", salida, filas, base, disponible)
 
     modelo = base / "pipeline.npz"
     if modelo.exists():
